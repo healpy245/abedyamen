@@ -1,0 +1,14 @@
+milkshake : {
+  espresso_milkshake : 0
+  oreo_milkshake : 0
+  bagel_milkshake : 0
+  salted_caramel_milkshake : 0
+  bananago_milkshake : 0
+  taro_milkshake : 0
+  cerelac_milkshake : 0
+  chocolate_milkshake : 0
+  vanilla_milkshake : 0
+  strawberry_milkshake : 0
+  lotus_milkshake : 0
+  mastic_milkshake : 0
+}

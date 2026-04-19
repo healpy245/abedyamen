@@ -1,0 +1,7 @@
+frappe : {
+  hazelnut_frappe : 0
+  salted_caramel_frappe : 0
+  vanilla_frappe : 0
+  iced_coffee_frappe : 0
+  caramel_macchiato_frappe : 0
+}

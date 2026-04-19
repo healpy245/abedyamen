@@ -1,0 +1,20 @@
+smoothie : {
+  maldives : 0
+  pineapple_lychee : 0
+  passion_fruit : 0
+  pina_colada : 0
+  apple_and_lemon : 0
+  peach_strawberry : 0
+  peach_lychee : 0
+  sonic_pop : 0
+  strawberry_colada : 0
+  strawberry_pineapple : 0
+  strawberry_lemon : 0
+  kiwi_deo : 0
+  kiwi_strawberry : 0
+  lychee_and_rose : 0
+  mango_pineapple : 0
+  mango_colada : 0
+  mango_passion_fruit : 0
+  berry_mix : 0
+}

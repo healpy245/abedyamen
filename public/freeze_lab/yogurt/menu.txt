@@ -1,0 +1,13 @@
+yogurt : {
+  orange_burst_yogurt : 0
+  old_is_gold_yogurt : 0
+  exotic_yogurt : 0
+  watermelon_yogurt : 0
+  melon_peach_yogurt : 0
+  pine_bite_yogurt : 0
+  pineberry_yogurt : 0
+  tropi_cherry_yogurt : 0
+  golden_berry_yogurt : 0
+  deo_delight_yogurt : 0
+  coco_lychee_yogurt : 0
+}

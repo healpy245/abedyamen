@@ -1,0 +1,10 @@
+iced_milk : {
+  chocolate_flavored_milk : 0
+  watermelon_iced_milk : 0
+  taro_iced_milk : 0
+  brown_sugar_iced_milk : 0
+  strawberry_iced_milk : 0
+  kiwi_iced_milk : 0
+  mango_iced_milk : 0
+  banana_iced_milk : 0
+}

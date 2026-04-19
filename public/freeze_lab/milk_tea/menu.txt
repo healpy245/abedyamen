@@ -1,0 +1,6 @@
+milk_tea : {
+  strawberry_milk_tea : 0
+  hazelnut_milk_tea : 0
+  brown_sugar_milk_tea : 0
+  rose_milk_tea : 0
+}

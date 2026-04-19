@@ -1,0 +1,14 @@
+iced_espresso_drinks : {
+  iced_americano : 0
+  iced_pistachio : 0
+  iced_caramel_macchiato : 0
+  iced_salted_caramel : 0
+  iced_tiramisu : 0
+  spanish_latte : 0
+  iced_hazelnut_coffee : 0
+  iced_caramel_latte : 0
+  iced_brown_sugar_latte : 0
+  banana_coconut_latte : 0
+  iced_banana_latte : 0
+  iced_mocha : 0
+}

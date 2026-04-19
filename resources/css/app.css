@@ -1,0 +1,383 @@
+/* Import Google Fonts for Hebrew and Arabic */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Heebo:wght@300;400;500;600;700;800;900&family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for Webtimize portfolio */
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        font-family: 'Inter', 'Heebo', sans-serif;
+    }
+
+    /* RTL Support */
+    [dir="rtl"] {
+        direction: rtl;
+        text-align: right;
+    }
+
+    [dir="rtl"] .rtl-flip {
+        transform: scaleX(-1);
+    }
+
+    /* Arabic font classes */
+    .font-arabic {
+        font-family: 'Cairo', 'Inter', sans-serif;
+    }
+
+    .font-arabic-light {
+        font-family: 'Cairo', 'Inter', sans-serif;
+        font-weight: 300;
+    }
+
+    .font-arabic-regular {
+        font-family: 'Cairo', 'Inter', sans-serif;
+        font-weight: 400;
+    }
+
+    .font-arabic-medium {
+        font-family: 'Cairo', 'Inter', sans-serif;
+        font-weight: 500;
+    }
+
+    .font-arabic-semibold {
+        font-family: 'Cairo', 'Inter', sans-serif;
+        font-weight: 600;
+    }
+
+    .font-arabic-bold {
+        font-family: 'Cairo', 'Inter', sans-serif;
+        font-weight: 700;
+    }
+
+    .font-arabic-extrabold {
+        font-family: 'Cairo', 'Inter', sans-serif;
+        font-weight: 800;
+    }
+
+    .font-arabic-black {
+        font-family: 'Cairo', 'Inter', sans-serif;
+        font-weight: 900;
+    }
+
+    /* Hebrew font classes */
+    .font-hebrew {
+        font-family: 'Heebo', 'Inter', sans-serif;
+    }
+
+    .font-hebrew-light {
+        font-family: 'Heebo', 'Inter', sans-serif;
+        font-weight: 300;
+    }
+
+    .font-hebrew-regular {
+        font-family: 'Heebo', 'Inter', sans-serif;
+        font-weight: 400;
+    }
+
+    .font-hebrew-medium {
+        font-family: 'Heebo', 'Inter', sans-serif;
+        font-weight: 500;
+    }
+
+    .font-hebrew-semibold {
+        font-family: 'Heebo', 'Inter', sans-serif;
+        font-weight: 600;
+    }
+
+    .font-hebrew-bold {
+        font-family: 'Heebo', 'Inter', sans-serif;
+        font-weight: 700;
+    }
+
+    .font-hebrew-extrabold {
+        font-family: 'Heebo', 'Inter', sans-serif;
+        font-weight: 800;
+    }
+
+    .font-hebrew-black {
+        font-family: 'Heebo', 'Inter', sans-serif;
+        font-weight: 900;
+    }
+
+    /* RTL specific spacing adjustments */
+    [dir="rtl"] .rtl-mr-auto {
+        margin-right: auto;
+        margin-left: 0;
+    }
+
+    [dir="rtl"] .rtl-ml-auto {
+        margin-left: auto;
+        margin-right: 0;
+    }
+
+    [dir="rtl"] .rtl-pr-4 {
+        padding-right: 1rem;
+        padding-left: 0;
+    }
+
+    [dir="rtl"] .rtl-pl-4 {
+        padding-left: 1rem;
+        padding-right: 0;
+    }
+
+    /* Hebrew text rendering optimizations */
+    .hebrew-text {
+        font-feature-settings: "liga" 1, "kern" 1;
+        text-rendering: optimizeLegibility;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply bg-gradient-to-r from-orange-500 to-yellow-500 text-white font-semibold py-3 px-6 rounded-full hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300;
+    }
+
+    .btn-secondary {
+        @apply border-2 border-orange-200 dark:border-orange-700 text-orange-700 dark:text-orange-300 font-semibold py-3 px-6 rounded-full hover:border-orange-500 dark:hover:border-orange-400 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-300;
+    }
+
+    .card {
+        @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+    }
+
+    .gradient-text {
+        @apply bg-gradient-to-r from-orange-500 via-yellow-500 to-orange-600 bg-clip-text text-transparent;
+    }
+
+    /* Enhanced motion effects for home page */
+    .motion-card {
+        @apply transform transition-all duration-500 ease-out hover:scale-105 hover:-translate-y-2 hover:shadow-2xl;
+    }
+
+    .motion-icon {
+        @apply transform transition-all duration-300 ease-out hover:scale-110 hover:rotate-3;
+    }
+
+    .motion-text {
+        @apply transform transition-all duration-300 ease-out hover:scale-105;
+    }
+
+    .motion-button {
+        @apply transform transition-all duration-300 ease-out hover:scale-105 hover:-translate-y-1 hover:shadow-xl;
+    }
+
+    .motion-hero {
+        @apply transform transition-all duration-700 ease-out hover:scale-105;
+    }
+
+    .motion-service {
+        @apply transform transition-all duration-500 ease-out hover:scale-105 hover:-translate-y-3 hover:shadow-2xl hover:bg-gradient-to-br hover:from-orange-50 hover:to-yellow-50 dark:hover:from-orange-900/30 dark:hover:to-yellow-900/30;
+    }
+
+    .motion-value-prop {
+        @apply transform transition-all duration-500 ease-out hover:scale-105 hover:-translate-y-2 hover:shadow-2xl;
+    }
+
+    .motion-cta {
+        @apply transform transition-all duration-300 ease-out hover:scale-105 hover:-translate-y-1 hover:shadow-xl;
+    }
+
+    /* Language switcher styles */
+    .language-switcher {
+        @apply relative inline-block;
+    }
+
+    .language-switcher-btn {
+        @apply flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors duration-200;
+    }
+
+    .language-switcher-dropdown {
+        @apply absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50;
+    }
+
+    [dir="rtl"] .language-switcher-dropdown {
+        @apply left-0 right-auto;
+    }
+
+    .language-option {
+        @apply block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900 transition-colors duration-200;
+    }
+
+    [dir="rtl"] .language-option {
+        @apply text-right;
+    }
+
+    .language-option.active {
+        @apply bg-orange-50 dark:bg-orange-900 text-orange-600 dark:text-orange-400;
+    }
+
+    /* RTL navigation adjustments */
+    [dir="rtl"] .nav-item {
+        @apply flex-row-reverse;
+    }
+
+    [dir="rtl"] .nav-icon {
+        @apply ml-2 mr-0;
+    }
+
+    /* Hebrew content spacing */
+    .hebrew-content {
+        @apply leading-relaxed;
+    }
+
+    .hebrew-content h1,
+    .hebrew-content h2,
+    .hebrew-content h3,
+    .hebrew-content h4,
+    .hebrew-content h5,
+    .hebrew-content h6 {
+        @apply font-hebrew-bold mb-4;
+    }
+
+    .hebrew-content p {
+        @apply font-hebrew-regular mb-4;
+    }
+
+    .hebrew-content ul,
+    .hebrew-content ol {
+        @apply font-hebrew-regular mb-4;
+    }
+
+    .hebrew-content li {
+        @apply mb-2;
+    }
+}
+
+@layer utilities {
+    .text-balance {
+        text-wrap: balance;
+    }
+
+    .animate-float {
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .animate-pulse-slow {
+        animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .animate-bounce-slow {
+        animation: bounce 2s infinite;
+    }
+
+    .animate-wiggle {
+        animation: wiggle 1s ease-in-out infinite;
+    }
+
+    .animate-glow {
+        animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    /* RTL utilities */
+    .rtl-text-right {
+        text-align: right;
+    }
+
+    .rtl-text-left {
+        text-align: left;
+    }
+
+    [dir="rtl"] .rtl-text-right {
+        text-align: left;
+    }
+
+    [dir="rtl"] .rtl-text-left {
+        text-align: right;
+    }
+
+    /* Hebrew typography utilities */
+    .hebrew-heading {
+        @apply font-hebrew-bold text-4xl md:text-5xl lg:text-6xl;
+    }
+
+    .hebrew-subheading {
+        @apply font-hebrew-medium text-xl md:text-2xl;
+    }
+
+    .hebrew-body {
+        @apply font-hebrew-regular text-base md:text-lg;
+    }
+
+    .hebrew-caption {
+        @apply font-hebrew-light text-sm;
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes wiggle {
+    0%, 7% {
+        transform: rotateZ(0);
+    }
+    15% {
+        transform: rotateZ(-15deg);
+    }
+    20% {
+        transform: rotateZ(10deg);
+    }
+    25% {
+        transform: rotateZ(-10deg);
+    }
+    30% {
+        transform: rotateZ(6deg);
+    }
+    35% {
+        transform: rotateZ(-4deg);
+    }
+    40%, 100% {
+        transform: rotateZ(0);
+    }
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 20px rgba(251, 146, 60, 0.5);
+    }
+    to {
+        box-shadow: 0 0 30px rgba(251, 146, 60, 0.8), 0 0 40px rgba(251, 146, 60, 0.6);
+    }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #fef3c7;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #f59e0b;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #d97706;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #f59e0b;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #d97706;
+}

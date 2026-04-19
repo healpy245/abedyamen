@@ -1,0 +1,13 @@
+refresher : {
+  pineapple : 0
+  blueberry_with_lemon : 0
+  pina_colada : 0
+  peach : 0
+  strawberry_lemon : 0
+  vitamin_c : 0
+  cherry_lemon : 0
+  kiwi_melon : 0
+  mango_strawberry : 0
+  berry_mix : 0
+  strawberry_and_cherry : 0
+}

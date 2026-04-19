@@ -1,0 +1,13 @@
+yogurt_premium_fruits : {
+  sour_berries : 0
+  pineapple_lemon : 0
+  passion_fruit_lemon : 0
+  tropical : 0
+  sweet_berries : 0
+  sour_trophy : 0
+  strawberry_lemon : 0
+  strawberry_mango : 0
+  ramadan_almond : 0
+  mango_pineapple : 0
+  hawaiian : 0
+}
