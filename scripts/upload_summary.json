@@ -1,0 +1,243 @@
+{
+  "csv": {
+    "rows": 892,
+    "columns": [
+      "שם מוצר",
+      "מק\"ט",
+      "כמות",
+      "יחידת מידה",
+      "האם מגיע במארז",
+      "צורת מארז",
+      "יחידת מידה במארז",
+      "מספר פריטים במארז",
+      "קטגוריה",
+      "ספק",
+      "מחיר מחירון",
+      "אחוז הנחה",
+      "פיקדון",
+      "מיסים",
+      "מוצר חייב במע\"מ",
+      "צורת ספירת מלאי",
+      "ברקוד יצרן",
+      "הגבלת כמות להזמנה"
+    ],
+    "unit_values": [
+      "גלון",
+      "גרם",
+      "יחידות",
+      "ליטר",
+      "מ\"ל",
+      "נספק",
+      "סמ״ק",
+      "ק\"ג",
+      "קרטון",
+      "שקית"
+    ],
+    "supplier_count": 65
+  },
+  "raw_materials_xlsx": {
+    "sheet": "Sheet1",
+    "preview": [
+      [
+        "",
+        "סיכום חומרי גלם",
+        "",
+        "",
+        "",
+        ""
+      ],
+      [
+        "",
+        "שם",
+        "כמות",
+        "פחת",
+        "עלות ללא מע״מ",
+        "עלות כולל מע״מ"
+      ],
+      [
+        "",
+        "לחמניה בורגר גדול",
+        "1.00",
+        "0.00 %",
+        "₪2.25",
+        "₪2.65"
+      ],
+      [
+        "",
+        "בשר מתובל להמבורגר",
+        "0.15",
+        "0.00 %",
+        "₪7.15",
+        "₪8.43"
+      ],
+      [
+        "",
+        "רוטב איולי חרדל",
+        "0.03",
+        "0.00 %",
+        "₪0.4",
+        "₪0.47"
+      ],
+      [
+        "",
+        "מלפפון חמוץ",
+        "0.02",
+        "0.00 %",
+        "₪0.12",
+        "₪0.12"
+      ]
+    ]
+  },
+  "food_cost": {
+    "sheets": [
+      "Appetizers",
+      "beside the burger",
+      "Beverages",
+      "children",
+      "enlarge burger",
+      "family",
+      "hamburgers",
+      "long box",
+      "on a plate",
+      "on top of",
+      "Salads",
+      "special burger",
+      "wraps",
+      "📊 Summary"
+    ],
+    "stats": {
+      "Appetizers": {
+        "max_row": 80,
+        "dish_headers_row2": [
+          "Dish Name",
+          "Category",
+          "Component",
+          "Type",
+          "Qty",
+          "Unit",
+          "Unit Price (₪)",
+          "Component Total (₪)",
+          "Selling Price (₪)",
+          "Unit Cost (₪)",
+          "COGS %",
+          "Qty Sold",
+          "Sales Revenue (₪)",
+          "Theoretical Food Cost (₪)",
+          "COGS % on Sales"
+        ],
+        "dish_count_guess": 10,
+        "component_rows_guess": 0
+      },
+      "beside the burger": {
+        "max_row": 52,
+        "dish_headers_row2": [
+          "Dish Name",
+          "Category",
+          "Component",
+          "Type",
+          "Qty",
+          "Unit",
+          "Unit Price (₪)",
+          "Component Total (₪)",
+          "Selling Price (₪)",
+          "Unit Cost (₪)",
+          "COGS %",
+          "Qty Sold",
+          "Sales Revenue (₪)",
+          "Theoretical Food Cost (₪)",
+          "COGS % on Sales"
+        ],
+        "dish_count_guess": 10,
+        "component_rows_guess": 0
+      },
+      "Beverages": {
+        "max_row": 52,
+        "dish_headers_row2": [
+          "Dish Name",
+          "Category",
+          "Component",
+          "Type",
+          "Qty",
+          "Unit",
+          "Unit Price (₪)",
+          "Component Total (₪)",
+          "Selling Price (₪)",
+          "Unit Cost (₪)",
+          "COGS %",
+          "Qty Sold",
+          "Sales Revenue (₪)",
+          "Theoretical Food Cost (₪)",
+          "COGS % on Sales"
+        ],
+        "dish_count_guess": 17,
+        "component_rows_guess": 0
+      },
+      "children": {
+        "max_row": 22,
+        "dish_headers_row2": null,
+        "dish_count_guess": 2,
+        "component_rows_guess": 0
+      },
+      "enlarge burger": {
+        "max_row": 13,
+        "dish_headers_row2": null,
+        "dish_count_guess": 4,
+        "component_rows_guess": 0
+      },
+      "family": {
+        "max_row": 18,
+        "dish_headers_row2": null,
+        "dish_count_guess": 1,
+        "component_rows_guess": 0
+      },
+      "hamburgers": {
+        "max_row": 60,
+        "dish_headers_row2": null,
+        "dish_count_guess": 6,
+        "component_rows_guess": 0
+      },
+      "long box": {
+        "max_row": 17,
+        "dish_headers_row2": null,
+        "dish_count_guess": 2,
+        "component_rows_guess": 0
+      },
+      "on a plate": {
+        "max_row": 29,
+        "dish_headers_row2": null,
+        "dish_count_guess": 4,
+        "component_rows_guess": 0
+      },
+      "on top of": {
+        "max_row": 41,
+        "dish_headers_row2": null,
+        "dish_count_guess": 13,
+        "component_rows_guess": 0
+      },
+      "Salads": {
+        "max_row": 125,
+        "dish_headers_row2": null,
+        "dish_count_guess": 12,
+        "component_rows_guess": 0
+      },
+      "special burger": {
+        "max_row": 152,
+        "dish_headers_row2": null,
+        "dish_count_guess": 13,
+        "component_rows_guess": 0
+      },
+      "wraps": {
+        "max_row": 48,
+        "dish_headers_row2": null,
+        "dish_count_guess": 5,
+        "component_rows_guess": 0
+      },
+      "📊 Summary": {
+        "max_row": 17,
+        "dish_headers_row2": null,
+        "dish_count_guess": 13,
+        "component_rows_guess": 13
+      }
+    }
+  }
+}

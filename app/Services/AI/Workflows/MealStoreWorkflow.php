@@ -4,9 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
+
+use App\Services\AI\StructuredCategoryBlocksParser;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Stores meals and assigns each to an existing category by matching the category name in the description.
+ *
+ * Input (multiple categories supported):
+ *   Burgers : { cheeseburger : 50 }
+ *   Drinks : { cola : 10 }
+ */
 final class MealStoreWorkflow extends AbstractFormWorkflow
 {
     public function run(array $payload, ?callable $onProgress = null): array
@@ -33,8 +43,14 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
             ];
         }
 
+        try {
+            @set_time_limit((int) config('openai.workflow_max_execution_time', 1800));
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
         $subdomain = $this->toSubdomain($restaurantName);
-        $baseUrl = "https://{$subdomain}.kaman.rest";
+        $baseUrl = KamanUrl::managerApi($subdomain);
 
         try {
             $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
@@ -45,9 +61,24 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
             $categories = $this->fetchCategories($baseUrl, $token);
             $progress('categories', 'Fetched ' . count($categories) . ' categories', ['count' => count($categories)]);
 
-            $progress('ai', 'Parsing meals with AI...', []);
-            $meals = $this->parseMealsWithAi($description, $categories);
+            if ($categories === []) {
+                return [
+                    'success' => false,
+                    'error' => 'No categories found on this restaurant. Create categories first, then use Meal Store.',
+                ];
+            }
+
+            $progress('ai', 'Parsing meals with AI (by category blocks)...', []);
+            $meals = $this->parseMealsFromDescription($description, $categories, $progress);
             $progress('ai', 'Parsed ' . count($meals) . ' meals', ['count' => count($meals)]);
+            $meals = $this->localizeMenuRecords($meals, $payload, $progress);
+
+            if ($meals === []) {
+                return [
+                    'success' => false,
+                    'error' => 'No meals could be parsed. Use format: Category Name : { meal name : price }',
+                ];
+            }
 
             $progress('items', 'Creating items via Kaman API...', []);
             $itemsResult = $this->createItems($baseUrl, $token, $meals, $progress);
@@ -80,9 +111,70 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
         }
     }
 
+    /**
+     * Parse all meals; splits structured input by category block for large menus.
+     *
+     * @param  array<int, array<string, mixed>>  $categories
+     * @param  callable(string, string, array): void|null  $progress
+     * @return array<string, array{name_ar: string, name_en: string, name_he: string, price: string, category_id: string, description_ar: string, description_en: string, description_he: string}>
+     */
+    private function parseMealsFromDescription(string $description, array $categories, ?callable $progress = null): array
+    {
+        $parsed = StructuredCategoryBlocksParser::parseStrict($description);
+
+        if ($parsed['ok']) {
+            return $this->parseMealsByCategoryBlocks($parsed['blocks'], $categories, $progress);
+        }
+
+        $progress && $progress('ai', 'Parsing entire menu in one pass...', []);
+
+        return $this->parseMealsWithAi($description, $categories, 'batch');
+    }
+
+    /**
+     * @param  list<array{label: string, body: string}>  $blocks
+     * @param  array<int, array<string, mixed>>  $categories
+     * @param  callable(string, string, array): void|null  $progress
+     * @return array<string, array{name_ar: string, name_en: string, name_he: string, price: string, category_id: string, description_ar: string, description_en: string, description_he: string}>
+     */
+    private function parseMealsByCategoryBlocks(array $blocks, array $categories, ?callable $progress = null): array
+    {
+        $allMeals = [];
+        $mealIndex = 0;
+        $blockNum = 0;
+        $totalBlocks = count($blocks);
+
+        foreach ($blocks as $block) {
+            $body = trim($block['body']);
+            if ($body === '') {
+                continue;
+            }
+
+            $blockNum++;
+            $label = trim($block['label']);
+            $chunk = $label . ' : {' . "\n" . $body . "\n" . '}';
+
+            $progress && $progress('ai', "Parsing category block {$blockNum}/{$totalBlocks}: {$label}", [
+                'category' => $label,
+            ]);
+
+            $keyPrefix = 'block' . $blockNum . '_';
+            $chunkMeals = $this->parseMealsWithAi($chunk, $categories, $keyPrefix);
+
+            foreach ($chunkMeals as $meal) {
+                $mealIndex++;
+                $allMeals['meal' . $mealIndex] = $meal;
+            }
+        }
+
+        return $allMeals;
+    }
+
     private function http(): \Illuminate\Http\Client\PendingRequest
     {
-        $http = Http::timeout(30)->acceptJson();
+        $timeout = (int) config('openai.request_timeout', 600);
+
+        $http = Http::timeout($timeout)->connectTimeout(30)->acceptJson();
 
         if (!config('services.kaman.ssl_verify', false)) {
             $http = $http->withoutVerifying();
@@ -93,8 +185,8 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
 
     private function login(string $baseUrl, string $subdomain, string $password): string
     {
-        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
+        $response = $this->http()->post("{$baseUrl}/login", [
+            'email' => KamanUrl::loginEmail($subdomain),
             'password' => $password,
         ]);
 
@@ -121,13 +213,13 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
     }
 
     /**
-     * @return array<int, array{id: int|string, name: string, name_ar?: string, name_en?: string, name_he?: string}>
+     * @return array<int, array{id: int|string, name?: string, name_ar?: string, name_en?: string, name_he?: string}>
      */
     private function fetchCategories(string $baseUrl, string $token): array
     {
         $response = $this->http()
             ->withToken($token)
-            ->get("{$baseUrl}/api/manager/categories");
+            ->get("{$baseUrl}/categories");
 
         if (!$response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
@@ -146,8 +238,6 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
     }
 
     /**
-     * Create each meal as an item via the Kaman API.
-     *
      * @param  array<string, array{name_ar: string, name_en: string, name_he: string, price: string, category_id: string, description_ar: string, description_en: string, description_he: string}>  $meals
      * @param  callable(string, string, array): void|null  $progress
      * @return array{created: array<int, array{key: string, id?: mixed}>, failed: array<int, array{key: string, error: string}>}
@@ -165,7 +255,7 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
 
             $response = $this->http()
                 ->withToken($token)
-                ->post("{$baseUrl}/api/manager/items", $meal);
+                ->post("{$baseUrl}/items", $meal);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -195,7 +285,7 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
      * @param  array<int, array{id: int|string, name?: string, name_ar?: string, name_en?: string}>  $categories
      * @return array<string, array{name_ar: string, name_en: string, name_he: string, price: string, category_id: string, description_ar: string, description_en: string, description_he: string}>
      */
-    private function parseMealsWithAi(string $description, array $categories): array
+    private function parseMealsWithAi(string $description, array $categories, string $keyPrefix = 'meal'): array
     {
         $categoryList = $this->formatCategoriesForPrompt($categories);
 
@@ -207,6 +297,8 @@ meal name : price
 meal name : price
 ...
 }
+
+Categories in the input already exist on the restaurant — do NOT create categories. Only output meals.
 
 You must output a JSON object with this EXACT structure. Use ONLY valid JSON, no markdown or extra text:
 
@@ -221,29 +313,42 @@ You must output a JSON object with this EXACT structure. Use ONLY valid JSON, no
       "description_ar": "...",
       "description_en": "...",
       "description_he": "..."
-    },
-    "meal2": { ... }
+    }
   }
 }
 
 Rules:
-- Assign category_id from the available categories list. Match the input category name to the closest category. Use the id as string (e.g. "1", "2").
-- name_en: the meal name from input (or sensible English translation).
-- name_ar: Arabic translation of the meal name.
-- name_he: Hebrew translation of the meal name.
-- price: the price from input as string (e.g. "25.00").
-- description_ar, description_en, description_he: brief 1-line description of the meal in each language. Can be empty string if no description.
+- Match each block's category name to the closest name in the available categories list. Set category_id to that category's id (as string).
+- If no reasonable match exists, skip that meal or use the closest match and note in description_en.
+- name_en: meal name from input (or sensible English translation).
+- name_ar: Arabic translation WITHOUT tashkeel/diacritics.
+- name_he: Hebrew translation.
+- price: from input as string (e.g. "50.00"). If missing, blank, or only whitespace after ":", use "0.00".
+- description fields: brief one line or empty string.
 - Use meal1, meal2, meal3... as keys.
-- Output ONLY the JSON object, no other text.
+- Output ONLY the JSON object.
 PROMPT;
 
         $userPrompt = "Available categories (use id for category_id):\n{$categoryList}\n\nMeals to parse:\n{$description}";
 
-        $aiResponse = $this->chat($systemPrompt, $userPrompt, ['max_tokens' => 8192]);
+        $maxTokens = (int) config('openai.meal_store_max_tokens', 16384);
+
+        $aiResponse = $this->chat($systemPrompt, $userPrompt, ['max_tokens' => $maxTokens]);
         $meals = $this->extractMealsFromAiResponse($aiResponse);
 
-        if (empty($meals)) {
+        if ($meals === []) {
             throw new \RuntimeException('AI did not return valid meals. Response: ' . substr($aiResponse, 0, 500));
+        }
+
+        if ($keyPrefix !== 'meal') {
+            $renamed = [];
+            $i = 0;
+            foreach ($meals as $meal) {
+                $i++;
+                $renamed[$keyPrefix . $i] = $meal;
+            }
+
+            return $renamed;
         }
 
         return $meals;
@@ -299,6 +404,12 @@ PROMPT;
             $normalized = [];
             foreach ($required as $field) {
                 $normalized[$field] = (string) ($meal[$field] ?? '');
+            }
+
+            $normalized['price'] = $this->normalizeExtractedPrice($normalized['price']);
+
+            if ($normalized['name_en'] === '' && $normalized['name_ar'] === '') {
+                continue;
             }
 
             $meals[$key] = $normalized;

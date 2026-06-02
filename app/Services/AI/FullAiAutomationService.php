@@ -626,6 +626,7 @@ Rules:
 - Preserve the meaning of each term.
 - If a term is already in one target language, use it for that language.
 - Keep names short and natural for a menu.
+- For all Arabic outputs (`name_ar`), NEVER use Arabic diacritics/tashkeel. Return plain Arabic letters only.
 - Output ONLY valid JSON, no markdown. Example: {"Hot Beverages":{"name_en":"Hot Beverages","name_ar":"مشروبات ساخنة","name_he":"משקאות חמים"}}
 PROMPT;
 

@@ -6,20 +6,24 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppBotController extends Controller
 {
-    private const PUBLIC_BASE_URL = 'https://yc-fit.com';
+    private const PUBLIC_BASE_URL = 'https://kaman-workspace.com';
     private const GREEN_API_SEND_MESSAGE_URL = 'https://7107.api.greenapi.com/waInstance7107542731/sendMessage/9e37d1ee067f4a21bc79cf714d5f250d265f7e31b6294b22b8';
+    private const GREEN_API_SEND_TYPING_URL = 'https://7107.api.greenapi.com/waInstance7107542731/sendTyping/9e37d1ee067f4a21bc79cf714d5f250d265f7e31b6294b22b8';
     private const LEAD_CREATE_URL = 'https://mfit.karmelfiber.com/new-lead-mfit';
     private const LEAD_STATUS_VALUE = 4;
+    private const TEAM_MEMBER_PHONE = '0584680001';
     private const CHAT_CACHE_PREFIX = 'whatsapp_lead_chat_';
     private const WEBHOOK_EVENTS_CACHE_KEY = 'whatsapp_webhook_events';
     private const WEBHOOK_ACTIVE_CACHE_KEY = 'whatsapp_webhook_active';
     private const PROMPT_CACHE_KEY = 'whatsapp_chatbot_prompt';
+    private const PROMPT_DB_KEY = 'system_prompt';
     private const PROCESSED_MESSAGE_CACHE_PREFIX = 'whatsapp_processed_message_';
     private const CHAT_HISTORY_LIMIT = 40;
     private const MAX_INCOMING_MESSAGE_AGE_SECONDS = 300;
@@ -63,7 +67,7 @@ FEATURES:
 - منيو رقمي
 - CRM
 - تقرير Z
-- إرسال فواتير SMS
+- إرسال فواتير SMSض
 - دعم سليكا و4G
 
 PRICING:
@@ -86,11 +90,60 @@ DISCOVERY QUESTIONS:
 كم فرع عندك؟
 هل عندك توصيل؟
 هل تستخدم معريخت حالياً؟
+اي معريخت بتستعمل؟
 
 IMPORTANT LEAD CAPTURE RULE:
 - In the beginning, ask for name and city naturally.
 - If one of them is missing, ask a short follow-up question to complete it.
 - After getting both, continue the normal sales conversation.
+
+COMPETITOR HANDLING (VERY IMPORTANT):
+When the client answers the question "اي معريخت بتستعمل؟" with one of these systems,
+recognize them in Arabic/English/Hebrew variants:
+
+1) Becom / بيكوم / פיקוו
+2) Leenkobot / لينكوبوت / לינקובוט
+3) T Bon / تي بون / טי בון
+4) Aviv kobot / افيف / אביב
+5) Tabit / تابيت / טאביט
+
+How to respond:
+- For Becom, Leenkobot, T Bon, Aviv:
+  Explain briefly and clearly that these are mostly local-hosted old-style systems,
+  with limited flexibility, weak cloud capabilities, and not suitable for modern AI use cases.
+  Mention that cloud data continuity is critical today for analytics, automation, and future AI features.
+  Also explain naturally with real numbers that many sellers in this market buy a cheap device
+  (around 1500 ILS), install very low-value software (sometimes almost nothing in value),
+  then resell the package at very high prices (around 6000-7000+ ILS).
+  Make the numbers visible clearly to the client in short WhatsApp lines.
+  Keep this explanation short and WhatsApp-friendly (no long paragraphs).
+
+- For Tabit:
+  Explain that KAMAN provides the same core idea and workflow,
+  but with more features, AI capabilities, and significantly lower pricing.
+
+Tone constraints for competitor handling:
+- Be confident but professional.
+- Do not insult users personally.
+- Do not use legal accusations; frame it as market reality and cost/value comparison.
+- If this is an early/mid conversation message (not final intent), DO NOT jump directly to demo.
+  First ask: what exact problems they face in their current POS.
+  Then continue conversation by solving each problem with relevant KAMAN capabilities.
+- Move to demo/meeting only after handling their problems or when user shows clear readiness.
+
+PROBLEM-SOLVING FLOW:
+- After competitor comparison, ask:
+  "شو أكثر مشاكل بتواجهك حالياً بالمعريخت اللي عندك؟"
+- For every problem the client mentions, answer with a concrete solution KAMAN can provide.
+- Keep answers practical, short, and connected to the client's actual pain.
+
+COMPLEX REQUEST / CUSTOM FEATURE RULE:
+- If client asks for a complicated workflow and you do not have a direct ready answer,
+  tell them one key advantage:
+  we are the programmers who built the system from 0 to 100,
+  and we have around 22 programmers.
+- Explain that we can develop custom solutions and program what they need.
+- Say this confidently but briefly, then continue discovery.
 
 WHEN ASKED ABOUT PRICE:
 Explain exactly: 599 monthly + 2000 setup, with current free setup offer for first 5 restaurants.
@@ -103,6 +156,13 @@ IMPORTANT:
 - Use only provided info.
 - Keep responses natural and short.
 - Always try to move toward demo.
+
+APPOINTMENT POLICY (STRICT):
+- Never assign or confirm appointment timing by yourself.
+- When the client wants to advance, tell them:
+  one of our team members will contact them soon to set the appointment.
+- Mention team availability:
+  Sunday to Thursday (الأحد - الخميس).
 
 OUTPUT RULE:
 Return plain text only, no JSON, no markdown.
@@ -125,6 +185,12 @@ PROMPT;
         ]);
 
         $prompt = trim($validated['prompt']);
+
+        DB::table('whatsapp_settings')->updateOrInsert(
+            ['key' => self::PROMPT_DB_KEY],
+            ['value' => $prompt, 'updated_at' => now(), 'created_at' => now()]
+        );
+
         Cache::forever(self::PROMPT_CACHE_KEY, $prompt);
 
         return response()->json([
@@ -135,6 +201,10 @@ PROMPT;
 
     public function resetPrompt()
     {
+        DB::table('whatsapp_settings')
+            ->where('key', self::PROMPT_DB_KEY)
+            ->delete();
+
         Cache::forget(self::PROMPT_CACHE_KEY);
 
         return response()->json([
@@ -280,14 +350,20 @@ PROMPT;
 
         try {
             $reply = $this->generateReply($chatId, $incomingMessage);
+            $this->emitTypingIndicator($chatId);
+            $this->applyHumanLikeDelay($reply);
             $sendResult = $this->sendWhatsAppMessage($chatId, $reply);
             $leadSync = $this->syncLeadIfReady($chatId, $incomingMessage);
+            $teamNotify = $this->notifyTeamIfClientWantsToAdvance($chatId, $incomingMessage);
         } catch (\Throwable $e) {
             $fallbackReply = $this->fallbackReply($chatId, $incomingMessage);
             $sendResult = null;
             $leadSync = $this->syncLeadIfReady($chatId, $incomingMessage);
+            $teamNotify = $this->notifyTeamIfClientWantsToAdvance($chatId, $incomingMessage);
 
             try {
+                $this->emitTypingIndicator($chatId);
+                $this->applyHumanLikeDelay($fallbackReply);
                 $sendResult = $this->sendWhatsAppMessage($chatId, $fallbackReply);
             } catch (\Throwable $sendError) {
                 Log::error('Fallback Green API send failed', [
@@ -302,7 +378,9 @@ PROMPT;
                 'incoming' => $incomingMessage,
                 'reply' => $fallbackReply,
                 'green_api_status' => $sendResult['status'] ?? null,
-                'reason' => $e->getMessage() . ($leadSync['message'] !== '' ? ' | Lead sync: ' . $leadSync['message'] : ''),
+                'reason' => $e->getMessage()
+                    . ($leadSync['message'] !== '' ? ' | Lead sync: ' . $leadSync['message'] : '')
+                    . ($teamNotify['message'] !== '' ? ' | Team notify: ' . $teamNotify['message'] : ''),
             ]);
 
             Log::error('WhatsApp webhook chatbot failed', [
@@ -327,7 +405,10 @@ PROMPT;
             'incoming' => $incomingMessage,
             'reply' => $reply,
             'green_api_status' => $sendResult['status'] ?? null,
-            'reason' => $leadSync['message'] !== '' ? 'Lead sync: ' . $leadSync['message'] : null,
+            'reason' => trim(implode(' | ', array_values(array_filter([
+                $leadSync['message'] !== '' ? 'Lead sync: ' . $leadSync['message'] : null,
+                $teamNotify['message'] !== '' ? 'Team notify: ' . $teamNotify['message'] : null,
+            ])))) ?: null,
         ]);
 
         return response()->json([
@@ -383,6 +464,35 @@ PROMPT;
             'status' => $response->status(),
             'body' => $response->json() ?? $response->body(),
         ];
+    }
+
+    private function emitTypingIndicator(string $chatId): void
+    {
+        try {
+            Http::timeout(10)
+                ->acceptJson()
+                ->post(self::GREEN_API_SEND_TYPING_URL, [
+                    'chatId' => $chatId,
+                ]);
+        } catch (\Throwable $e) {
+            // Keep silent: typing indicator is best-effort only.
+        }
+    }
+
+    private function applyHumanLikeDelay(string $reply): void
+    {
+        $length = mb_strlen(trim($reply));
+        $minMs = 1200;
+        $maxMs = 2600;
+
+        if ($length > 180) {
+            $maxMs = 3600;
+        } elseif ($length > 90) {
+            $maxMs = 3000;
+        }
+
+        $delayMs = random_int($minMs, $maxMs);
+        usleep($delayMs * 1000);
     }
 
     private function fallbackReply(string $chatId, string $incomingMessage): string
@@ -684,13 +794,7 @@ PROMPT;
     private function syncLeadIfReady(string $chatId, string $latestIncomingMessage): array
     {
         $path = $this->leadStatePath($chatId);
-        $state = [];
-        if (File::exists($path)) {
-            $decoded = json_decode((string) File::get($path), true);
-            if (is_array($decoded)) {
-                $state = $decoded;
-            }
-        }
+        $state = $this->loadLeadState($chatId);
 
         if (($state['submitted'] ?? false) === true) {
             return ['synced' => true, 'message' => 'already submitted'];
@@ -732,6 +836,78 @@ PROMPT;
         $this->saveLeadState($path, $state);
 
         return ['synced' => true, 'message' => 'submitted successfully'];
+    }
+
+    /**
+     * @return array{notified:bool,message:string}
+     */
+    private function notifyTeamIfClientWantsToAdvance(string $chatId, string $incomingMessage): array
+    {
+        $state = $this->loadLeadState($chatId);
+        if (($state['team_notified'] ?? false) === true) {
+            return ['notified' => true, 'message' => 'already notified'];
+        }
+
+        $hasAdvanceIntent = $this->isAdvanceIntent($incomingMessage);
+        $historyCount = count($this->loadChatHistory($chatId));
+        $fallbackConversationTrigger = (($state['submitted'] ?? false) === true) && $historyCount >= 4;
+
+        if (!$hasAdvanceIntent && !$fallbackConversationTrigger) {
+            return ['notified' => false, 'message' => 'no advance trigger'];
+        }
+
+        $teamChatId = $this->teamMemberChatId();
+        if ($teamChatId === null) {
+            return ['notified' => false, 'message' => 'invalid team member phone'];
+        }
+
+        $clientPhone = $this->normalizePhoneFromChatId($chatId) ?? 'غير متوفر';
+        $clientName = trim((string) ($state['name'] ?? 'غير متوفر'));
+        $clientCity = trim((string) ($state['city'] ?? 'غير متوفر'));
+
+        $message = "تنبيه متابعة عميل جديد ⚡\n\n"
+            . "العميل حاب يتقدم ويحتاج تنسيق موعد.\n"
+            . "رجاءً تواصلوا معه لتحديد الموعد.\n\n"
+            . "رقم العميل: {$clientPhone}\n"
+            . "الاسم: {$clientName}\n"
+            . "المدينة: {$clientCity}";
+
+        $response = $this->sendWhatsAppMessage($teamChatId, $message);
+        $status = (int) ($response['status'] ?? 0);
+        if ($status < 200 || $status >= 300) {
+            return ['notified' => false, 'message' => 'team notify failed HTTP ' . $status];
+        }
+
+        $state['team_notified'] = true;
+        $state['team_notified_at'] = now()->toIso8601String();
+        $this->saveLeadState($this->leadStatePath($chatId), $state);
+
+        return ['notified' => true, 'message' => $hasAdvanceIntent ? 'team member notified (advance intent)' : 'team member notified (conversation trigger)'];
+    }
+
+    private function isAdvanceIntent(string $message): bool
+    {
+        $text = mb_strtolower(trim($message));
+        if ($text === '') {
+            return false;
+        }
+
+        $keywords = [
+            'مهتم', 'حاب', 'خلينا', 'نكمل', 'بدي', 'اريد', 'موافق', 'تمام',
+            'ديمو', 'موعد', 'زيارة', 'اتصال', 'اتصلوا', 'تواصل', 'اتقدم', 'نتقدم',
+            'احجز', 'حدد', 'يعني خلص', 'جاهز', 'يلا', 'ايوا',
+            'advance', 'book', 'meeting', 'appointment', 'yes', 'ok', 'ready',
+            'interested', 'lets go',
+            'מעוניין', 'כן', 'יאללה', 'סבבה', 'לקבוע', 'פגישה',
+        ];
+
+        foreach ($keywords as $keyword) {
+            if (str_contains($text, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function normalizePhoneFromChatId(string $chatId): ?string
@@ -785,6 +961,20 @@ PROMPT;
     }
 
     /**
+     * @return array<string,mixed>
+     */
+    private function loadLeadState(string $chatId): array
+    {
+        $path = $this->leadStatePath($chatId);
+        if (!File::exists($path)) {
+            return [];
+        }
+
+        $decoded = json_decode((string) File::get($path), true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
      * @param array<string,mixed> $state
      */
     private function saveLeadState(string $path, array $state): void
@@ -795,6 +985,20 @@ PROMPT;
         }
 
         File::put($path, json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    }
+
+    private function teamMemberChatId(): ?string
+    {
+        $digits = preg_replace('/\D+/', '', self::TEAM_MEMBER_PHONE) ?? '';
+        if ($digits === '') {
+            return null;
+        }
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '972' . substr($digits, 1);
+        }
+
+        return $digits . '@c.us';
     }
 
     private function isWebhookActive(): bool
@@ -809,6 +1013,18 @@ PROMPT;
             $customPrompt = trim($customPrompt);
             if ($customPrompt !== '') {
                 return $customPrompt;
+            }
+        }
+
+        $customPromptFromDb = DB::table('whatsapp_settings')
+            ->where('key', self::PROMPT_DB_KEY)
+            ->value('value');
+
+        if (is_string($customPromptFromDb)) {
+            $customPromptFromDb = trim($customPromptFromDb);
+            if ($customPromptFromDb !== '') {
+                Cache::forever(self::PROMPT_CACHE_KEY, $customPromptFromDb);
+                return $customPromptFromDb;
             }
         }
 

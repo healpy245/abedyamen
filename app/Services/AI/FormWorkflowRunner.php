@@ -5,58 +5,34 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Services\AI\Contracts\FormWorkflowContract;
-use App\Services\AI\Workflows\CategoryIngredientsStoreWorkflow;
 use App\Services\AI\Workflows\CategoryStoreWorkflow;
-use App\Services\AI\Workflows\CategoryStoreWithAiImageWorkflow;
-use App\Services\AI\Workflows\CustomImageNamedWorkflow;
-use App\Services\AI\Workflows\CustomImagesMealsStoreWorkflow;
-use App\Services\AI\Workflows\DrinksStoreWorkflow;
-use App\Services\AI\Workflows\HotDrinksStoreWorkflow;
-use App\Services\AI\Workflows\IngredientsImagesStoreWorkflow;
-use App\Services\AI\Workflows\IngredientsStoreWorkflow;
-use App\Services\AI\Workflows\MealStoreWorkflow;
-use App\Services\AI\Workflows\MealStoreWithAiImagesWorkflow;
-use App\Services\AI\Workflows\NaturalJuicesStoreWorkflow;
-use App\Services\AI\Workflows\PastaMealsStoreWorkflow;
-use App\Services\AI\Workflows\SandwichesStoreWorkflow;
-use App\Services\AI\Workflows\BurgerStoreWorkflow;
-use App\Services\AI\Workflows\SweetsStoreWorkflow;
 use Illuminate\Support\Facades\Log;
 
 final class FormWorkflowRunner
 {
+    /** @var array<string, class-string<FormWorkflowContract>> */
     private const WORKFLOW_MAP = [
-        'Meal Store' => MealStoreWorkflow::class,
-        'Meal Store With AI Images' => MealStoreWithAiImagesWorkflow::class,
         'Category Store' => CategoryStoreWorkflow::class,
-        'Category Store With AI Image' => CategoryStoreWithAiImageWorkflow::class,
-        'Category Ingredients Store' => CategoryIngredientsStoreWorkflow::class,
-        'Ingredients Store' => IngredientsStoreWorkflow::class,
-        'Drinks Store' => DrinksStoreWorkflow::class,
-        'Hot Drinks Store' => HotDrinksStoreWorkflow::class,
-        'Natural Juices Store' => NaturalJuicesStoreWorkflow::class,
-        'Sweets Store' => SweetsStoreWorkflow::class,
-        'Pasta Meals Store' => PastaMealsStoreWorkflow::class,
-        'Burger Store' => BurgerStoreWorkflow::class,
-        'Sandwiches Store' => SandwichesStoreWorkflow::class,
-        'Ingredients Images Store' => IngredientsImagesStoreWorkflow::class,
-        'Custom Images Meals Store' => CustomImagesMealsStoreWorkflow::class,
-        'Custom Image Named' => CustomImageNamedWorkflow::class,
     ];
 
     /**
-     * @param  callable(string, string, array): void|null  $onProgress  Optional callback (step, message, data) for live debugging
+     * @param  callable(string, string, array): void|null  $onProgress
      */
     public function run(string $methodType, array $payload, ?callable $onProgress = null): array
     {
-        $workflowClass = self::WORKFLOW_MAP[$methodType] ?? null;
+        $methodType = self::normalizeMethodType($methodType);
+        $workflowClass = self::resolveWorkflowClass($methodType);
 
-        if (!$workflowClass) {
-            Log::warning('No workflow registered for method_type', ['method_type' => $methodType]);
+        if ($workflowClass === null) {
+            Log::warning('No workflow registered for method_type', [
+                'method_type' => $methodType,
+                'registered' => array_keys(self::WORKFLOW_MAP),
+            ]);
 
             return [
                 'success' => false,
                 'error' => "No AI workflow registered for method type: {$methodType}",
+                'message' => "No AI workflow registered for method type: {$methodType}. Deploy the latest code and run /ops/clear/483275634 on the server.",
             ];
         }
 
@@ -70,6 +46,7 @@ final class FormWorkflowRunner
             return [
                 'success' => false,
                 'error' => 'Invalid workflow implementation',
+                'message' => 'Invalid workflow implementation',
             ];
         }
 
@@ -78,6 +55,7 @@ final class FormWorkflowRunner
         } catch (\Throwable $e) {
             Log::error('Form workflow failed', [
                 'method_type' => $methodType,
+                'workflow' => $workflowClass,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -85,7 +63,36 @@ final class FormWorkflowRunner
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
+                'message' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * @return class-string<FormWorkflowContract>|null
+     */
+    private static function resolveWorkflowClass(string $methodType): ?string
+    {
+        if (isset(self::WORKFLOW_MAP[$methodType])) {
+            $class = self::WORKFLOW_MAP[$methodType];
+
+            return class_exists($class) ? $class : null;
+        }
+
+        foreach (self::WORKFLOW_MAP as $name => $class) {
+            if (strcasecmp($name, $methodType) === 0 && class_exists($class)) {
+                return $class;
+            }
+        }
+
+        return null;
+    }
+
+    private static function normalizeMethodType(string $methodType): string
+    {
+        $methodType = trim($methodType);
+        $methodType = preg_replace('/\s+/u', ' ', $methodType) ?? $methodType;
+
+        return $methodType;
     }
 }

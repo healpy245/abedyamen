@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('form.title') }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('kaman.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Fonts -->
@@ -349,51 +350,30 @@
                             <p id="unitLoginStatus" class="text-sm min-h-[1.5em]"></p>
                         </div>
 
-                        <!-- Method Type -->
-                        <div class="space-y-2">
-                            <label for="method_type" class="text-sm font-medium text-[#2b1e11]">
-                                {{ __('form.method_type') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
-                            </label>
-                            <select
-                                id="method_type"
-                                name="method_type"
-                                required
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('method_type') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
-                            >
-                                <option value="">{{ __('form.select_method_type') }}</option>
-                                <optgroup label="{{ __('form.store_without_images') }}">
-                                    <option value="Meal Store" {{ old('method_type') == 'Meal Store' ? 'selected' : '' }}>Meal Store</option>
-                                    <option value="Meal Store With AI Images" {{ old('method_type') == 'Meal Store With AI Images' ? 'selected' : '' }}>Meal Store With AI Images</option>
-                                    <option value="Category Store" {{ old('method_type') == 'Category Store' ? 'selected' : '' }}>Category Store</option>
-                                    <option value="Category Store With AI Image" {{ old('method_type') == 'Category Store With AI Image' ? 'selected' : '' }}>Category Store With AI Image</option>
-                                    <option value="Category Ingredients Store" {{ old('method_type') == 'Category Ingredients Store' ? 'selected' : '' }}>Category Ingredients Store</option>
-                                    <option value="Ingredients Store" {{ old('method_type') == 'Ingredients Store' ? 'selected' : '' }}>Ingredients Store</option>
-                                </optgroup>
-                                <optgroup label="{{ __('form.store_with_images') }}">
-                                    <option value="Drinks Store" {{ old('method_type') == 'Drinks Store' ? 'selected' : '' }}>Drinks Store</option>
-                                    <option value="Natural Juices Store" {{ old('method_type') == 'Natural Juices Store' ? 'selected' : '' }}>Natural Juices Store</option>
-                                    <option value="Ingredients Images Store" {{ old('method_type') == 'Ingredients Images Store' ? 'selected' : '' }}>Ingredients Images Store</option>
-                                    <option value="Custom Images Meals Store" {{ old('method_type') == 'Custom Images Meals Store' ? 'selected' : '' }}>Custom Images Meals Store</option>
-                                    <option value="Custom Image Named" {{ old('method_type') == 'Custom Image Named' ? 'selected' : '' }}>Custom Image Named</option>
-                                </optgroup>
-                            </select>
-                            @error('method_type')
-                                <p class="text-sm text-red-500">{{ $message }}</p>
-                            @enderror
+                        <!-- Method Type (Category Store only) -->
+                        <input type="hidden" name="method_type" id="method_type" value="Category Store">
+                        <div class="space-y-1">
+                            <p class="text-sm font-medium text-[#2b1e11]">{{ __('form.method_type') }}</p>
+                            <p class="text-sm text-[#f16229] font-semibold">Category Store</p>
                         </div>
 
                         <!-- Description -->
                         <div id="descriptionSection" class="space-y-2">
                             <label for="description" class="text-sm font-medium text-[#2b1e11]">
-                                {{ __('form.description') }}
+                                {{ __('form.description') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
                             </label>
                             <textarea
                                 id="description"
                                 name="description"
-                                rows="4"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none resize-none @error('description') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
-                                placeholder="{{ __('form.description_placeholder') }}"
+                                rows="18"
+                                required
+                                autocomplete="off"
+                                spellcheck="false"
+                                class="kaman-input w-full min-h-[22rem] px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none resize-y @error('description') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                placeholder="{{ __('form.category_store_placeholder') }}"
                             >{{ old('description') }}</textarea>
+                            <p id="categoryStoreHint" class="text-xs text-[#a78a6c] mt-2 whitespace-pre-line leading-relaxed">{{ __('form.category_store_hint') }}</p>
+                            <p id="structuredBlocksHint" class="hidden text-xs text-[#a78a6c] mt-2 whitespace-pre-line leading-relaxed">{{ __('form.structured_blocks_hint') }}</p>
                             @error('description')
                                 <p class="text-sm text-red-500">{{ $message }}</p>
                             @enderror
@@ -1245,6 +1225,25 @@
                             <p id="customImageNamedError" class="hidden text-sm text-red-500">{{ __('form.error_choose_folder') }}</p>
                         </div>
 
+                        <!-- Name translation (all methods) -->
+                        <div id="translateNamesSection" class="rounded-xl border border-[#f1dfc5] bg-white/60 px-4 py-4 space-y-2">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="hidden" name="translate_names" value="0">
+                                <input
+                                    type="checkbox"
+                                    id="translate_names"
+                                    name="translate_names"
+                                    value="1"
+                                    class="mt-1 h-4 w-4 rounded border-[#e4c9a8] text-[#f16229] focus:ring-[#f16229]"
+                                    {{ old('translate_names', '1') == '1' ? 'checked' : '' }}
+                                >
+                                <span class="text-sm text-[#2b1e11]">
+                                    <span class="font-medium block">{{ __('form.translate_names_label') }}</span>
+                                    <span class="text-xs text-[#a78a6c] font-normal block mt-1">{{ __('form.translate_names_help') }}</span>
+                                </span>
+                            </label>
+                        </div>
+
                         <!-- Actions -->
                         <div class="space-y-4">
                             <button
@@ -1496,7 +1495,69 @@
             approveBase: @json(url('/form/full-ai')),
         };
 
+        const FORM_SESSION_KEYS = {
+            restaurantName: 'webtimize_form_restaurant_name',
+            password: 'webtimize_form_restaurant_password',
+        };
+
+        function persistFormCredentials() {
+            try {
+                const nameMain = document.getElementById('restaurant_name');
+                const nameFull = document.getElementById('full_ai_restaurant_name');
+                const passMain = document.getElementById('password');
+                const passFull = document.getElementById('full_ai_password');
+                const name = (nameMain && nameMain.value.trim()) || (nameFull && nameFull.value.trim()) || '';
+                const pass = (passMain && passMain.value) || (passFull && passFull.value) || '';
+                if (name) {
+                    sessionStorage.setItem(FORM_SESSION_KEYS.restaurantName, name);
+                }
+                if (pass) {
+                    sessionStorage.setItem(FORM_SESSION_KEYS.password, pass);
+                }
+            } catch (e) {
+                /* sessionStorage may be unavailable */
+            }
+        }
+
+        function restoreFormCredentials() {
+            try {
+                const savedName = sessionStorage.getItem(FORM_SESSION_KEYS.restaurantName);
+                const savedPass = sessionStorage.getItem(FORM_SESSION_KEYS.password);
+                const nameMain = document.getElementById('restaurant_name');
+                const nameFull = document.getElementById('full_ai_restaurant_name');
+                const passMain = document.getElementById('password');
+                const passFull = document.getElementById('full_ai_password');
+                if (savedName) {
+                    if (nameMain && !nameMain.value.trim()) {
+                        nameMain.value = savedName;
+                    }
+                    if (nameFull && !nameFull.value.trim()) {
+                        nameFull.value = savedName;
+                    }
+                }
+                if (savedPass) {
+                    if (passMain && !passMain.value) {
+                        passMain.value = savedPass;
+                    }
+                    if (passFull && !passFull.value) {
+                        passFull.value = savedPass;
+                    }
+                }
+            } catch (e) {
+                /* sessionStorage may be unavailable */
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
+            restoreFormCredentials();
+            ['restaurant_name', 'password', 'full_ai_restaurant_name', 'full_ai_password'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', persistFormCredentials);
+                    el.addEventListener('change', persistFormCredentials);
+                }
+            });
+
             const form = document.getElementById('restaurantForm');
             const methodTypeSelect = document.getElementById('method_type');
             const automationToggleButtons = document.querySelectorAll('[data-automation-path]');
@@ -1882,19 +1943,21 @@
                     try {
                         const response = await fetch(FULL_AI_ROUTES.login, {
                             method: 'POST',
+                            credentials: 'same-origin',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'Accept': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'X-CSRF-TOKEN': getCsrfToken(),
                             },
                             body: JSON.stringify({ restaurant_name: name, password: password }),
                         });
-                        const data = await response.json();
+                        const data = await response.json().catch(() => ({}));
                         if (response.ok && data.success) {
                             unitLoginStatus.textContent = data.message || 'Token stored successfully. You can run the AI workflows.';
                             unitLoginStatus.className = 'text-sm min-h-[1.5em] text-emerald-700';
                         } else {
-                            unitLoginStatus.textContent = data.error || 'Something went wrong. Check your credentials.';
+                            unitLoginStatus.textContent = data.message || data.error || 'Something went wrong. Check your credentials.';
                             unitLoginStatus.className = 'text-sm min-h-[1.5em] text-red-600';
                         }
                     } catch (err) {
@@ -1925,19 +1988,21 @@
                     try {
                         const response = await fetch(FULL_AI_ROUTES.login, {
                             method: 'POST',
+                            credentials: 'same-origin',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'Accept': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'X-CSRF-TOKEN': getCsrfToken(),
                             },
                             body: JSON.stringify({ restaurant_name: name, password: password }),
                         });
-                        const data = await response.json();
+                        const data = await response.json().catch(() => ({}));
                         if (response.ok && data.success) {
                             fullAiLoginStatus.textContent = data.message || 'Token stored successfully. You can start Full AI automation.';
                             fullAiLoginStatus.className = 'text-sm min-h-[1.5em] text-emerald-700';
                         } else {
-                            fullAiLoginStatus.textContent = data.error || 'Something went wrong. Check your credentials.';
+                            fullAiLoginStatus.textContent = data.message || data.error || 'Something went wrong. Check your credentials.';
                             fullAiLoginStatus.className = 'text-sm min-h-[1.5em] text-red-600';
                         }
                     } catch (err) {
@@ -1952,6 +2017,7 @@
             if (fullAiForm) {
                 fullAiForm.addEventListener('submit', async (event) => {
                     event.preventDefault();
+                    persistFormCredentials();
                     setAutomationPath('full');
                     fullAiState.sessionId = null;
                     fullAiState.diagram = emptyDiagram();
@@ -2065,8 +2131,8 @@
                                                 result: ev.result || {},
                                                 timestamp: ev.timestamp || ''
                                             }, false);
-                                            if (!ev.success && (ev.error || ev.result?.error)) {
-                                                alert(ev.error || ev.result?.error || 'Workflow failed.');
+                                            if (!ev.success && (ev.message || ev.error || ev.result?.error || ev.result?.message)) {
+                                                alert(ev.message || ev.error || ev.result?.message || ev.result?.error || 'Workflow failed.');
                                             }
                                         }
                                     } catch (_) {}
@@ -2211,47 +2277,26 @@
             }
 
             function updateFormMode() {
-                const value = methodTypeSelect.value;
-                const imageBasedMethods = ['Drinks Store', 'Natural Juices Store', 'Ingredients Images Store'];
-                const isImageBased = imageBasedMethods.includes(value);
-                
-                // Show/hide category_name_en field based on image-based methods (but not for Custom Images Meals Store or Custom Image Named)
+                setDrinksMode(null);
+                if (descriptionSection) {
+                    descriptionSection.classList.remove('hidden');
+                }
+                if (descriptionField) {
+                    descriptionField.setAttribute('name', 'description');
+                    descriptionField.removeAttribute('disabled');
+                }
                 if (categoryNameEnSection) {
-                    if (isImageBased && value !== 'Custom Images Meals Store' && value !== 'Custom Image Named') {
-                        categoryNameEnSection.classList.remove('hidden');
-                    } else {
-                        categoryNameEnSection.classList.add('hidden');
-                    }
+                    categoryNameEnSection.classList.add('hidden');
                 }
-                
                 if (mealAiStyleSection) {
-                    if (value === 'Meal Store With AI Images') {
-                        mealAiStyleSection.classList.remove('hidden');
-                    } else {
-                        mealAiStyleSection.classList.add('hidden');
-                    }
+                    mealAiStyleSection.classList.add('hidden');
                 }
-
                 if (categoryLogoSection) {
-                    if (value === 'Category Store With AI Image') {
-                        categoryLogoSection.classList.remove('hidden');
-                    } else {
-                        categoryLogoSection.classList.add('hidden');
-                    }
+                    categoryLogoSection.classList.add('hidden');
                 }
-                
-                if (value === 'Drinks Store') {
-                    setDrinksMode('cold');
-                } else if (value === 'Natural Juices Store') {
-                    setDrinksMode('natural');
-                } else if (value === 'Ingredients Images Store') {
-                    setDrinksMode('ingredients');
-                } else if (value === 'Custom Images Meals Store') {
-                    setDrinksMode('custom-images-meals');
-                } else if (value === 'Custom Image Named') {
-                    setDrinksMode('custom-image-named');
-                } else {
-                    setDrinksMode(null);
+                const structuredBlocksHint = document.getElementById('structuredBlocksHint');
+                if (structuredBlocksHint) {
+                    structuredBlocksHint.classList.add('hidden');
                 }
             }
 
@@ -2381,6 +2426,75 @@
                 refreshGroupState(group);
             });
 
+            function mealNameFromImageFile(file) {
+                const path = file.webkitRelativePath || file.name || '';
+                const base = path.split('/').pop() || path;
+                const dot = base.lastIndexOf('.');
+                return (dot > 0 ? base.slice(0, dot) : base).trim();
+            }
+
+            function resolveImageCategoryForFile(file, explicitCategory) {
+                if (explicitCategory && String(explicitCategory).trim()) {
+                    return String(explicitCategory).trim();
+                }
+                const path = (file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
+                const parts = path.split('/').filter(Boolean);
+                if (parts.length >= 3) {
+                    return parts[parts.length - 2];
+                }
+                if (parts.length === 2) {
+                    return parts[0];
+                }
+                return 'Meals';
+            }
+
+            function buildStructuredMealDescriptionFromFiles(files, explicitCategory) {
+                const imageFiles = Array.from(files).filter(f => f.type && f.type.startsWith('image/'));
+                if (!imageFiles.length) {
+                    return '';
+                }
+
+                const sorted = imageFiles.slice().sort((a, b) => {
+                    const pa = (a.webkitRelativePath || a.name || '').toLowerCase();
+                    const pb = (b.webkitRelativePath || b.name || '').toLowerCase();
+                    return pa.localeCompare(pb);
+                });
+
+                const groups = new Map();
+                sorted.forEach((file) => {
+                    const mealName = mealNameFromImageFile(file);
+                    if (!mealName) {
+                        return;
+                    }
+                    const category = resolveImageCategoryForFile(file, explicitCategory);
+                    if (!groups.has(category)) {
+                        groups.set(category, []);
+                    }
+                    groups.get(category).push(mealName);
+                });
+
+                const blocks = [];
+                Array.from(groups.keys()).sort((a, b) => a.localeCompare(b)).forEach((category) => {
+                    const lines = groups.get(category).map(name => name + ' : ');
+                    blocks.push(category + ' : {\n' + lines.join('\n') + '\n}');
+                });
+
+                return blocks.join('\n\n');
+            }
+
+            function autofillMealDescriptionFromImages(files, explicitCategory) {
+                if (!descriptionField) {
+                    return;
+                }
+                const text = buildStructuredMealDescriptionFromFiles(files, explicitCategory);
+                if (!text) {
+                    return;
+                }
+                descriptionField.value = text;
+                descriptionField.setAttribute('name', 'description');
+                descriptionField.removeAttribute('disabled');
+            }
+
             // Image preview functionality for Custom Images Meals Store
             if (mealImagesInput) {
                 mealImagesInput.addEventListener('change', function(e) {
@@ -2419,9 +2533,23 @@
                         });
                         
                         imageCount.textContent = `${files.length} image(s) selected${files.length >= maxFiles ? ' (maximum reached)' : ` (up to ${maxFiles} allowed)`}`;
+                        const categoryLabel = folderNameInput ? folderNameInput.value : '';
+                        autofillMealDescriptionFromImages(files, categoryLabel);
                     } else {
                         imagePreview.classList.add('hidden');
                         imageCount.classList.add('hidden');
+                    }
+                });
+            }
+
+            if (folderNameInput && mealImagesInput) {
+                folderNameInput.addEventListener('input', function() {
+                    if (methodTypeSelect.value !== 'Custom Images Meals Store') {
+                        return;
+                    }
+                    const files = mealImagesInput.files;
+                    if (files && files.length > 0) {
+                        autofillMealDescriptionFromImages(Array.from(files), folderNameInput.value);
                     }
                 });
             }
@@ -2440,6 +2568,7 @@
                         folderUploadPreview.classList.remove('hidden');
                         if (folderUploadFolderName) folderUploadFolderName.textContent = folderName;
                         if (folderUploadFileCount) folderUploadFileCount.textContent = imageFiles.length + ' ' + '{{ __('form.images_selected') }}';
+                        autofillMealDescriptionFromImages(imageFiles, '');
                         if (customImageNamedError) {
                             customImageNamedError.classList.add('hidden');
                             folderUploadInput.classList.remove('border-red-400');
@@ -2453,6 +2582,7 @@
             }
 
             form.addEventListener('submit', (event) => {
+                persistFormCredentials();
                 const mode = methodTypeSelect.value;
                 const restaurantNameInput = document.getElementById('restaurant_name');
                 const passwordInput = document.getElementById('password');
@@ -2489,9 +2619,25 @@
                 
                 if (hasBasicError) {
                     event.preventDefault();
-                    alert('Please fill in all required fields: Method Type, Restaurant Name, and Password.');
+                    alert('Please fill in all required fields: Restaurant Name and Password.');
                     return;
                 }
+
+                if (!descriptionField || !descriptionField.value.trim()) {
+                    event.preventDefault();
+                    if (descriptionField) {
+                        descriptionField.classList.add('border-red-400');
+                    }
+                    alert('Please enter at least one category name in the description.');
+                    return;
+                }
+                if (descriptionField) {
+                    descriptionField.classList.remove('border-red-400');
+                }
+
+                event.preventDefault();
+                submitFormWithLiveDebug(form);
+                return;
                 
                 // Validate Image Renamer fields if Image Renamer is selected
                 if (mode === 'Image Renamer') {
@@ -2634,8 +2780,8 @@
                     return;
                 }
                 
-                // Skip validation for other non-image-based methods (Meal Store, etc.) - submit with live debug
-                if (mode === 'Meal Store' || mode === 'Category Store' || mode === 'Category Ingredients Store' || mode === 'Ingredients Store') {
+                // Structured text workflows — submit with live debug (long-running OpenAI)
+                if (mode === 'Meal Store' || mode === 'Category and Meal Store' || mode === 'Ingredients Store' || mode === 'Category and Ingredients Store') {
                     // Ensure description field is properly configured before submission
                     if (descriptionField) {
                         descriptionField.setAttribute('name', 'description');

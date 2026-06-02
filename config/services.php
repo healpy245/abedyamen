@@ -42,7 +42,14 @@ return [
     ],
 
     'kaman' => [
-        'ssl_verify' => filter_var(env('KAMAN_SSL_VERIFY', 'true'), FILTER_VALIDATE_BOOLEAN),
+        'ssl_verify' => filter_var(env('KAMAN_SSL_VERIFY', 'false'), FILTER_VALIDATE_BOOLEAN),
+        /** API host TLD: dev → {name}.kaman.dev, rest → {name}.kaman.rest */
+        'api_tld' => env('KAMAN_API_TLD', 'dev'),
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'verify_ssl' => filter_var(env('OPENAI_VERIFY_SSL', 'true'), FILTER_VALIDATE_BOOLEAN),
     ],
 
 ];

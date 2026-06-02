@@ -1,0 +1,127 @@
+{
+  "recipe_links": 498,
+  "unique_dishes": 99,
+  "unique_components": 124,
+  "sample": [
+    {
+      "sheet": "Appetizers",
+      "dish": "carpaccio special",
+      "component": "רכז רימונים גלון 4 ק\"ג",
+      "type": "Item",
+      "qty": 0.01,
+      "unit": "kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "carpaccio special",
+      "component": "רימון",
+      "type": "Item",
+      "qty": 0.05,
+      "unit": "kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "carpaccio special",
+      "component": "גבינת פרמזן איטלקי",
+      "type": "Item",
+      "qty": 0.05,
+      "unit": "kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "carpaccio special",
+      "component": "פלפל שחור גרוס",
+      "type": "Item",
+      "qty": 0.001,
+      "unit": "kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "carpaccio special",
+      "component": "מלח שולחן",
+      "type": "Item",
+      "qty": 0.001,
+      "unit": "kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "carpaccio special",
+      "component": "לחמניית המבורגר עגולה רגילה 100 גרם",
+      "type": "Item",
+      "qty": 1.0,
+      "unit": "unit"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "carpaccio special",
+      "component": "רוקט",
+      "type": "Item",
+      "qty": 0.03,
+      "unit": "unit"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "carpaccio special",
+      "component": "קרפצ׳יו מנה",
+      "type": "Item",
+      "qty": 1.0,
+      "unit": "unit"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "כנפיים קריספי",
+      "component": "שומשום",
+      "type": "Item",
+      "qty": 0.003,
+      "unit": "kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "כנפיים קריספי",
+      "component": "ציפוי לכנפיים",
+      "type": "Recipe",
+      "qty": 0.04,
+      "unit": "Kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "כנפיים קריספי",
+      "component": "כנפיים",
+      "type": "Item",
+      "qty": 0.35,
+      "unit": "kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "כנפיים קריספי",
+      "component": "רוטב צ׳ילי מתוק",
+      "type": "Recipe",
+      "qty": 0.03,
+      "unit": "Kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "קריספי צ׳יקן קטן",
+      "component": "אריזה",
+      "type": "Temporary",
+      "qty": 1.0,
+      "unit": "units"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "קריספי צ׳יקן קטן",
+      "component": "קוביות חזה עוף",
+      "type": "Item",
+      "qty": 0.12,
+      "unit": "kg"
+    },
+    {
+      "sheet": "Appetizers",
+      "dish": "קריספי צ׳יקן קטן",
+      "component": "פירי פירי",
+      "type": "Recipe",
+      "qty": 0.02,
+      "unit": "Kg"
+    }
+  ]
+}

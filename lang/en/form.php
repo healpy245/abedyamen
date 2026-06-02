@@ -22,6 +22,9 @@ return [
     
     'description' => 'Description',
     'description_placeholder' => 'Share your story, signature dishes, or special notes (optional)',
+    'category_store_placeholder' => "Enter category names, one per line.\n\nExample:\nسموذي\nعصائر طبيعية\nمشروبات باردة",
+    'category_store_hint' => 'One category name per line (any language). Names are translated to Arabic, English, and Hebrew unless you turn off translation below.',
+    'structured_blocks_hint' => 'Structured blocks: Category Name : { item name : price }. Meal Store / Ingredients Store — categories must already exist. Category and Meal / Category and Ingredients Store — creates missing categories first; empty { } = category only.',
     
     'category_name_en' => 'Category Name (English)',
     'category_name_en_desc' => '(optional, used for store paths like Burger Store, Pasta Store, Ingredients with images, Drinks, etc.)',
@@ -95,6 +98,9 @@ return [
     'submitting' => 'Submitting...',
     'error_upload_images' => 'Please upload at least one image.',
     'error_max_images' => 'Please upload no more than 50 images.',
+
+    'translate_names_label' => 'Translate names to Arabic, English, and Hebrew',
+    'translate_names_help' => 'On (default): each item gets proper translations in all three fields. Off: your exact text is copied to name_ar, name_en, and name_he.',
     
     'language' => 'Language',
     'english' => 'English',

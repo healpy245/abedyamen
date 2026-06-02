@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
+
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -39,7 +41,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-        $baseUrl = "https://{$subdomain}.kaman.rest";
+        $baseUrl = KamanUrl::managerApi($subdomain);
 
         try {
             $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
@@ -53,6 +55,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
             $progress('ai', 'Parsing meals with AI...', []);
             $meals = $this->parseMealsWithAi($description, $categories);
             $progress('ai', 'Parsed ' . count($meals) . ' meals', ['count' => count($meals)]);
+            $meals = $this->localizeMenuRecords($meals, $payload, $progress);
 
             $progress('images', 'Generating AI images for meals...', []);
             $mealsWithImages = $this->generateImagesForMeals($meals, $restaurantName, $styleImagePath);
@@ -103,8 +106,8 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
 
     private function login(string $baseUrl, string $subdomain, string $password): string
     {
-        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
+        $response = $this->http()->post("{$baseUrl}/login", [
+            'email' => KamanUrl::loginEmail($subdomain),
             'password' => $password,
         ]);
 
@@ -137,7 +140,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
     {
         $response = $this->http()
             ->withToken($token)
-            ->get("{$baseUrl}/api/manager/categories");
+            ->get("{$baseUrl}/categories");
 
         if (!$response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
@@ -190,7 +193,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
                 if (!empty($meal['image_path']) && File::exists($meal['image_path'])) {
                     $http = $http->attach('image', File::get($meal['image_path']), File::basename($meal['image_path']));
                 }
-                $response = $http->post("{$baseUrl}/api/manager/items", $body);
+                $response = $http->post("{$baseUrl}/items", $body);
             } catch (\Throwable $e) {
                 $failed[] = ['key' => $key, 'error' => $e->getMessage()];
                 Log::warning('MealStoreWithAiImagesWorkflow item request failed', ['key' => $key, 'error' => $e->getMessage()]);
@@ -259,10 +262,11 @@ You must output a JSON object with this EXACT structure. Use ONLY valid JSON, no
 Rules:
 - Assign category_id from the available categories list. Match the input category name to the closest category. Use the id as string (e.g. "1", "2").
 - name_en: the meal name from input (or sensible English translation).
-- name_ar: Arabic translation of the meal name.
+- name_ar: Arabic translation of the meal name, WITHOUT tashkeel/diacritics.
 - name_he: Hebrew translation of the meal name.
-- price: the price from input as string (e.g. "25.00").
+- price: from input as string (e.g. "25.00"). If missing, blank, or only whitespace after ":", use "0.00".
 - description_ar, description_en, description_he: brief 1-line description of the meal in each language. Can be empty string if no description.
+- `description_ar` must also be WITHOUT Arabic tashkeel/diacritics.
 - Use meal1, meal2, meal3... as keys.
 - Output ONLY the JSON object, no other text.
 PROMPT;
@@ -331,6 +335,7 @@ PROMPT;
                 $normalized[$field] = (string) ($meal[$field] ?? '');
             }
 
+            $normalized['price'] = $this->normalizeExtractedPrice($normalized['price']);
             $meals[$key] = $normalized;
         }
 

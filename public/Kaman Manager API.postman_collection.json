@@ -1,0 +1,1091 @@
+{
+  "info": {
+    "_postman_id": "959031d4-e5a5-4606-b8e2-63808f304275",
+    "name": "Kaman API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "47490050"
+  },
+  "item": [
+    {
+      "name": "Ingredients",
+      "item": [
+        {
+          "name": "Get All Ingredients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/ingredients",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ingredients"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Ingredient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_ar\": \"\\u062e\\u0633\",\n  \"name_en\": \"Lettuce\",\n  \"name_he\": \"\\u05d7\\u05e1\\u05d4\",\n  \"price\": 3.5,\n  \"category_id\": \"9df71340-9845-4312-8cef-f9cc8a6ea619\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ingredients",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ingredients"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ingredient",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/ingredients/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ingredients",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Ingredient",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_ar\": \"\\u0637\\u0645\\u0627\\u0637\\u0645\",\n  \"name_en\": \"Tomato\",\n  \"name_he\": \"\\u05e2\\u05d2\\u05d1\\u05e0\\u05d9\\u05d9\\u05d4\",\n  \"price\": 2.0,\n  \"category_id\": \"uuid-here\",\n  \"company_id\": \"uuid-here\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/ingredients/:id",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "ingredients",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Items",
+      "item": [
+        {
+          "name": "Get All Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name_ar",
+                  "value": "صنف",
+                  "type": "text"
+                },
+                {
+                  "key": "name_en",
+                  "value": "Item",
+                  "type": "text"
+                },
+                {
+                  "key": "name_he",
+                  "value": "פריט",
+                  "type": "text"
+                },
+                {
+                  "key": "description_ar",
+                  "value": "وصف",
+                  "type": "text"
+                },
+                {
+                  "key": "description_en",
+                  "value": "Description",
+                  "type": "text"
+                },
+                {
+                  "key": "description_he",
+                  "value": "תיאור",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "50",
+                  "type": "text"
+                },
+                {
+                  "key": "category_id",
+                  "value": "9df7134d-443c-4053-a78b-96f4730e4e11",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "value": null
+                },
+                {
+                  "key": "item_kitchens[]",
+                  "value": "a062a042-a686-411b-87fd-610e6a7fda3c",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Show Item",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/items/9f2f543a-b8dc-4362-a2a2-772dfd53cb76",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items",
+                "9f2f543a-b8dc-4362-a2a2-772dfd53cb76"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text"
+                },
+                {
+                  "key": "name_en",
+                  "value": "Updated Item",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "60",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/items/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name_ar",
+                  "value": "مشروبات",
+                  "type": "text"
+                },
+                {
+                  "key": "name_en",
+                  "value": "Drinks",
+                  "type": "text"
+                },
+                {
+                  "key": "name_he",
+                  "value": "שתייה",
+                  "type": "text"
+                },
+                {
+                  "key": "order_index",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "value": null
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Show Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/categories/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text"
+                },
+                {
+                  "key": "name_en",
+                  "value": "Updated Category",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "main_category",
+                  "value": "0",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/categories/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categories",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ingredients Categories",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/ingredients-categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ingredients-categories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_ar\": \"\\u062c\\u0628\\u0646\\u0629\",\n  \"name_en\": \"Cheese\",\n  \"name_he\": \"\\u05d2\\u05d1\\u05d9\\u05e0\\u05d4\",\n  \"type\": \"multi_option\",\n  \"order_index\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ingredients-categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ingredients-categories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/ingredients-categories/6ef228fc-53eb-4027-a90e-a6021460fe0e",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ingredients-categories",
+                "6ef228fc-53eb-4027-a90e-a6021460fe0e"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_ar\": \"\\u0644\\u062d\\u0645\",\n  \"name_en\": \"Meat\",\n  \"name_he\": \"\\u05d1\\u05e9\\u05e8\",\n  \"type\": \"one_option\",\n  \"order_index\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ingredients-categories/6ef228fc-53eb-4027-a90e-a6021460fe0e",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ingredients-categories",
+                "6ef228fc-53eb-4027-a90e-a6021460fe0e"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Burger Ingredients",
+      "item": [
+        {
+          "name": "Assign Ingredients to Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"9eeab968-a4e0-4584-ab58-a7acdbc73b4c\",\n  \"ingredients\": [\n    {\n      \"ingredient_id\": \"9eeaee88-c7ea-4043-acb3-f39e0cecbc34\",\n      \"default_ingredient\": false,\n      \"extra_fee\": true\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/burger-ingredients/assign",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "burger-ingredients",
+                "assign"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Item Ingredients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/burger-ingredients/item/9eeab968-a4e0-4584-ab58-a7acdbc73b4c",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "burger-ingredients",
+                "item",
+                "9eeab968-a4e0-4584-ab58-a7acdbc73b4c"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Kitchens",
+      "item": [
+        {
+          "name": "Get All Kitchens",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/kitchens",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "kitchens"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Kitchen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name_ar",
+                  "value": "تست",
+                  "type": "text"
+                },
+                {
+                  "key": "name_en",
+                  "value": "test",
+                  "type": "text"
+                },
+                {
+                  "key": "name_he",
+                  "value": "טסט",
+                  "type": "text"
+                },
+                {
+                  "key": "printer_ip",
+                  "value": "0.0.0.0",
+                  "type": "text"
+                },
+                {
+                  "key": "main_printer",
+                  "value": "0",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/kitchens",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "kitchens"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Show Kitchen",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/kitchens/9eea9acf-5436-4d4a-a601-3a5e3a235f18",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "kitchens",
+                "9eea9acf-5436-4d4a-a601-3a5e3a235f18"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Kitchen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text"
+                },
+                {
+                  "key": "name_ar",
+                  "value": "تست 1",
+                  "type": "text"
+                },
+                {
+                  "key": "name_en",
+                  "value": "test 1",
+                  "type": "text"
+                },
+                {
+                  "key": "name_he",
+                  "value": "טסט 1",
+                  "type": "text"
+                },
+                {
+                  "key": "printer_ip",
+                  "value": "0.0.0.0",
+                  "type": "text"
+                },
+                {
+                  "key": "main_printer",
+                  "value": "0",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/kitchens/9eea9acf-5436-4d4a-a601-3a5e3a235f18",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "kitchens",
+                "9eea9acf-5436-4d4a-a601-3a5e3a235f18"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "Create Inventory Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('inventory_item_id', json.data.id);",
+                  "    console.log('inventory_item_id saved:', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_ar\": \"دقيق\",\n  \"name_en\": \"Flour\",\n  \"name_he\": \"קמח\",\n  \"description_ar\": \"دقيق قمح أبيض\",\n  \"description_en\": \"White wheat flour\",\n  \"description_he\": \"White wheat flour\",\n  \"sku\": \"Test-001\",\n  \"unit\": \"kg\",\n  \"minimum_quantity\": 5,\n  \"track_inventory\": true,\n  \"depreciation_rate\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/inventory-items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inventory-items"
+              ]
+            },
+            "description": "Creates a new inventory item for the current tenant.\n\nRequired fields:\n- name_ar (required)\n- unit (required) — e.g. kg, g, l, ml, piece, box, bag\n- minimum_quantity (required)\n\nOptional fields:\n- name_en, name_he\n- description_ar/en/he\n- sku (unique per tenant)\n- track_inventory (default true)\n- depreciation_rate (0-100)\n- supplier_id\n\nThe test script auto-saves the returned id to {{inventory_item_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Link Inventory Item Ingredient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ingredient_id\": \"{{ingredient_id}}\",\n  \"quantity_consumed\": 0.150\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/inventory-items/{{inventory_item_id}}/link-ingredient",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{inventory_item_id}}",
+                "link-ingredient"
+              ]
+            },
+            "description": "Links an inventory item to an ingredient (component).\n\nSet {{inventory_item_id}} and {{ingredient_id}} before sending.\n\nquantity_consumed = how much of this inventory item is consumed when this ingredient is used once.\n\nIf the link already exists, quantity_consumed is updated (upsert)."
+          },
+          "response": []
+        },
+        {
+          "name": "Link Inventory Item To Product (Menu Item)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"a11dc0b7-aad4-4e31-b209-de29bddba637\",\n  \"quantity_consumed\": 0.200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/inventory-items/{{inventory_item_id}}/link-item",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{inventory_item_id}}",
+                "link-item"
+              ]
+            },
+            "description": "Links an inventory item directly to a menu product (item).\n\nSet {{inventory_item_id}} and {{item_id}} before sending.\n\nquantity_consumed = how much of this inventory item is consumed per 1 unit sold of this product.\n\nIf the direct link already exists (ingredient_id = null), quantity_consumed is updated (upsert)."
+          },
+          "response": []
+        },
+        {
+          "name": "Receive Stock from Supplier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier_id\": \"a1a8b9b8-c7a4-4f6d-ae36-1604bf7933ec\",\n  \"quantity\": 50.0,\n  \"price_per_unit\": 2.50,\n  \"received_date\": \"2026-05-21\",\n  \"notes\": \"Weekly delivery\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/inventory-items/{{inventory_item_id}}/receive-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{inventory_item_id}}",
+                "receive-stock"
+              ]
+            },
+            "description": "Records incoming stock for an inventory item from a supplier.\n\nSet {{inventory_item_id}} and {{supplier_id}} before sending.\n\nWhat happens internally:\n- current_quantity is increased by quantity\n- A supplier batch record is created (used for FIFO cost calculation)\n- An inventory transaction of type 'in' is logged\n\nRequired fields:\n- supplier_id (must belong to current tenant)\n- quantity (> 0)\n- price_per_unit (>= 0)\n\nOptional:\n- received_date (defaults to today if omitted)\n- notes"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/login?email=kaman@kaman.rest&password=kaman@2025!!",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "login"
+          ],
+          "query": [
+            {
+              "key": "email",
+              "value": "kaman@kaman.rest"
+            },
+            {
+              "key": "password",
+              "value": "kaman@2025!!"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "1340|ahoti99UQq90HetfnccsEGvIBTEeqzoDVhWHqduc86c6677b",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": ""
+    },
+    {
+      "key": "inventory_item_id",
+      "value": ""
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "token_prefix": "1353|Ahv9Daa...",
+  "ingredients": {
+    "count": 302,
+    "sample": [
+      {
+        "id": "a1dad5ff-0014-46c5-a85e-863bb91c5e41",
+        "name_ar": "150 جرام",
+        "name_en": "150g",
+        "name_he": "150 גרם",
+        "image_path": null,
+        "price": 6,
+        "category_id": "a1dad092-f5a6-4d26-aa9f-3768f4788d75"
+      },
+      {
+        "id": "a1dad600-1ee8-4766-a774-29f2017077eb",
+        "name_ar": "220 جرام",
+        "name_en": "220g",
+        "name_he": "220 גרם",
+        "image_path": null,
+        "price": 15,
+        "category_id": "a1dad092-f5a6-4d26-aa9f-3768f4788d75"
+      }
+    ]
+  },
+  "items": {
+    "count": 96,
+    "sample": [
+      {
+        "id": "a1dac700-573e-41b2-9863-9bd533e85d07",
+        "name_en": "Butcher",
+        "name_ar": "بوتشير",
+        "name_he": "בוצר",
+        "description_en": null,
+        "description_ar": null,
+        "description_he": null,
+        "preparation_time": null,
+        "price": 69,
+        "status": 1,
+        "image_url": "items/UU7Btlutn9ux0bZhZP5SZd7xgq5YgMx7rsLMrh0d.jpg",
+        "category": {
+          "id": "a1dac51a-14a5-46f1-88ca-2613af6b6daf",
+          "name": "برجر مميز"
+        },
+        "kitchens": []
+      },
+      {
+        "id": "a1dac704-7f7f-490b-8d10-57232c38470d",
+        "name_en": "Downtown Burger",
+        "name_ar": "داون تاون برجر",
+        "name_he": "דאון טאון בורגר",
+        "description_en": null,
+        "description_ar": null,
+        "description_he": null,
+        "preparation_time": null,
+        "price": 68,
+        "status": 1,
+        "image_url": "items/UEoHaaluZHeYQNozPM3EM6aV8n6UOCFGl8LR7rWw.jpg",
+        "category": {
+          "id": "a1dac51a-14a5-46f1-88ca-2613af6b6daf",
+          "name": "برجر مميز"
+        },
+        "kitchens": []
+      }
+    ]
+  },
+  "inventory-items": {
+    "count": 835,
+    "sample": [
+      {
+        "id": "a1dac817-3a94-4380-bd6d-5bb22229c748",
+        "name_ar": "test flour",
+        "name_en": "test flour",
+        "name_he": "קמח בדיקה",
+        "description_ar": null,
+        "description_en": null,
+        "description_he": null,
+        "sku": "TEST-IMPORT-001",
+        "unit": "kg",
+        "current_quantity": "0.00",
+        "minimum_quantity": "1.00",
+        "track_inventory": true,
+        "depreciation_rate": "0.00",
+        "supplier_id": null
+      },
+      {
+        "id": "a1dac9b2-fdbd-4eb1-9402-005c822799aa",
+        "name_ar": "אורגנו 1 ק\"ג",
+        "name_en": "אורגנו 1 ק\"ג",
+        "name_he": "אורגנו 1 ק\"ג",
+        "description_ar": null,
+        "description_en": null,
+        "description_he": null,
+        "sku": "7290015543033",
+        "unit": "kg",
+        "current_quantity": "0.00",
+        "minimum_quantity": "1.00",
+        "track_inventory": true,
+        "depreciation_rate": "0.00",
+        "supplier_id": null
+      }
+    ]
+  },
+  "suppliers": {
+    "error": "HTTP Error 404: Not Found"
+  },
+  "ingredients-categories": {
+    "count": 61,
+    "sample": [
+      {
+        "id": "a1dad092-f5a6-4d26-aa9f-3768f4788d75",
+        "name_ar": "تكبير الوجبة",
+        "name_en": "Burger weight",
+        "name_he": "הגדלה",
+        "type": "one_option",
+        "order_index": 1,
+        "max_options": 2,
+        "min_options": 1
+      },
+      {
+        "id": "a1dad0dd-8435-4ca3-b12f-bc3a572af46b",
+        "name_ar": "مكونات برجر اسادو",
+        "name_en": "Asado Burger Ingredients",
+        "name_he": "רכיבי המבורגר אסאדו",
+        "type": "multi_option",
+        "order_index": 0,
+        "max_options": 2,
+        "min_options": 1
+      }
+    ]
+  }
+}

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
+
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -34,7 +36,7 @@ final class CategoryStoreWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-        $baseUrl = "https://{$subdomain}.kaman.rest";
+        $baseUrl = KamanUrl::managerApi($subdomain);
 
         try {
             $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
@@ -44,6 +46,7 @@ final class CategoryStoreWorkflow extends AbstractFormWorkflow
             $progress('ai', 'Parsing categories with AI...', []);
             $categories = $this->parseCategoriesWithAi($description);
             $progress('ai', 'Parsed ' . count($categories) . ' categories', ['count' => count($categories)]);
+            $categories = $this->localizeMenuRecords($categories, $payload, $progress);
 
             $progress('categories', 'Creating categories via Kaman API...', []);
             $createResult = $this->createCategories($baseUrl, $token, $categories, $progress);
@@ -89,8 +92,8 @@ final class CategoryStoreWorkflow extends AbstractFormWorkflow
 
     private function login(string $baseUrl, string $subdomain, string $password): string
     {
-        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
+        $response = $this->http()->post("{$baseUrl}/login", [
+            'email' => KamanUrl::loginEmail($subdomain),
             'password' => $password,
         ]);
 
@@ -146,7 +149,7 @@ You must output a JSON object with this EXACT structure. Use ONLY valid JSON, no
 
 Rules:
 - name_en: the category name from input or sensible English translation.
-- name_ar: Arabic translation of the category name.
+- name_ar: Arabic translation of the category name, WITHOUT tashkeel/diacritics.
 - name_he: Hebrew translation of the category name.
 - Use category1, category2, category3... as keys.
 - Output ONLY the JSON object, no other text.
@@ -226,7 +229,7 @@ PROMPT;
 
             $response = $this->http()
                 ->withToken($token)
-                ->post("{$baseUrl}/api/manager/categories", $category);
+                ->post("{$baseUrl}/categories", $category);
 
             if ($response->successful()) {
                 $data = $response->json();
