@@ -17,7 +17,15 @@ return [
     
     'restaurant_name' => 'Restaurant Name',
     'restaurant_name_placeholder' => 'Type your restaurant brand',
-    'restaurant_password' => 'Restaurant Password',
+    'subdomain' => 'Subdomain',
+    'subdomain_placeholder' => 'e.g. thex',
+    'environment' => 'Environment',
+    'environment_rest' => 'Production (.kaman.rest)',
+    'environment_dev' => 'Testing (.kaman.dev)',
+    'login_credentials_hint' => 'No active session found. Enter your username and password, then click Login again to store a token.',
+    'username' => 'Username',
+    'username_placeholder' => 'e.g. thex@kaman.rest',
+    'restaurant_password' => 'Password',
     'restaurant_password_placeholder' => 'Enter the restaurant password',
     
     'description' => 'Description',
@@ -106,5 +114,6 @@ return [
     'english' => 'English',
     'arabic' => 'Arabic',
     'hebrew' => 'Hebrew',
+    'tag' => 'Restaurant Form',
 ];
 

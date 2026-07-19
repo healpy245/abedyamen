@@ -15,18 +15,13 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class FormController extends Controller
 {
     public function index()
     {
-        // Set locale from session or default to 'en'
-        $locale = session('locale', 'en');
-        if (in_array($locale, ['en', 'ar', 'he'])) {
-            App::setLocale($locale);
-        }
-        
         $drinksGroups = [
             'tabozinah' => [
                 'label' => 'Tabozinah Drinks',
@@ -566,6 +561,7 @@ class FormController extends Controller
             'ingredientsGroups' => array_filter($ingredientsGroups, function ($group) {
                 return !empty($group['items']);
             }),
+            'methodTypes' => FormWorkflowRunner::methodTypes(),
         ]);
     }
 
@@ -580,18 +576,27 @@ class FormController extends Controller
 
         // Validate the form data
         $validated = $request->validate([
-            'method_type' => 'required|in:Category Store',
-            'restaurant_name' => 'required|string|max:255',
+            'method_type' => ['required', Rule::in(FormWorkflowRunner::methodTypes())],
+            'subdomain' => 'required|string|max:64',
+            'username' => 'required|string|max:255',
             'password' => 'required|string',
-            'description' => 'required|string',
+            'environment' => 'nullable|string|in:dev,rest',
+            'description' => 'nullable|string',
             'translate_names' => 'nullable|boolean',
         ]);
 
+        $subdomain = KamanUrl::normalizeSubdomain($validated['subdomain']);
+        $username = trim($validated['username']);
+        $environment = KamanUrl::tldFromEnvironment($validated['environment'] ?? null);
+
         $payload = [
             'method_type' => $validated['method_type'],
-            'restaurant_name' => $validated['restaurant_name'],
+            'subdomain' => $subdomain,
+            'restaurant_name' => $subdomain,
+            'username' => $username,
+            'environment' => $environment,
             'password' => $validated['password'],
-            'description' => trim($validated['description']),
+            'description' => trim((string) ($validated['description'] ?? '')),
             'translate_names' => $request->boolean('translate_names', true),
             'submitted_at' => now()->toIso8601String(),
             'ip_address' => $request->ip(),
@@ -757,28 +762,72 @@ class FormController extends Controller
     }
 
     /**
-     * Login to Kaman with restaurant name and password. Stores token in session for Full AI automation.
+     * Check whether a Kaman token is already stored for this subdomain (session/cache).
+     */
+    public function checkFullAiAuth(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'subdomain' => 'required|string|max:64',
+            'environment' => 'nullable|string|in:dev,rest',
+        ]);
+
+        $subdomain = KamanUrl::normalizeSubdomain($validated['subdomain']);
+        $tld = KamanUrl::tldFromEnvironment($validated['environment'] ?? null);
+        $expectedBaseUrl = rtrim(KamanUrl::managerApi($subdomain, $tld), '/');
+
+        $auth = $this->resolveFullAiAuth($request);
+
+        if ($auth === null) {
+            return response()->json([
+                'success' => true,
+                'authenticated' => false,
+            ]);
+        }
+
+        $storedBaseUrl = rtrim($auth['base_url'], '/');
+
+        if ($storedBaseUrl !== $expectedBaseUrl) {
+            return response()->json([
+                'success' => true,
+                'authenticated' => false,
+                'message' => 'No active session for this subdomain. Sign in with your username and password.',
+            ]);
+        }
+
+        return $this->formJsonSuccess(
+            'You are already signed in for this restaurant.',
+            ['authenticated' => true]
+        );
+    }
+
+    /**
+     * Login to Kaman with subdomain, username, and password. Stores token in session for Full AI automation.
      */
     public function loginFullAi(Request $request): JsonResponse
     {
         try {
             $validated = $request->validate([
-                'restaurant_name' => 'required|string|max:255',
+                'subdomain' => 'required|string|max:64',
+                'username' => 'required|string|max:255',
                 'password' => 'required|string|max:255',
+                'environment' => 'nullable|string|in:dev,rest',
             ]);
 
-            $restaurantName = trim($validated['restaurant_name']);
-            $subdomain = $this->fullAiSubdomain($restaurantName);
-            $baseUrl = KamanUrl::managerApi($subdomain);
+            $subdomain = KamanUrl::normalizeSubdomain($validated['subdomain']);
+            $username = trim($validated['username']);
+            $tld = KamanUrl::tldFromEnvironment($validated['environment'] ?? null);
+            $baseUrl = KamanUrl::managerApi($subdomain, $tld);
 
             Log::info('Full AI login attempt', [
-                'restaurant' => $restaurantName,
                 'subdomain' => $subdomain,
+                'username' => $username,
+                'tld' => $tld,
+                'base_url' => $baseUrl,
             ]);
 
             try {
                 $response = $this->kamanHttpClient(45)->post(KamanUrl::join($baseUrl, '/login'), [
-                    'email' => KamanUrl::loginEmail($subdomain),
+                    'email' => KamanUrl::loginEmail($subdomain, $username),
                     'password' => $validated['password'],
                 ]);
             } catch (ConnectionException|RequestException $e) {
@@ -789,7 +838,7 @@ class FormController extends Controller
                 ]);
 
                 return $this->formJsonError(
-                    'Could not reach the restaurant API (' . $subdomain . '.kaman.' . KamanUrl::tld() . '). Check the restaurant name, password, and server outbound HTTPS.',
+                    'Could not reach the restaurant API (' . $subdomain . '.kaman.' . KamanUrl::tld() . '). Check the subdomain, username, password, and server outbound HTTPS.',
                     503
                 );
             }
@@ -808,7 +857,7 @@ class FormController extends Controller
                 ]);
 
                 return $this->formJsonError(
-                    'Login failed. Check restaurant name and password.',
+                    'Login failed. Check subdomain, username, and password.',
                     401,
                     ['detail' => $detail]
                 );
@@ -824,7 +873,10 @@ class FormController extends Controller
                 return $this->formJsonError('Login response was invalid. Please try again.', 502);
             }
 
-            $token = $data['token'] ?? $data['access_token'] ?? $data['data']['token'] ?? null;
+            $token = $data['token']
+                ?? $data['access_token']
+                ?? $data['data']['token']
+                ?? (is_array($data['data'] ?? null) ? ($data['data']['access_token'] ?? null) : null);
 
             if ($token === null || $token === '') {
                 Log::error('Full AI login: no token in response', [
@@ -849,7 +901,7 @@ class FormController extends Controller
             );
         } catch (ValidationException $e) {
             $message = $e->validator->errors()->first()
-                ?: 'Restaurant name and password are required.';
+                ?: 'Subdomain, username, and password are required.';
 
             return $this->formJsonError($message, 422, ['errors' => $e->errors()]);
         } catch (Throwable $e) {
@@ -1294,8 +1346,10 @@ class FormController extends Controller
     public function startFullAutomation(Request $request, FullAiAutomationService $service)
     {
         $validated = $request->validate([
-            'restaurant_name' => 'required|string|max:255',
+            'subdomain' => 'required|string|max:64',
+            'username' => 'required|string|max:255',
             'password' => 'required|string|max:255',
+            'environment' => 'nullable|string|in:dev,rest',
             'description' => 'nullable|string',
             'agent_instructions' => 'nullable|string|max:2000',
             'logo' => 'nullable|image|max:5120',
@@ -1314,8 +1368,12 @@ class FormController extends Controller
         }
 
         $sessionId = (string) Str::uuid();
+        $subdomain = KamanUrl::normalizeSubdomain($validated['subdomain']);
         $payload = [
-            'restaurant_name' => $validated['restaurant_name'],
+            'subdomain' => $subdomain,
+            'restaurant_name' => $subdomain,
+            'username' => trim($validated['username']),
+            'environment' => KamanUrl::tldFromEnvironment($validated['environment'] ?? null),
             'password' => $validated['password'],
             'description' => $validated['description'] ?? '',
             'agent_instructions' => $validated['agent_instructions'] ?? '',
@@ -1648,13 +1706,4 @@ class FormController extends Controller
         }
     }
 
-    public function setLocale($locale)
-    {
-        if (in_array($locale, ['en', 'ar', 'he'])) {
-            App::setLocale($locale);
-            session(['locale' => $locale]);
-        }
-        
-        return redirect()->back();
-    }
 }

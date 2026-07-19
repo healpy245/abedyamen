@@ -6,6 +6,9 @@ use App\Models\AiChatbot\ChatbotSetting;
 
 class AiChatbotSettingsService
 {
+    /** Calibration sample: this Arabic sentence should take ~15 seconds to "type". */
+    public const TYPING_REFERENCE_SAMPLE = 'إن شاء الله! مجموعة "المشتركة" عندهم رؤية واضحة لمستقبل أفضل. إذا احتجت أي معلومات إضافية عنهم، أنا جاهز!';
+
     public function defaults(): array
     {
         return [
@@ -19,7 +22,35 @@ class AiChatbotSettingsService
             'chatbot_model' => 'gpt-4o-mini',
             'temperature' => 0.7,
             'max_tokens' => 2000,
+            'typing_delay_enabled' => true,
+            'typing_reference_chars' => mb_strlen(self::TYPING_REFERENCE_SAMPLE),
+            'typing_reference_seconds' => 15,
+            'typing_min_seconds' => 2,
+            'typing_max_seconds' => 45,
         ];
+    }
+
+    /**
+     * Dynamic typing delay before showing an assistant message (milliseconds).
+     */
+    public function typingDelayMs(string $text): int
+    {
+        $settings = $this->all();
+
+        if (!($settings['typing_delay_enabled'] ?? true)) {
+            return 0;
+        }
+
+        $referenceChars = max(1, (int) ($settings['typing_reference_chars'] ?? mb_strlen(self::TYPING_REFERENCE_SAMPLE)));
+        $referenceSeconds = max(1, (int) ($settings['typing_reference_seconds'] ?? 15));
+        $minSeconds = max(0, (int) ($settings['typing_min_seconds'] ?? 2));
+        $maxSeconds = max($minSeconds, (int) ($settings['typing_max_seconds'] ?? 45));
+
+        $length = mb_strlen(trim($text));
+        $seconds = ($length / $referenceChars) * $referenceSeconds;
+        $seconds = max($minSeconds, min($maxSeconds, $seconds));
+
+        return (int) round($seconds * 1000);
     }
 
     public function ensureDefaults(): void

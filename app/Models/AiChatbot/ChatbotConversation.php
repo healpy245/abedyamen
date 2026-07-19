@@ -16,12 +16,18 @@ class ChatbotConversation extends Model
 
     protected $fillable = [
         'user_id',
+        'instance_id',
         'title',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function instance(): BelongsTo
+    {
+        return $this->belongsTo(ChatbotInstance::class, 'instance_id');
     }
 
     public function messages(): HasMany

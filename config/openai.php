@@ -70,7 +70,10 @@ return [
     | Set to false to disable SSL certificate verification (local dev only).
     | Use when cURL error 60 occurs due to missing CA bundle.
     */
-    'ssl_verify' => filter_var(env('OPENAI_SSL_VERIFY', 'true'), FILTER_VALIDATE_BOOLEAN),
+    'ssl_verify' => filter_var(
+        env('OPENAI_SSL_VERIFY', env('OPENAI_VERIFY_SSL', env('APP_ENV') === 'production' ? 'true' : 'false')),
+        FILTER_VALIDATE_BOOLEAN
+    ),
 
     /*
     |--------------------------------------------------------------------------

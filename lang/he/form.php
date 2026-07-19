@@ -17,7 +17,15 @@ return [
     
     'restaurant_name' => 'שם המסעדה',
     'restaurant_name_placeholder' => 'הקלד את שם המותג שלך',
-    'restaurant_password' => 'סיסמת המסעדה',
+    'subdomain' => 'תת-דומיין',
+    'subdomain_placeholder' => 'לדוגמה: thex',
+    'environment' => 'סביבה',
+    'environment_rest' => 'ייצור (.kaman.rest)',
+    'environment_dev' => 'בדיקות (.kaman.dev)',
+    'login_credentials_hint' => 'אין הפעלה פעילה. הזן שם משתמש וסיסמה, ואז לחץ שוב על התחברות כדי לשמור אסימון.',
+    'username' => 'שם משתמש',
+    'username_placeholder' => 'לדוגמה: thex@kaman.rest',
+    'restaurant_password' => 'סיסמה',
     'restaurant_password_placeholder' => 'הכנס את סיסמת המסעדה',
     
     'description' => 'תיאור',
@@ -106,5 +114,6 @@ return [
     'english' => 'אנגלית',
     'arabic' => 'ערבית',
     'hebrew' => 'עברית',
+    'tag' => 'טופס מסעדה',
 ];
 

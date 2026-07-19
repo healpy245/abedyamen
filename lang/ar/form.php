@@ -17,7 +17,15 @@ return [
     
     'restaurant_name' => 'اسم المطعم',
     'restaurant_name_placeholder' => 'اكتب اسم علامتك التجارية',
-    'restaurant_password' => 'كلمة مرور المطعم',
+    'subdomain' => 'النطاق الفرعي',
+    'subdomain_placeholder' => 'مثال: thex',
+    'environment' => 'البيئة',
+    'environment_rest' => 'الإنتاج (.kaman.rest)',
+    'environment_dev' => 'الاختبار (.kaman.dev)',
+    'login_credentials_hint' => 'لا يوجد جلسة نشطة. أدخل اسم المستخدم وكلمة المرور، ثم انقر تسجيل الدخول مرة أخرى لحفظ الرمز.',
+    'username' => 'اسم المستخدم',
+    'username_placeholder' => 'مثال: thex@kaman.rest',
+    'restaurant_password' => 'كلمة المرور',
     'restaurant_password_placeholder' => 'أدخل كلمة مرور المطعم',
     
     'description' => 'الوصف',
@@ -103,8 +111,9 @@ return [
     'translate_names_help' => 'مفعّل (افتراضي): يُترجم كل اسم إلى الحقول الثلاثة. معطّل: يُنسخ النص كما أدخلته إلى name_ar و name_en و name_he.',
     
     'language' => 'اللغة',
-    'english' => 'الإنجليزية',
     'arabic' => 'العربية',
+    'english' => 'الإنجليزية',
     'hebrew' => 'العبرية',
+    'tag' => 'نموذج المطعم',
 ];
 

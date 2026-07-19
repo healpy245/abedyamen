@@ -1,12 +1,13 @@
 @php
     /** @var array<string,mixed> $settings */
+    $activeProject = 'ai-chatbot';
 @endphp
 
-@extends('ai-chatbot.layout')
+@extends('layouts.kaman')
 
-@section('title', 'AI Chatbot Settings')
+@section('title', __('chatbot.settings_title'))
+@section('tag', __('chatbot.settings'))
 
 @section('content')
     @include('ai-chatbot.settings-inner', ['settings' => $settings])
 @endsection
-

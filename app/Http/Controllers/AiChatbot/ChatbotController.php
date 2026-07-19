@@ -5,6 +5,8 @@ namespace App\Http\Controllers\AiChatbot;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AiChatbot\SendChatbotMessageRequest;
 use App\Models\AiChatbot\ChatbotConversation;
+use App\Models\AiChatbot\ChatbotInstance;
+use App\Services\AiChatbot\AiChatbotInstanceService;
 use App\Services\AiChatbot\AiChatbotService;
 use App\Services\AiChatbot\AiChatbotSettingsService;
 use Illuminate\Http\Request;
@@ -18,66 +20,87 @@ class ChatbotController extends Controller
     public function __construct(
         protected AiChatbotService $chatbotService,
         protected AiChatbotSettingsService $settingsService,
+        protected AiChatbotInstanceService $instanceService,
     ) {
     }
 
-    public function index(Request $request)
+    public function index(Request $request, ChatbotInstance $instance)
     {
         $user = $request->user();
-
+        $this->instanceService->authorizeForUser($instance, $user);
         $this->settingsService->ensureDefaults();
+        $instance->loadCount('members');
 
-        $conversations = ChatbotConversation::where('user_id', $user->id)
+        $instances = ChatbotInstance::query()
+            ->where('user_id', $user->id)
+            ->latest('updated_at')
+            ->get();
+
+        $conversations = ChatbotConversation::query()
+            ->where('user_id', $user->id)
+            ->where('instance_id', $instance->id)
             ->latest('updated_at')
             ->get();
 
         $activeConversation = $conversations->first();
-        $messages = collect();
-
-        if ($activeConversation) {
-            $messages = $activeConversation->messages()->orderBy('id')->get();
-        }
+        $messages = $activeConversation
+            ? $activeConversation->messages()->orderBy('id')->get()
+            : collect();
 
         return view('ai-chatbot.index', [
+            'instance' => $instance,
+            'instances' => $instances,
             'conversations' => $conversations,
             'activeConversation' => $activeConversation,
             'messages' => $messages,
         ]);
     }
 
-    public function showConversation(Request $request, ChatbotConversation $conversation)
+    public function showConversation(Request $request, ChatbotInstance $instance, ChatbotConversation $conversation)
     {
         $user = $request->user();
-
-        if ($conversation->user_id !== $user->id && !($user->is_admin ?? false)) {
-            abort(404);
-        }
-
+        $this->instanceService->authorizeForUser($instance, $user);
+        $this->authorizeConversationForInstance($conversation, $instance, $user);
         $this->settingsService->ensureDefaults();
+        $instance->loadCount('members');
 
-        $conversations = ChatbotConversation::where('user_id', $user->id)
+        $instances = ChatbotInstance::query()
+            ->where('user_id', $user->id)
+            ->latest('updated_at')
+            ->get();
+
+        $conversations = ChatbotConversation::query()
+            ->where('user_id', $user->id)
+            ->where('instance_id', $instance->id)
             ->latest('updated_at')
             ->get();
 
         $messages = $conversation->messages()->orderBy('id')->get();
 
         return view('ai-chatbot.index', [
+            'instance' => $instance,
+            'instances' => $instances,
             'conversations' => $conversations,
             'activeConversation' => $conversation,
             'messages' => $messages,
         ]);
     }
 
-    public function storeConversation(Request $request)
+    public function storeConversation(Request $request, ChatbotInstance $instance)
     {
         $user = $request->user();
+        $this->instanceService->authorizeForUser($instance, $user);
 
         $conversation = ChatbotConversation::create([
             'user_id' => $user->id,
+            'instance_id' => $instance->id,
             'title' => null,
         ]);
 
-        $redirectUrl = route('ai-chatbot.conversations.show', $conversation);
+        $redirectUrl = route('ai-chatbot.instances.conversations.show', [
+            'instance' => $instance,
+            'conversation' => $conversation,
+        ]);
 
         if ($request->wantsJson() || $request->expectsJson()) {
             return response()->json([
@@ -92,16 +115,17 @@ class ChatbotController extends Controller
         return redirect()->to($redirectUrl);
     }
 
-    public function send(SendChatbotMessageRequest $request)
+    public function send(SendChatbotMessageRequest $request, ChatbotInstance $instance)
     {
         $user = $request->user();
+        $this->instanceService->authorizeForUser($instance, $user);
 
         $validated = $request->validated();
         $message = $validated['message'];
         $conversationId = $validated['conversation_id'] ?? null;
 
         try {
-            $result = $this->chatbotService->sendMessage($user, $message, $conversationId);
+            $result = $this->chatbotService->sendMessage($user, $instance, $message, $conversationId);
         } catch (RuntimeException $e) {
             $messageText = $e->getMessage();
 
@@ -117,11 +141,14 @@ class ChatbotController extends Controller
         } catch (Throwable $e) {
             Log::error('AiChatbot send failed', [
                 'user_id' => $user?->id,
+                'instance_id' => $instance->id,
                 'error' => $e->getMessage(),
             ]);
 
             return $this->errorResponse('An unexpected error occurred while sending your message.', Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+
+        $instance->touch();
 
         $conversation = $result['conversation'];
         $userMessage = $result['user_message'];
@@ -142,16 +169,15 @@ class ChatbotController extends Controller
             ],
             'user_message_html' => $userMessageHtml,
             'assistant_message_html' => $assistantMessageHtml,
+            'typing_delay_ms' => $this->settingsService->typingDelayMs((string) $assistantMessage->message),
         ]);
     }
 
-    public function destroyConversation(Request $request, ChatbotConversation $conversation)
+    public function destroyConversation(Request $request, ChatbotInstance $instance, ChatbotConversation $conversation)
     {
         $user = $request->user();
-
-        if ($conversation->user_id !== $user->id && !($user->is_admin ?? false)) {
-            abort(404);
-        }
+        $this->instanceService->authorizeForUser($instance, $user);
+        $this->authorizeConversationForInstance($conversation, $instance, $user);
 
         $conversation->delete();
 
@@ -159,7 +185,21 @@ class ChatbotController extends Controller
             return response()->json(['deleted' => true]);
         }
 
-        return redirect()->route('ai-chatbot.index');
+        return redirect()->route('ai-chatbot.instances.show', $instance);
+    }
+
+    protected function authorizeConversationForInstance(
+        ChatbotConversation $conversation,
+        ChatbotInstance $instance,
+        $user,
+    ): void {
+        if ($conversation->user_id !== $user->id && !($user->is_admin ?? false)) {
+            abort(404);
+        }
+
+        if ($conversation->instance_id !== $instance->id) {
+            abort(404);
+        }
     }
 
     protected function errorResponse(string $message, int $status)
@@ -169,4 +209,3 @@ class ChatbotController extends Controller
         ], $status);
     }
 }
-

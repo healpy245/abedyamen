@@ -47,9 +47,19 @@ return [
         'api_tld' => env('KAMAN_API_TLD', 'dev'),
     ],
 
+    'kaman_agents' => [
+        'base_url' => env('KAMAN_AGENTS_BASE_URL'),
+        'username' => env('KAMAN_AGENTS_USERNAME'),
+        'password' => env('KAMAN_AGENTS_PASSWORD'),
+        'ssl_verify' => filter_var(env('KAMAN_AGENTS_SSL_VERIFY', 'true'), FILTER_VALIDATE_BOOLEAN),
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
-        'verify_ssl' => filter_var(env('OPENAI_VERIFY_SSL', 'true'), FILTER_VALIDATE_BOOLEAN),
+        'verify_ssl' => filter_var(
+            env('OPENAI_VERIFY_SSL', env('OPENAI_SSL_VERIFY', env('APP_ENV') === 'production' ? 'true' : 'false')),
+            FILTER_VALIDATE_BOOLEAN
+        ),
     ],
 
 ];

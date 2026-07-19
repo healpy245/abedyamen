@@ -4,6 +4,7 @@ namespace App\Services\AiChatbot;
 
 use App\Models\AiChatbot\ChatbotConversation;
 use App\Models\AiChatbot\ChatbotMessage;
+use App\Models\AiChatbot\ChatbotInstance;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -20,9 +21,9 @@ class AiChatbotService
     /**
      * @return array{conversation:ChatbotConversation,user_message:ChatbotMessage,assistant_message:ChatbotMessage}
      */
-    public function sendMessage(User $user, string $message, ?int $conversationId = null): array
+    public function sendMessage(User $user, ChatbotInstance $instance, string $message, ?int $conversationId = null): array
     {
-        $conversation = $this->findOrCreateConversation($user, $conversationId);
+        $conversation = $this->findOrCreateConversation($user, $instance, $conversationId);
 
         $userMessage = $conversation->messages()->create([
             'role' => 'user',
@@ -48,7 +49,8 @@ class AiChatbotService
             })
             ->all();
 
-        $systemPrompt = (string) ($settings['system_prompt'] ?? '');
+        $conversation->loadMissing('instance');
+        $systemPrompt = trim((string) ($conversation->instance?->system_prompt ?? ''));
         if ($systemPrompt !== '') {
             array_unshift($history, [
                 'role' => 'system',
@@ -138,17 +140,19 @@ class AiChatbotService
         ];
     }
 
-    protected function findOrCreateConversation(User $user, ?int $conversationId = null): ChatbotConversation
+    protected function findOrCreateConversation(User $user, ChatbotInstance $instance, ?int $conversationId = null): ChatbotConversation
     {
         if ($conversationId === null) {
             return ChatbotConversation::create([
                 'user_id' => $user->id,
+                'instance_id' => $instance->id,
                 'title' => null,
             ]);
         }
 
         $conversation = ChatbotConversation::where('id', $conversationId)
             ->where('user_id', $user->id)
+            ->where('instance_id', $instance->id)
             ->first();
 
         if (!$conversation) {

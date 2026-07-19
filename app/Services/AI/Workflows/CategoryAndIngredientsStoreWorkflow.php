@@ -64,11 +64,12 @@ final class CategoryAndIngredientsStoreWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-        $baseUrl = KamanUrl::managerApi($subdomain);
+        $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
 
         try {
             $progress('login', 'Checking existing ingredients categories...', ['subdomain' => $subdomain]);
-            $token = $this->kamanLogin($baseUrl, $subdomain, $password);
+            $loginEmail = KamanUrl::loginEmail($subdomain, $payload['username'] ?? null);
+            $token = $this->kamanLogin($baseUrl, $loginEmail, $password);
             $existingCategories = $this->kamanFetchIngredientsCategories($baseUrl, $token);
             $progress('categories', 'Loaded ' . count($existingCategories) . ' existing ingredients categories', ['count' => count($existingCategories)]);
         } catch (\Throwable $e) {
@@ -206,10 +207,10 @@ final class CategoryAndIngredientsStoreWorkflow extends AbstractFormWorkflow
         return $http;
     }
 
-    private function kamanLogin(string $baseUrl, string $subdomain, string $password): string
+    private function kamanLogin(string $baseUrl, string $email, string $password): string
     {
         $response = $this->kamanHttp()->post("{$baseUrl}/login", [
-            'email' => KamanUrl::loginEmail($subdomain),
+            'email' => $email,
             'password' => $password,
         ]);
 

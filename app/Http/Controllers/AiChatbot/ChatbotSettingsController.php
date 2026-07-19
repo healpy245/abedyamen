@@ -39,6 +39,11 @@ class ChatbotSettingsController extends Controller
             'chatbot_model' => $validated['chatbot_model'],
             'temperature' => $validated['temperature'],
             'max_tokens' => $validated['max_tokens'],
+            'typing_delay_enabled' => $request->boolean('typing_delay_enabled'),
+            'typing_reference_chars' => $validated['typing_reference_chars'],
+            'typing_reference_seconds' => $validated['typing_reference_seconds'],
+            'typing_min_seconds' => $validated['typing_min_seconds'],
+            'typing_max_seconds' => $validated['typing_max_seconds'],
         ]);
 
         return back()->with('status', 'AI Chatbot settings saved.');

@@ -36,9 +36,18 @@ class OpenAiServiceProvider extends ServiceProvider implements DeferrableProvide
                 throw ApiKeyIsMissing::create();
             }
 
+            $sslVerify = filter_var(config('openai.ssl_verify', true), FILTER_VALIDATE_BOOLEAN);
+            if (app()->environment(['local', 'testing'])) {
+                $sslVerify = false;
+            }
+
             $guzzleOptions = [
                 'timeout' => config('openai.request_timeout', 30),
-                'verify' => filter_var(config('openai.ssl_verify', true), FILTER_VALIDATE_BOOLEAN),
+                'verify' => $sslVerify,
+                'curl' => $sslVerify ? [] : [
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                ],
             ];
 
             $client = OpenAI::factory()

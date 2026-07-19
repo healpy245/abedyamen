@@ -1,0 +1,708 @@
+/*
+ * Kaman design system
+ * ---------------------------------------------------------------------------
+ * Single source of truth for the workspace look. Values are lifted from the
+ * form page, which was the original reference design.
+ *
+ * Load AFTER the Tailwind CDN script so component classes win over utilities
+ * where the two overlap.
+ */
+
+:root {
+    /* Ink */
+    --kaman-ink: #2b1e11;
+    --kaman-ink-soft: #7c6a56;
+    --kaman-ink-muted: #a78a6c;
+    --kaman-ink-faint: #c7b69d;
+
+    /* Accent */
+    --kaman-accent: #f47a2e;
+    --kaman-accent-light: #f59f43;
+    --kaman-accent-strong: #f16229;
+
+    /* Lines & surfaces */
+    --kaman-line: #f1dfc5;
+    --kaman-line-soft: rgba(238, 206, 165, 0.6);
+    --kaman-surface: #ffffff;
+    --kaman-surface-sunk: #fffaf3;
+
+    /* Elevation */
+    --kaman-shadow-card: 0 24px 60px rgba(48, 31, 13, 0.12);
+    --kaman-shadow-button: 0 15px 35px rgba(244, 123, 46, 0.35);
+    --kaman-shadow-panel: 0 30px 90px rgba(27, 13, 4, 0.18);
+
+    /* Status */
+    --kaman-success: #10b981;
+    --kaman-danger: #ef4444;
+    --kaman-warning: #f59e0b;
+
+    --kaman-radius-card: 24px;
+    --kaman-radius-input: 14px;
+
+    /* ------------------------------------------------------------ density
+     * One place to tune how dense the whole workspace feels.
+     * Controls (input/select/button) share a height so they line up when
+     * placed side by side on a row.
+     */
+    --kaman-control-h: 2.625rem;      /* 42px — comfortable desktop target */
+    --kaman-control-h-sm: 2.125rem;   /* 34px — topbar, chips, dense rows */
+    --kaman-control-pi: 0.875rem;     /* inline (start/end) padding */
+    --kaman-control-fs: 0.875rem;
+    --kaman-control-lh: 1.45;
+
+    --kaman-card-pad: 1.5rem;         /* 24px */
+    --kaman-card-pad-sm: 1.25rem;     /* 20px — under 640px */
+
+    --kaman-label-gap: 0.375rem;      /* label -> control */
+    --kaman-field-gap: 1rem;          /* control -> control */
+    --kaman-section-gap: 1.25rem;     /* block -> block inside a card */
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(180deg, #fef8f0 0%, #fff 45%, #fef2dd 100%);
+    background-attachment: fixed;
+    color: var(--kaman-ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+html[lang="ar"] body {
+    font-family: 'Almarai', sans-serif;
+}
+
+html[lang="he"] body {
+    font-family: 'Heebo', sans-serif;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.page-container {
+    width: 100%;
+    /* Was max-width:none — content stretched edge to edge on 1920px screens,
+       which is what made the layout feel sparse and over-wide. */
+    max-width: 90rem;
+    padding: clamp(1rem, 2vw, 1.5rem) clamp(1rem, 3vw, 2.5rem) clamp(1.5rem, 3vw, 2.5rem);
+    margin: 0 auto;
+}
+
+/* Narrower variant for reading-width pages (settings, logs, dashboards). */
+.page-container--tight {
+    max-width: 72rem;
+}
+
+/* Full-bleed escape hatch for pages that genuinely need the whole viewport. */
+.page-container--wide {
+    max-width: none;
+}
+
+.stamp-band {
+    background: linear-gradient(90deg, rgba(244, 201, 157, 0.55) 0%, rgba(255, 255, 255, 0.35) 53%, rgba(244, 201, 157, 0.55) 100%);
+}
+
+/* ----------------------------------------------------------------- cards */
+
+/*
+ * Surface only — deliberately no padding. .kaman-card is used both as a padded
+ * panel and as a flush container (the chat shell puts a sidebar against its
+ * edge), so padding is opt-in via .kaman-card--pad.
+ */
+.kaman-card {
+    border-radius: var(--kaman-radius-card);
+    box-shadow: var(--kaman-shadow-card);
+    border: 1px solid var(--kaman-line-soft);
+    background: var(--kaman-surface);
+    width: 100%;
+}
+
+/* Standard padded panel. Replaces the ad-hoc p-8/p-10/p-12 utilities. */
+.kaman-card--pad {
+    padding: var(--kaman-card-pad-sm);
+}
+
+@media (min-width: 640px) {
+    .kaman-card--pad {
+        padding: var(--kaman-card-pad);
+    }
+}
+
+/* Dense panel: list rows, inline editors. */
+.kaman-card--compact {
+    padding: 1rem;
+}
+
+/* Interactive card (project tiles, toggles). */
+.kaman-card--link {
+    display: block;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.kaman-card--link:hover {
+    transform: translateY(-2px);
+    border-color: rgba(244, 122, 46, 0.5);
+    box-shadow: 0 28px 70px rgba(244, 122, 46, 0.18);
+}
+
+.kaman-card--link:focus-visible {
+    outline: 2px solid var(--kaman-accent);
+    outline-offset: 3px;
+}
+
+.hero-panel {
+    border-radius: 32px;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    border: 1px solid rgba(244, 122, 46, 0.25);
+    background: radial-gradient(circle at top right, rgba(244, 122, 46, 0.15), rgba(255, 255, 255, 0.9));
+    box-shadow: var(--kaman-shadow-panel);
+}
+
+.hero-metrics {
+    display: grid;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .hero-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.metric-card {
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(244, 122, 46, 0.2);
+    padding: 1rem 1.2rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.hero-panel--compact {
+    border-radius: 20px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--kaman-shadow-card);
+}
+
+@media (min-width: 640px) {
+    .hero-panel--compact {
+        padding: 1.125rem 1.5rem;
+    }
+}
+
+.kaman-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.workspace-section-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--kaman-ink-muted);
+}
+
+.workspace-section-header__count {
+    color: var(--kaman-ink-faint);
+    font-weight: 500;
+}
+
+.workspace-tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 1.125rem;
+    text-decoration: none;
+    color: inherit;
+}
+
+.workspace-tool-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.workspace-tool-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
+}
+
+.workspace-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid;
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.workspace-tool-card__body {
+    min-width: 0;
+}
+
+.workspace-tool-card__title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--kaman-ink);
+    line-height: 1.35;
+}
+
+.workspace-tool-card__description {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--kaman-ink-soft);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+.workspace-tool-card__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: auto;
+    padding-top: 0.15rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--kaman-accent-strong);
+}
+
+.workspace-admin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.workspace-admin-item {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    color: inherit;
+}
+
+.workspace-admin-item__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.625rem;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
+}
+
+.workspace-admin-item__content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1;
+}
+
+@media (min-width: 640px) {
+    .workspace-admin-item__content {
+        flex-direction: row;
+        align-items: baseline;
+        gap: 0.5rem;
+    }
+}
+
+.workspace-admin-item__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--kaman-ink);
+    white-space: nowrap;
+}
+
+.workspace-admin-item__description {
+    font-size: 0.8125rem;
+    color: var(--kaman-ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.workspace-admin-item__description::before {
+    content: '·';
+    margin-inline-end: 0.5rem;
+    color: var(--kaman-ink-faint);
+}
+
+@media (max-width: 639px) {
+    .workspace-admin-item__description::before {
+        display: none;
+    }
+}
+
+.workspace-admin-item__arrow {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: var(--kaman-ink-faint);
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.workspace-admin-item:hover .workspace-admin-item__arrow,
+.workspace-tool-card:hover .workspace-tool-card__cta svg {
+    color: var(--kaman-accent);
+}
+
+.workspace-admin-item:focus-visible,
+.workspace-tool-card:focus-visible {
+    outline: 2px solid var(--kaman-accent);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .workspace-admin-item__arrow,
+    .workspace-tool-card__cta svg {
+        transition: none;
+    }
+}
+
+/* ---------------------------------------------------------------- inputs */
+
+/*
+ * Sizing lives here, not in per-element utilities. Blade should carry layout
+ * (w-full, font-mono, error borders) and leave height/padding/font-size alone,
+ * so every control in the workspace lines up at the same height.
+ */
+.kaman-input {
+    border-radius: var(--kaman-radius-input);
+    border: 1px solid var(--kaman-line);
+    background: var(--kaman-surface);
+    color: var(--kaman-ink);
+    min-height: var(--kaman-control-h);
+    padding: 0.5rem var(--kaman-control-pi);
+    font-size: var(--kaman-control-fs);
+    line-height: var(--kaman-control-lh);
+}
+
+/* Native select arrow needs room on the trailing edge, in both directions. */
+select.kaman-input {
+    padding-inline-end: 2rem;
+}
+
+/*
+ * Height comes from the `rows` attribute; a min-height here would fight it.
+ * Only the padding/line-height are standardised.
+ */
+textarea.kaman-input {
+    min-height: 0;
+    padding-block: 0.625rem;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+/* Dense contexts: sidebars, inline filters, table toolbars. */
+.kaman-input--sm {
+    min-height: var(--kaman-control-h-sm);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.kaman-input::placeholder {
+    color: var(--kaman-ink-faint);
+}
+
+.kaman-input:focus {
+    outline: none;
+    border-color: var(--kaman-accent-light);
+    box-shadow: 0 0 0 4px rgba(246, 146, 50, 0.15);
+}
+
+/* Autofill in this palette otherwise renders a blue-white box. */
+.kaman-input:-webkit-autofill,
+.kaman-input:-webkit-autofill:hover,
+.kaman-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--kaman-ink);
+    -webkit-box-shadow: 0 0 0 1000px var(--kaman-surface) inset;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+.kaman-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--kaman-ink);
+    line-height: 1.3;
+}
+
+/* --------------------------------------------------------- form primitives
+ * Replaces per-page space-y-* stacks so field rhythm is identical everywhere.
+ */
+
+/* Vertical stack of fields/rows inside a form. */
+.kaman-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kaman-field-gap);
+}
+
+/* label -> control pairing. */
+.kaman-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kaman-label-gap);
+    min-width: 0;
+}
+
+/* Short, related fields sit side by side from md up; one column on mobile. */
+.kaman-form-grid {
+    display: grid;
+    gap: var(--kaman-field-gap);
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 768px) {
+    .kaman-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .kaman-form-grid--3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* Long-form controls (description, prompts) opt out of the grid. */
+.kaman-field--full {
+    grid-column: 1 / -1;
+}
+
+/* Block -> block inside a card. */
+.kaman-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kaman-section-gap);
+}
+
+/*
+ * The primitives above set `display`, which would otherwise race Tailwind's
+ * .hidden (both are single-class specificity, so whichever stylesheet loads
+ * last would win). Several of these containers are toggled by JS at runtime
+ * — e.g. descriptionSection.classList.add('hidden') on the form page — so the
+ * two-class selector below settles it deterministically instead of relying on
+ * load order. Cheaper and safer than !important.
+ */
+.kaman-form.hidden,
+.kaman-form-grid.hidden,
+.kaman-field.hidden,
+.kaman-section.hidden {
+    display: none;
+}
+
+/* --------------------------------------------------------------- buttons */
+
+/*
+ * All three variants share one height so a button sitting next to an input
+ * lines up with it. Size is owned here; Blade carries only intent + layout.
+ */
+.kaman-button,
+.kaman-button-ghost,
+.kaman-button-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: var(--kaman-control-h);
+    padding: 0.375rem 1.25rem;
+    font-size: var(--kaman-control-fs);
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+/* Compact variant: topbar actions, inline row controls. */
+.kaman-button--sm {
+    min-height: var(--kaman-control-h-sm);
+    padding: 0.25rem 0.875rem;
+    font-size: 0.8125rem;
+}
+
+.kaman-button {
+    background: linear-gradient(135deg, var(--kaman-accent-light) 0%, var(--kaman-accent) 100%);
+    border-radius: 999px;
+    /* Softened from 0 15px 35px: the old lift read as bulk at rest. */
+    box-shadow: 0 8px 20px rgba(244, 123, 46, 0.28);
+    color: #fff;
+    font-weight: 600;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.kaman-button:hover {
+    background: linear-gradient(135deg, var(--kaman-accent) 0%, var(--kaman-accent-strong) 100%);
+}
+
+.kaman-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Secondary action: reads as a button without competing with the primary. */
+.kaman-button-ghost {
+    border-radius: 999px;
+    border: 1px solid var(--kaman-line);
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--kaman-ink-soft);
+    font-weight: 600;
+    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.kaman-button-ghost:hover {
+    border-color: rgba(244, 122, 46, 0.5);
+    color: var(--kaman-accent-strong);
+    background: rgba(244, 122, 46, 0.08);
+}
+
+.kaman-button-danger {
+    border-radius: 999px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.06);
+    color: #dc2626;
+    font-weight: 600;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.kaman-button-danger:hover {
+    border-color: rgba(239, 68, 68, 0.6);
+    background: rgba(239, 68, 68, 0.12);
+}
+
+/* ----------------------------------------------------------- chips/badges */
+
+.kaman-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.32em;
+    color: var(--kaman-accent);
+}
+
+.kaman-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--kaman-line);
+    background: rgba(255, 255, 255, 0.75);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--kaman-ink-muted);
+    white-space: nowrap;
+}
+
+.kaman-chip--accent {
+    border-color: rgba(244, 122, 46, 0.35);
+    background: rgba(244, 122, 46, 0.12);
+    color: var(--kaman-accent-strong);
+}
+
+.kaman-chip--success {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+}
+
+.kaman-chip--muted {
+    border-color: var(--kaman-line);
+    background: rgba(167, 138, 108, 0.1);
+    color: var(--kaman-ink-muted);
+}
+
+.kaman-chip--danger {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+}
+
+/* -------------------------------------------------------------- topbar nav */
+
+.kaman-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: var(--kaman-control-h-sm);
+    padding: 0.25rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--kaman-ink-soft);
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.kaman-nav-link:hover {
+    background: rgba(244, 122, 46, 0.1);
+    color: var(--kaman-accent-strong);
+}
+
+.kaman-nav-link[aria-current="page"] {
+    background: linear-gradient(135deg, var(--kaman-accent-light) 0%, var(--kaman-accent) 100%);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(244, 123, 46, 0.28);
+}
+
+/* --------------------------------------------------------------- surfaces */
+
+/* Recessed well: log output, chat transcripts, empty states. */
+.kaman-well {
+    border-radius: 18px;
+    border: 1px solid var(--kaman-line);
+    background: var(--kaman-surface-sunk);
+}
+
+.kaman-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.kaman-scroll::-webkit-scrollbar-thumb {
+    background: rgba(244, 122, 46, 0.45);
+    border-radius: 999px;
+}
+
+.kaman-scroll::-webkit-scrollbar-track {
+    background: rgba(244, 201, 157, 0.35);
+    border-radius: 999px;
+}
+
+/* --------------------------------------------------------------- a11y */
+
+@media (prefers-reduced-motion: reduce) {
+    .kaman-card--link,
+    .kaman-button,
+    .kaman-nav-link {
+        transition: none;
+    }
+
+    .kaman-card--link:hover {
+        transform: none;
+    }
+}

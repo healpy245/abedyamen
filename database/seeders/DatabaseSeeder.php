@@ -14,29 +14,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Idempotent seed users with known credentials.
-        User::query()->updateOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => Hash::make('password'),
-                'is_admin' => false,
-                'email_verified_at' => now(),
-            ]
-        );
-
-        User::query()->updateOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'Admin User',
-                'password' => Hash::make('password'),
-                'is_admin' => true,
-                'email_verified_at' => now(),
-            ]
-        );
-
+    
         $this->call([
+            WorkspaceUserSeeder::class,
             AiChatbotStudioSeeder::class,
+            SpeedComMelanChatbotInstanceSeeder::class,
         ]);
     }
 }

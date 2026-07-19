@@ -50,11 +50,12 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-        $baseUrl = KamanUrl::managerApi($subdomain);
+        $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
 
         try {
             $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
-            $token = $this->login($baseUrl, $subdomain, $password);
+            $loginEmail = KamanUrl::loginEmail($subdomain, $payload['username'] ?? null);
+            $token = $this->login($baseUrl, $loginEmail, $password);
             $progress('login', 'Logged in successfully', ['subdomain' => $subdomain]);
 
             $progress('categories', 'Fetching ingredients categories...', []);
@@ -181,10 +182,10 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
         return $http;
     }
 
-    private function login(string $baseUrl, string $subdomain, string $password): string
+    private function login(string $baseUrl, string $email, string $password): string
     {
         $response = $this->http()->post("{$baseUrl}/login", [
-            'email' => KamanUrl::loginEmail($subdomain),
+            'email' => $email,
             'password' => $password,
         ]);
 

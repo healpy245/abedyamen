@@ -1,14 +1,18 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+@php
+    $locale = app()->getLocale();
+    $isRtl = in_array($locale, ['ar', 'he'], true);
+@endphp
+<html lang="{{ str_replace('_', '-', $locale) }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>كمان | هيا نبدأ</title>
+    <title>{{ __('landing.title') }}</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&family=Heebo:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,11 +25,19 @@
         }
 
         body {
-            font-family: 'Tajawal', sans-serif;
+            font-family: 'Poppins', sans-serif;
             background: #ffffff;
             color: #1a1a1a;
             min-height: 100vh;
             overflow-x: hidden;
+        }
+
+        html[lang="ar"] body {
+            font-family: 'Almarai', sans-serif;
+        }
+
+        html[lang="he"] body {
+            font-family: 'Heebo', sans-serif;
         }
 
 
@@ -38,7 +50,6 @@
             background: #ffffff;
             font-size: 1rem;
             transition: all 0.2s ease;
-            font-family: 'Heebo', sans-serif;
         }
 
         .form-input:focus {
@@ -90,7 +101,6 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            font-family: 'Heebo', sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -266,13 +276,16 @@
 </head>
 <body>
     <div class="min-h-screen">
+        <div class="flex justify-end px-4 pt-4 sm:px-6">
+            @include('partials.lang-switcher')
+        </div>
         <!-- Form Content -->
         <div class="flex flex-col">
-1            <div class="form-container max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 lg:py-12">
+            <div class="form-container max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 lg:py-12">
                 <!-- Step Header -->
                 <div class="step-header">
-                    <div class="step-number">هيا نبدأ</div>
-                    <h1 class="step-title">معلومات الاتصال</h1>
+                    <div class="step-number">{{ __('landing.step') }}</div>
+                    <h1 class="step-title">{{ __('landing.heading') }}</h1>
                 </div>
 
                 <!-- Success/Error Messages -->
@@ -295,7 +308,7 @@
 
                     <div>
                         <label for="full_name" class="form-label">
-                            الاسم الكامل <span class="required-star">*</span>
+                            {{ __('landing.full_name') }} <span class="required-star">*</span>
                         </label>
                         <input 
                             type="text" 
@@ -309,7 +322,7 @@
 
                     <div>
                         <label for="phone" class="form-label">
-                            رقم الهاتف <span class="required-star">*</span>
+                            {{ __('landing.phone') }} <span class="required-star">*</span>
                         </label>
                         <input 
                             type="tel" 
@@ -317,7 +330,7 @@
                             name="phone" 
                             class="form-input"
                             value="{{ old('phone') }}"
-                            placeholder="05XXXXXXXX"
+                            placeholder="{{ __('landing.phone_placeholder') }}"
                             dir="ltr"
                             required
                         >
@@ -325,7 +338,7 @@
 
                     <div>
                         <label for="email" class="form-label">
-                            البريد الإلكتروني
+                            {{ __('landing.email') }}
                         </label>
                         <input 
                             type="email" 
@@ -333,14 +346,14 @@
                             name="email" 
                             class="form-input"
                             value="{{ old('email') }}"
-                            placeholder="example@email.com (اختياري)"
+                            placeholder="{{ __('landing.email_placeholder') }}"
                             dir="ltr"
                         >
                     </div>
 
                     <div>
                         <label for="country" class="form-label">
-                            الموقع <span class="required-star">*</span>
+                            {{ __('landing.location') }} <span class="required-star">*</span>
                         </label>
                         <input 
                             type="text" 
@@ -348,14 +361,14 @@
                             name="country" 
                             class="form-input"
                             value="{{ old('country') }}"
-                            placeholder="المدينة أو المنطقة"
+                            placeholder="{{ __('landing.location_placeholder') }}"
                             required
                         >
                     </div>
 
                     <div>
                         <label for="restaurant_name" class="form-label">
-                            اسم المطعم
+                            {{ __('landing.restaurant_name') }}
                         </label>
                         <input 
                             type="text" 
@@ -363,13 +376,13 @@
                             name="restaurant_name" 
                             class="form-input"
                             value="{{ old('restaurant_name') }}"
-                            placeholder="(اختياري)"
+                            placeholder="{{ __('landing.optional') }}"
                         >
                     </div>
 
                     <div>
                         <label class="form-label">
-                            حالة المطعم <span class="required-star">*</span>
+                            {{ __('landing.restaurant_status') }} <span class="required-star">*</span>
                         </label>
                         <div class="space-y-3 mt-2">
                             <label class="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-orange-300 transition-all">
@@ -382,8 +395,8 @@
                                     required
                                 >
                                 <div>
-                                    <div class="font-semibold">مطعم جديد</div>
-                                    <div class="text-sm text-gray-600">أخطط لفتح مطعم</div>
+                                    <div class="font-semibold">{{ __('landing.status_new') }}</div>
+                                    <div class="text-sm text-gray-600">{{ __('landing.status_planning') }}</div>
                                 </div>
                             </label>
                             <label class="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-orange-300 transition-all">
@@ -395,15 +408,15 @@
                                     {{ old('restaurant_status') === 'operating_restaurant' ? 'checked' : '' }}
                                 >
                                 <div>
-                                    <div class="font-semibold">مطعم نشط</div>
-                                    <div class="text-sm text-gray-600">لدي مطعم نشط</div>
+                                    <div class="font-semibold">{{ __('landing.status_active') }}</div>
+                                    <div class="text-sm text-gray-600">{{ __('landing.status_has_active') }}</div>
                                 </div>
                             </label>
                         </div>
                     </div>
 
                     <button type="submit" class="submit-button">
-                        إرسال الطلب
+                        {{ __('landing.submit') }}
                     </button>
                 </form>
 

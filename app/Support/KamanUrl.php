@@ -13,6 +13,13 @@ final class KamanUrl
         return in_array($tld, ['dev', 'rest'], true) ? $tld : 'dev';
     }
 
+    public static function tldFromEnvironment(?string $environment): string
+    {
+        $environment = strtolower(trim((string) $environment));
+
+        return in_array($environment, ['dev', 'rest'], true) ? $environment : 'rest';
+    }
+
     public static function host(string $subdomain, ?string $tld = null): string
     {
         $subdomain = self::normalizeSubdomain($subdomain);
@@ -30,8 +37,13 @@ final class KamanUrl
         return self::host($subdomain, $tld) . '/api/manager';
     }
 
-    public static function loginEmail(string $subdomain): string
+    public static function loginEmail(string $subdomain, ?string $username = null): string
     {
+        $username = trim((string) $username);
+        if ($username !== '') {
+            return $username;
+        }
+
         return self::normalizeSubdomain($subdomain) . '@kaman.rest';
     }
 

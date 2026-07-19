@@ -10,96 +10,26 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&family=Heebo:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- Shared Kaman design system (body, .kaman-card, .kaman-input, .kaman-button, .stamp-band, .page-container) -->
+    <link rel="stylesheet" href="{{ asset('css/kaman.css') }}">
+
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(180deg, #fef8f0 0%, #fff 45%, #fef2dd 100%);
-            color: #2b1e11;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        .page-container {
-            width: 100%;
-            max-width: none;
-            padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1.5rem, 5vw, 4.5rem) clamp(3rem, 6vw, 5rem);
-            margin: 0 auto;
-        }
-        .kaman-card {
-            border-radius: 24px;
-            box-shadow: 0 24px 60px rgba(48, 31, 13, 0.12);
-            border: 1px solid rgba(238, 206, 165, 0.6);
-            background: #ffffff;
-            width: 100%;
-        }
-        .kaman-input {
-            border-radius: 14px;
-            border: 1px solid #f1dfc5;
-        }
-        .kaman-input:focus {
-            border-color: #f59f43;
-            box-shadow: 0 0 0 4px rgba(246, 146, 50, 0.15);
-        }
-        .kaman-button {
-            background: linear-gradient(135deg, #f59f43 0%, #f47a2e 100%);
-            border-radius: 999px;
-            box-shadow: 0 15px 35px rgba(244, 123, 46, 0.35);
-        }
-        .kaman-button:hover {
-            background: linear-gradient(135deg, #f47a2e 0%, #f16229 100%);
-        }
-        .stamp-band {
-            background: linear-gradient(90deg, rgba(244, 201, 157, 0.55) 0%, rgba(255, 255, 255, 0.35) 53%, rgba(244, 201, 157, 0.55) 100%);
-        }
+        /* Form-specific styles only. Shared tokens live in public/css/kaman.css. */
         .layout-grid {
             display: grid;
-            gap: clamp(2rem, 3vw, 4rem);
+            gap: clamp(1.25rem, 2vw, 2rem);
             align-items: stretch;
             grid-template-columns: minmax(0, 1fr);
-        }
-        .hero-panel {
-            border-radius: 32px;
-            padding: clamp(1.5rem, 4vw, 3rem);
-            border: 1px solid rgba(244, 122, 46, 0.25);
-            background: radial-gradient(circle at top right, rgba(244, 122, 46, 0.15), rgba(255, 255, 255, 0.9));
-            box-shadow: 0 30px 90px rgba(27, 13, 4, 0.18);
-            min-height: 540px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .hero-metrics {
-            display: grid;
-            gap: 1rem;
-        }
-        @media (min-width: 640px) {
-            .hero-metrics {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-        .metric-card {
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(244, 122, 46, 0.2);
-            padding: 1rem 1.2rem;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
         }
         .drink-group {
             display: flex;
             flex-direction: column;
             gap: 1.25rem;
-        }
-        .automation-toggle-card {
-            cursor: pointer;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-        }
-        .automation-toggle-card.is-active {
-            border-color: #f47a2e;
-            box-shadow: 0 25px 55px rgba(244, 122, 46, 0.22);
         }
         .drink-group__header {
             display: flex;
@@ -232,43 +162,19 @@
 </head>
 <body class="antialiased">
 
+    @include('partials.topbar', [
+        'tagText' => __('form.tag'),
+        'activeProject' => 'form',
+    ])
+
     <main class="relative min-h-screen">
         <div class="stamp-band absolute inset-x-0 -bottom-24 h-32"></div>
         <div class="page-container">
             <div id="layoutGrid" class="layout-grid">
-                <div class="space-y-6" id="automationPanels">
-                    <div id="automationToggle" class="grid gap-4 md:grid-cols-2">
-                        <button
-                            type="button"
-                            data-automation-path="unit"
-                            class="automation-toggle-card kaman-card relative flex flex-col items-start gap-2 border-2 border-transparent p-6 text-left transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f47a2e]"
-                        >
-                            <span class="text-xs font-semibold uppercase tracking-[0.35em] text-[#f47a2e]">Unit AI Automation</span>
-                            <span class="text-2xl font-semibold text-[#2b1e11]">Curate by sections</span>
-                            <p class="text-sm text-[#7c6a56]">Use the existing workflow wizard to submit categories, meals, ingredients or image-based batches.</p>
-                            <span class="mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#f47a2e]">
-                                <span class="h-1.5 w-1.5 rounded-full bg-[#f47a2e]"></span>
-                                Currently Active
-                            </span>
-                        </button>
-                        <button
-                            type="button"
-                            data-automation-path="full"
-                            class="automation-toggle-card kaman-card relative flex flex-col items-start gap-2 border-2 border-transparent p-6 text-left transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b1e11]"
-                        >
-                            <span class="text-xs font-semibold uppercase tracking-[0.35em] text-[#2b1e11]">Full AI Automation</span>
-                            <span class="text-2xl font-semibold text-[#2b1e11]">Hands-free agent</span>
-                            <p class="text-sm text-[#7c6a56]">Upload menus, PDFs, or photos and let the agent orchestrate categories, meals, and ingredients with human approval.</p>
-                            <span class="mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#2b1e11]">
-                                <span class="h-1.5 w-1.5 rounded-full bg-[#2b1e11]"></span>
-                                Preview
-                            </span>
-                        </button>
-                    </div>
-
-                    <div id="unitAutomationPanel" class="kaman-card p-10 space-y-8">
-                    <div class="space-y-2 text-center">
-                        <h3 class="text-2xl font-semibold text-[#2b1e11]">{{ __('form.restaurant_details') }}</h3>
+                <div class="space-y-4" id="automationPanels">
+                    <div id="unitAutomationPanel" class="kaman-card kaman-card--pad kaman-section">
+                    <div class="space-y-1 text-center">
+                        <h3 class="text-xl font-semibold text-[#2b1e11]">{{ __('form.restaurant_details') }}</h3>
                         <p class="text-sm text-[#a78a6c]">{{ __('form.restaurant_details_desc') }}</p>
                     </div>
 
@@ -298,82 +204,120 @@
                         </div>
                     @enderror
 
-                    <form id="restaurantForm" class="space-y-6" method="POST" action="{{ route('form.submit') }}" enctype="multipart/form-data">
+                    <form id="restaurantForm" class="kaman-form" method="POST" action="{{ route('form.submit') }}" enctype="multipart/form-data">
                         <input type="hidden" name="drinks_payload" id="drinksPayload" value="{{ old('drinks_payload') }}">
                         @csrf
 
-                        <!-- Restaurant Name -->
-                        <div class="space-y-2">
-                            <label for="restaurant_name" class="text-sm font-medium text-[#2b1e11]">
-                                {{ __('form.restaurant_name') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
-                            </label>
-                            <input
-                                id="restaurant_name"
-                                name="restaurant_name"
-                                type="text"
-                                required
-                                value="{{ old('restaurant_name') }}"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('restaurant_name') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
-                                placeholder="{{ __('form.restaurant_name_placeholder') }}"
-                            >
-                            @error('restaurant_name')
-                                <p class="text-sm text-red-500">{{ $message }}</p>
-                            @enderror
+                        {{-- Subdomain + method type: both short, so they share a row on desktop. --}}
+                        <div class="kaman-form-grid">
+                            <div class="kaman-field">
+                                <label for="subdomain" class="kaman-label">
+                                    {{ __('form.subdomain') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
+                                </label>
+                                <input
+                                    id="subdomain"
+                                    name="subdomain"
+                                    type="text"
+                                    required
+                                    value="{{ old('subdomain') }}"
+                                    class="kaman-input w-full @error('subdomain') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                    placeholder="{{ __('form.subdomain_placeholder') }}"
+                                >
+                                @error('subdomain')
+                                    <p class="text-xs text-red-500">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="kaman-field">
+                                <label for="method_type" class="kaman-label">
+                                    {{ __('form.method_type') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
+                                </label>
+                                <select
+                                    id="method_type"
+                                    name="method_type"
+                                    required
+                                    class="kaman-input w-full @error('method_type') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                >
+                                    <option value="" disabled @selected(!old('method_type'))>{{ __('form.select_method_type') }}</option>
+                                    @foreach($methodTypes as $methodType)
+                                        <option value="{{ $methodType }}" @selected(old('method_type', 'Category Store') === $methodType)>{{ $methodType }}</option>
+                                    @endforeach
+                                </select>
+                                @error('method_type')
+                                    <p class="text-xs text-red-500">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
 
-                        <!-- Restaurant Password -->
-                        <div class="space-y-2">
-                            <label for="password" class="text-sm font-medium text-[#2b1e11]">
-                                {{ __('form.restaurant_password') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
-                            </label>
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                required
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('password') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
-                                placeholder="{{ __('form.restaurant_password_placeholder') }}"
-                            >
-                            @error('password')
-                                <p class="text-sm text-red-500">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="flex flex-wrap items-end gap-4">
+                        {{-- Login action sits inline with its status, not stacked. --}}
+                        <div class="flex flex-wrap items-center gap-3">
                             <button
                                 type="button"
                                 id="unitLoginBtn"
-                                class="kaman-button px-6 py-3 text-sm font-semibold text-white"
+                                class="kaman-button"
                             >
-                                Login
+                                {{ __('app.login') }}
                             </button>
                             <p id="unitLoginStatus" class="text-sm min-h-[1.5em]"></p>
                         </div>
 
-                        <!-- Method Type (Category Store only) -->
-                        <input type="hidden" name="method_type" id="method_type" value="Category Store">
-                        <div class="space-y-1">
-                            <p class="text-sm font-medium text-[#2b1e11]">{{ __('form.method_type') }}</p>
-                            <p class="text-sm text-[#f16229] font-semibold">Category Store</p>
+                        <div id="unitLoginCredentials" class="hidden kaman-card--compact rounded-2xl border border-[#f1dfc5] bg-[#fffaf3] space-y-3">
+                            <p class="text-xs text-[#7c6a56]">{{ __('form.login_credentials_hint') }}</p>
+                            <input type="hidden" id="environment" name="environment" value="{{ old('environment', 'rest') }}">
+                            <div class="kaman-form-grid">
+                                <div class="kaman-field">
+                                    <label for="username" class="kaman-label">
+                                        {{ __('form.username') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
+                                    </label>
+                                    <input
+                                        id="username"
+                                        name="username"
+                                        type="text"
+                                        autocomplete="username"
+                                        value="{{ old('username') }}"
+                                        class="kaman-input w-full @error('username') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                        placeholder="{{ __('form.username_placeholder') }}"
+                                    >
+                                    @error('username')
+                                        <p class="text-xs text-red-500">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                <div class="kaman-field">
+                                    <label for="password" class="kaman-label">
+                                        {{ __('form.restaurant_password') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
+                                    </label>
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type="password"
+                                        autocomplete="current-password"
+                                        class="kaman-input w-full @error('password') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                        placeholder="{{ __('form.restaurant_password_placeholder') }}"
+                                    >
+                                    @error('password')
+                                        <p class="text-xs text-red-500">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Description -->
-                        <div id="descriptionSection" class="space-y-2">
-                            <label for="description" class="text-sm font-medium text-[#2b1e11]">
+                        <div id="descriptionSection" class="kaman-field">
+                            <label for="description" class="kaman-label">
                                 {{ __('form.description') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
                             </label>
                             <textarea
                                 id="description"
                                 name="description"
-                                rows="18"
+                                rows="9"
                                 required
                                 autocomplete="off"
                                 spellcheck="false"
-                                class="kaman-input w-full min-h-[22rem] px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none resize-y @error('description') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                class="kaman-input w-full @error('description') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
                                 placeholder="{{ __('form.category_store_placeholder') }}"
                             >{{ old('description') }}</textarea>
-                            <p id="categoryStoreHint" class="text-xs text-[#a78a6c] mt-2 whitespace-pre-line leading-relaxed">{{ __('form.category_store_hint') }}</p>
-                            <p id="structuredBlocksHint" class="hidden text-xs text-[#a78a6c] mt-2 whitespace-pre-line leading-relaxed">{{ __('form.structured_blocks_hint') }}</p>
+                            <p id="categoryStoreHint" class="text-xs text-[#a78a6c] whitespace-pre-line leading-relaxed">{{ __('form.category_store_hint') }}</p>
+                            <p id="structuredBlocksHint" class="hidden text-xs text-[#a78a6c] whitespace-pre-line leading-relaxed">{{ __('form.structured_blocks_hint') }}</p>
                             @error('description')
                                 <p class="text-sm text-red-500">{{ $message }}</p>
                             @enderror
@@ -392,7 +336,7 @@
                                 name="category_logo"
                                 type="file"
                                 accept="image/*"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('category_logo') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('category_logo') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
                             >
                             @error('category_logo')
                                 <p class="text-sm text-red-500">{{ $message }}</p>
@@ -412,7 +356,7 @@
                                 name="meal_style_image"
                                 type="file"
                                 accept="image/*"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('meal_style_image') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('meal_style_image') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
                             >
                             @error('meal_style_image')
                                 <p class="text-sm text-red-500">{{ $message }}</p>
@@ -430,7 +374,7 @@
                                 name="category_name_en"
                                 type="text"
                                 value="{{ old('category_name_en') }}"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('category_name_en') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('category_name_en') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
                                 placeholder="{{ __('form.category_name_en_placeholder') }}"
                             >
                             @error('category_name_en')
@@ -469,7 +413,7 @@
                                                         min="0"
                                                         step="0.01"
                                                         placeholder="0.00"
-                                                        class="kaman-input px-4 py-2 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                        class="kaman-input kaman-input--sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                         id="bulk-price-{{ $groupKey }}"
                                                         data-bulk-price
                                                     >
@@ -504,7 +448,7 @@
                                                                 min="0"
                                                                 step="0.01"
                                                                 placeholder="0.00"
-                                                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                                 id="drink-price-{{ $groupKey }}-{{ $drinkIndex }}"
                                                                 data-price-input
                                                                 disabled
@@ -556,7 +500,7 @@
                                                         min="0"
                                                         step="0.01"
                                                         placeholder="0.00"
-                                                        class="kaman-input px-4 py-2 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                        class="kaman-input kaman-input--sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                         id="bulk-price-{{ $groupKey }}"
                                                         data-bulk-price
                                                     >
@@ -591,7 +535,7 @@
                                                                 min="0"
                                                                 step="0.01"
                                                                 placeholder="0.00"
-                                                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                                 id="hot-drink-price-{{ $groupKey }}-{{ $drinkIndex }}"
                                                                 data-price-input
                                                                 disabled
@@ -643,7 +587,7 @@
                                                         min="0"
                                                         step="0.01"
                                                         placeholder="0.00"
-                                                        class="kaman-input px-4 py-2 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                        class="kaman-input kaman-input--sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                         id="bulk-price-{{ $groupKey }}"
                                                         data-bulk-price
                                                     >
@@ -679,7 +623,7 @@
                                                                 min="0"
                                                                 step="0.01"
                                                                 placeholder="0.00"
-                                                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                                 id="juice-price-{{ $groupKey }}-{{ $juiceIndex }}"
                                                                 data-price-input
                                                                 disabled
@@ -731,7 +675,7 @@
                                                         min="0"
                                                         step="0.01"
                                                         placeholder="0.00"
-                                                        class="kaman-input px-4 py-2 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                        class="kaman-input kaman-input--sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                         id="bulk-price-{{ $groupKey }}"
                                                         data-bulk-price
                                                     >
@@ -766,7 +710,7 @@
                                                                 min="0"
                                                                 step="0.01"
                                                                 placeholder="0.00"
-                                                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                                 id="sweet-price-{{ $groupKey }}-{{ $sweetIndex }}"
                                                                 data-price-input
                                                                 disabled
@@ -818,7 +762,7 @@
                                                         min="0"
                                                         step="0.01"
                                                         placeholder="0.00"
-                                                        class="kaman-input px-4 py-2 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                        class="kaman-input kaman-input--sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                         id="bulk-price-{{ $groupKey }}"
                                                         data-bulk-price
                                                     >
@@ -853,7 +797,7 @@
                                                                 min="0"
                                                                 step="0.01"
                                                                 placeholder="0.00"
-                                                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                                 id="pasta-price-{{ $groupKey }}-{{ $pastaIndex }}"
                                                                 data-price-input
                                                                 disabled
@@ -905,7 +849,7 @@
                                                         min="0"
                                                         step="0.01"
                                                         placeholder="0.00"
-                                                        class="kaman-input px-4 py-2 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                        class="kaman-input kaman-input--sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                         id="bulk-price-{{ $groupKey }}"
                                                         data-bulk-price
                                                     >
@@ -940,7 +884,7 @@
                                                                 min="0"
                                                                 step="0.01"
                                                                 placeholder="0.00"
-                                                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                                 id="sandwich-price-{{ $groupKey }}-{{ $sandwichIndex }}"
                                                                 data-price-input
                                                                 disabled
@@ -992,7 +936,7 @@
                                                         min="0"
                                                         step="0.01"
                                                         placeholder="0.00"
-                                                        class="kaman-input px-4 py-2 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                        class="kaman-input kaman-input--sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                         id="bulk-price-{{ $groupKey }}"
                                                         data-bulk-price
                                                     >
@@ -1027,7 +971,7 @@
                                                                 min="0"
                                                                 step="0.01"
                                                                 placeholder="0.00"
-                                                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                                 id="ingredient-price-{{ $groupKey }}-{{ $ingredientIndex }}"
                                                                 data-price-input
                                                                 disabled
@@ -1079,7 +1023,7 @@
                                                         min="0"
                                                         step="0.01"
                                                         placeholder="0.00"
-                                                        class="kaman-input px-4 py-2 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                        class="kaman-input kaman-input--sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                         id="bulk-price-{{ $groupKey }}"
                                                         data-bulk-price
                                                     >
@@ -1114,7 +1058,7 @@
                                                                 min="0"
                                                                 step="0.01"
                                                                 placeholder="0.00"
-                                                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
+                                                                class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
                                                                 id="burger-price-{{ $groupKey }}-{{ $burgerIndex }}"
                                                                 data-price-input
                                                                 disabled
@@ -1153,7 +1097,7 @@
                                     name="folder_name"
                                     type="text"
                                     value="{{ old('folder_name') }}"
-                                    class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('folder_name') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                    class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('folder_name') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
                                     placeholder="{{ __('form.folder_name_placeholder') }}"
                                 >
                                 @error('folder_name')
@@ -1173,7 +1117,7 @@
                                     type="file"
                                     accept="image/*"
                                     multiple
-                                    class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('meal_images') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                    class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('meal_images') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
                                 >
                                 <p class="text-xs text-[#a78a6c] mt-1">{{ __('form.meal_images_help') }}</p>
                                 <div id="imagePreview" class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 hidden"></div>
@@ -1210,7 +1154,7 @@
                                     webkitdirectory
                                     directory
                                     multiple
-                                    class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('folder_upload') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                    class="kaman-input w-full text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none @error('folder_upload') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
                                 >
                                 <p class="text-xs text-[#a78a6c] mt-1">{{ __('form.choose_folder_help') }}</p>
                                 <div id="folderUploadPreview" class="mt-3 space-y-1 hidden">
@@ -1248,7 +1192,7 @@
                         <div class="space-y-4">
                             <button
                                 type="submit"
-                                class="kaman-button w-full px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition duration-200"
+                                class="kaman-button w-full font-semibold uppercase tracking-wide text-white transition duration-200"
                             >
                                 {{ __('form.submit_application') }}
                             </button>
@@ -1272,7 +1216,7 @@
                                 Submit the form to see workflow debug output.
                             </div>
                             <div id="workflowDebugData" class="hidden">
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[55vh] overflow-hidden">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[55vh] overflow-hidden">
                                     <div id="workflowLiveLog" class="hidden flex flex-col min-w-0">
                                         <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-2 shrink-0">Live Log</h4>
                                         <div id="workflowLiveLogEntries" class="p-3 bg-slate-900 text-emerald-300 rounded text-xs font-mono overflow-y-auto flex-1 min-h-[120px] space-y-1"></div>
@@ -1282,13 +1226,11 @@
                                             <h4 class="font-bold text-slate-800 dark:text-slate-100">Method Type</h4>
                                             <span id="debugTimestamp" class="text-slate-500 text-xs"></span>
                                         </div>
-                                        <pre id="debugMethodType" class="p-2 bg-white dark:bg-slate-800 rounded text-xs overflow-x-auto shrink-0"></pre>
-                                        <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-2 mt-3 shrink-0">Payload (sent to workflow)</h4>
-                                        <pre id="debugPayload" class="p-2 bg-white dark:bg-slate-800 rounded text-xs overflow-auto flex-1 min-h-[100px]"></pre>
-                                    </div>
-                                    <div class="flex flex-col min-w-0">
-                                        <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-2 shrink-0">Result</h4>
-                                        <pre id="debugResult" class="p-2 bg-white dark:bg-slate-800 rounded text-xs overflow-auto flex-1 min-h-[120px]"></pre>
+                                        <div id="debugMethodType" class="p-2 bg-white dark:bg-slate-800 rounded text-xs shrink-0 text-slate-700 dark:text-slate-200"></div>
+                                        <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-2 mt-3 shrink-0">Execution Summary</h4>
+                                        <ul id="debugSummaryList" class="p-3 bg-white dark:bg-slate-800 rounded text-xs overflow-auto flex-1 min-h-[120px] space-y-2 text-slate-700 dark:text-slate-200 list-disc pl-5">
+                                            <li>No workflow run yet.</li>
+                                        </ul>
                                     </div>
                                 </div>
                             </div>
@@ -1296,223 +1238,162 @@
                     </div>
                 </div>
 
-                <div id="fullAutomationPanel" class="kaman-card p-10 space-y-8 hidden">
-                    <div class="space-y-2 text-center">
-                        <h3 class="text-2xl font-semibold text-[#2b1e11]">Full AI Automation</h3>
-                        <p class="text-sm text-[#a78a6c]">Let the autonomous agent read your entire menu (PDF, images, text) and execute the Unit Automations sequentially with your approval before each API request.</p>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div class="rounded-2xl border border-[#f1dfc5] bg-white/70 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-[#f47a2e] mb-2">Agent Mission</p>
-                            <ul class="text-sm text-[#2b1e11] space-y-1 list-disc list-inside">
-                                <li>Generate categories, meals, and ingredients automatically.</li>
-                                <li>Preview every HTTP call before it hits Kaman.</li>
-                                <li>Keep a live diagram of the structure being stored.</li>
-                            </ul>
-                        </div>
-                        <div class="rounded-2xl border border-[#f1dfc5] bg-white/70 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-[#2b1e11] mb-2">Human-in-the-loop</p>
-                            <ul class="text-sm text-[#2b1e11] space-y-1 list-disc list-inside">
-                                <li>Approve or skip each request with one click.</li>
-                                <li>See summarized payloads before sending.</li>
-                                <li>Trace the agent’s reasoning in real time.</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <form id="fullAiForm" class="space-y-6" method="POST" action="{{ route('form.full-ai.start') }}" enctype="multipart/form-data">
-                        @csrf
-
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <div class="space-y-2">
-                                <label for="full_ai_restaurant_name" class="text-sm font-medium text-[#2b1e11]">
-                                    {{ __('form.restaurant_name') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
-                                </label>
-                                <input
-                                    id="full_ai_restaurant_name"
-                                    name="restaurant_name"
-                                    type="text"
-                                    class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
-                                    placeholder="{{ __('form.restaurant_name_placeholder') }}"
-                                >
-                            </div>
-                            <div class="space-y-2">
-                                <label for="full_ai_password" class="text-sm font-medium text-[#2b1e11]">
-                                    {{ __('form.restaurant_password') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
-                                </label>
-                                <input
-                                    id="full_ai_password"
-                                    name="password"
-                                    type="password"
-                                    class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
-                                    placeholder="{{ __('form.restaurant_password_placeholder') }}"
-                                >
-                            </div>
-                        </div>
-
-                        <div class="flex flex-wrap items-end gap-4">
-                            <button
-                                type="button"
-                                id="fullAiLoginBtn"
-                                class="kaman-button px-6 py-3 text-sm font-semibold text-white"
-                            >
-                                Login
-                            </button>
-                            <p id="fullAiLoginStatus" class="text-sm min-h-[1.5em]"></p>
-                        </div>
-
-                        <div class="space-y-2">
-                            <label for="full_ai_description" class="text-sm font-medium text-[#2b1e11]">
-                                Menu Input (text)
-                                <span class="text-xs font-normal text-[#a78a6c] block">Optional but helps accuracy. Paste any raw menu format.</span>
-                            </label>
-                            <textarea
-                                id="full_ai_description"
-                                name="description"
-                                rows="5"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none resize-none"
-                                placeholder="Breakfast : @{{ Pancake Stack : 42, Avocado Toast : 38 @}}"
-                            ></textarea>
-                        </div>
-
-                        <div class="space-y-2">
-                            <label for="full_ai_files" class="text-sm font-medium text-[#2b1e11]">
-                                Upload menu files (PDF / Images)
-                                <span class="text-xs font-normal text-[#a78a6c] block">Provide one or more files if you don't have text handy.</span>
-                            </label>
-                            <input
-                                id="full_ai_files"
-                                name="attachments[]"
-                                type="file"
-                                multiple
-                                accept=".pdf,.jpg,.jpeg,.png,.gif,image/*"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
-                            >
-                        </div>
-
-                        <div class="space-y-2">
-                            <label for="full_ai_logo" class="text-sm font-medium text-[#2b1e11]">
-                                Restaurant logo (optional)
-                                <span class="text-xs font-normal text-[#a78a6c] block">Used to generate category images with the same colors and style before storing categories.</span>
-                            </label>
-                            <input
-                                id="full_ai_logo"
-                                name="logo"
-                                type="file"
-                                accept="image/*"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none"
-                            >
-                        </div>
-
-                        <div class="space-y-2">
-                            <label for="full_ai_agent_instructions" class="text-sm font-medium text-[#2b1e11]">
-                                Description (optional)
-                                <span class="text-xs font-normal text-[#a78a6c] block">Human description or instructions to help the AI analyze your menu the way you want (e.g. language, format, what to focus on). Used as extra context when analyzing uploaded files.</span>
-                            </label>
-                            <textarea
-                                id="full_ai_agent_instructions"
-                                name="agent_instructions"
-                                rows="3"
-                                class="kaman-input w-full px-4 py-3 text-sm text-[#2b1e11] placeholder-[#c7b69d] focus:outline-none resize-none"
-                                placeholder="e.g. Menu is in Arabic; group drinks separately; include prices in SAR."
-                            ></textarea>
-                        </div>
-
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-[#2b1e11]">
-                                    Agent goals
-                                </label>
-                                <div class="rounded-2xl border border-dashed border-[#f1dfc5] bg-white/40 px-4 py-3 text-xs text-[#7c6a56] leading-relaxed">
-                                    1. Extract categories<br>
-                                    2. Generate meals with translations<br>
-                                    3. Build category ingredients<br>
-                                    4. Populate master ingredient list
-                                </div>
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-[#2b1e11]">Launch agent</label>
-                                <button
-                                    type="submit"
-                                    class="kaman-button w-full px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition duration-200 disabled:opacity-60"
-                                >
-                                    ⚡ Start Full AI Automation
-                                </button>
-                                <p id="fullAiFormStatus" class="text-xs text-[#a78a6c]"></p>
-                            </div>
-                        </div>
-                    </form>
-
-                    <div id="fullAiDebugger" class="space-y-5 mt-5">
-                        <div class="rounded-2xl border border-[#f1dfc5] bg-white shadow-sm">
-                            <div class="flex items-center justify-between px-4 py-3 border-b border-[#f1dfc5] bg-[#fef8f0]/50">
-                                <div>
-                                    <p class="text-base font-semibold text-[#2b1e11]">What’s happening</p>
-                                    <p class="text-sm text-[#7c6a56]">Step-by-step log so you always know what the agent did.</p>
-                                </div>
-                                <button type="button" id="fullAiClearLog" class="text-sm font-semibold text-[#f47a2e] hover:underline">Clear log</button>
-                            </div>
-                            <div id="fullAiLogEntries" class="max-h-56 overflow-y-auto p-4 text-sm text-[#2b1e11] space-y-2 bg-white">
-                                <p data-full-ai-log-placeholder class="text-[#a78a6c] italic">Click “Start Full AI Automation” and events will appear here.</p>
-                            </div>
-                        </div>
-
-                        <div class="grid gap-4 lg:grid-cols-2">
-                            <div class="rounded-2xl border border-[#f1dfc5] bg-white shadow-sm p-4">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div>
-                                        <p class="text-base font-semibold text-[#2b1e11]">Your turn</p>
-                                        <p class="text-sm text-[#7c6a56]">Approve or skip each action before it’s sent.</p>
-                                    </div>
-                                    <span id="fullAiSessionBadge" class="text-sm px-3 py-1 rounded-full bg-[#f1dfc5] text-[#7c6a56] font-medium">Nothing running</span>
-                                </div>
-                                <div id="fullAiApprovalPanel" class="rounded-xl border-2 border-dashed border-[#f1dfc5] bg-[#fef8f0]/50 p-4 text-sm text-[#7c6a56] min-h-[140px] flex items-center justify-center">
-                                    <p class="text-center">Start the automation above. When the agent is ready to send data, you’ll see it here and can choose <strong>Send to Kaman</strong> or <strong>Skip</strong>.</p>
-                                </div>
-                            </div>
-                            <div class="rounded-2xl border border-[#f1dfc5] bg-white shadow-sm p-4">
-                                <p class="text-base font-semibold text-[#2b1e11] mb-1">Your menu so far</p>
-                                <p class="text-sm text-[#7c6a56] mb-3">Categories, meals, and ingredients we’re building from your input.</p>
-                                <div id="fullAiDiagram" class="min-h-[180px] rounded-xl border-2 border-dashed border-[#f1dfc5] bg-[#fef8f0]/50 p-4 text-sm text-[#2b1e11]">
-                                    <p class="text-[#a78a6c] text-center py-6">After you approve steps, the menu structure will show here.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </main>
 
     <script>
         window.__workflowDebugFromSession = @json(session('workflow_debug'));
-        const FULL_AI_ROUTES = {
+        const FORM_AUTH_ROUTES = {
+            authStatus: @json(route('form.full-ai.auth-status')),
             login: @json(route('form.full-ai.login')),
-            chat: @json(route('form.full-ai.chat')),
-            executeStep: @json(route('form.full-ai.execute-step')),
-            start: @json(route('form.full-ai.start')),
-            approveBase: @json(url('/form/full-ai')),
         };
 
         const FORM_SESSION_KEYS = {
-            restaurantName: 'webtimize_form_restaurant_name',
-            password: 'webtimize_form_restaurant_password',
+            subdomain: 'webtimize_form_subdomain',
+            environment: 'webtimize_form_environment',
+            savedCredentials: 'webtimize_form_saved_credentials',
         };
+
+        function getSavedCredentials() {
+            try {
+                const raw = sessionStorage.getItem(FORM_SESSION_KEYS.savedCredentials);
+                if (!raw) {
+                    return null;
+                }
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') {
+                    return null;
+                }
+                return parsed;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function hasSavedCredentials() {
+            const saved = getSavedCredentials();
+            return !!(saved && saved.username && saved.password);
+        }
+
+        function saveCredentials({ username, password, environment }) {
+            try {
+                sessionStorage.setItem(FORM_SESSION_KEYS.savedCredentials, JSON.stringify({
+                    username: username,
+                    password: password,
+                    environment: environment || 'rest',
+                }));
+            } catch (e) {
+                /* sessionStorage may be unavailable */
+            }
+        }
+
+        function syncCredentialFields(username, password, environment) {
+            const usernameEl = document.getElementById('username');
+            const passwordEl = document.getElementById('password');
+            const environmentEl = document.getElementById('environment');
+            if (usernameEl && username !== undefined && username !== null) {
+                usernameEl.value = username;
+            }
+            if (passwordEl && password !== undefined && password !== null) {
+                passwordEl.value = password;
+            }
+            if (environmentEl && environment !== undefined && environment !== null) {
+                environmentEl.value = environment || 'rest';
+            }
+        }
+
+        function resetLoginCredentialsPanel() {
+            const panel = document.getElementById('unitLoginCredentials');
+            if (!panel) {
+                return;
+            }
+            panel.classList.add('hidden');
+            const usernameEl = document.getElementById('username');
+            const passwordEl = document.getElementById('password');
+            if (usernameEl) {
+                usernameEl.value = '';
+            }
+            if (passwordEl) {
+                passwordEl.value = '';
+            }
+        }
+
+        function hideLoginCredentialsPanels() {
+            resetLoginCredentialsPanel();
+        }
+
+        function showLoginCredentialsPanel(panelId) {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                panel.classList.remove('hidden');
+            }
+        }
+
+        function isLoginCredentialsPanelVisible(panelId) {
+            const panel = document.getElementById(panelId);
+            return !!(panel && !panel.classList.contains('hidden'));
+        }
+
+        function getLoginEnvironment(environmentEl) {
+            return (environmentEl && environmentEl.value) ? environmentEl.value : 'rest';
+        }
+
+        async function checkStoredKamanAuth(subdomain, environment) {
+            const response = await fetch(FORM_AUTH_ROUTES.authStatus, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+                body: JSON.stringify({ subdomain: subdomain, environment: environment }),
+            });
+            const data = await response.json().catch(() => ({}));
+            return {
+                ok: response.ok,
+                authenticated: !!(response.ok && data.authenticated),
+                message: data.message || '',
+            };
+        }
+
+        function ensureFormCredentialsForSubmit() {
+            const saved = getSavedCredentials();
+            if (saved && saved.username && saved.password) {
+                syncCredentialFields(saved.username, saved.password, saved.environment || 'rest');
+                return true;
+            }
+
+            const usernameEl = document.getElementById('username');
+            const passwordEl = document.getElementById('password');
+            const username = (usernameEl && usernameEl.value.trim()) || '';
+            const password = (passwordEl && passwordEl.value) || '';
+            if (username && password) {
+                const environmentEl = document.getElementById('environment');
+                saveCredentials({
+                    username: username,
+                    password: password,
+                    environment: (environmentEl && environmentEl.value) || 'rest',
+                });
+                return true;
+            }
+
+            showLoginCredentialsPanel('unitLoginCredentials');
+            return false;
+        }
 
         function persistFormCredentials() {
             try {
-                const nameMain = document.getElementById('restaurant_name');
-                const nameFull = document.getElementById('full_ai_restaurant_name');
-                const passMain = document.getElementById('password');
-                const passFull = document.getElementById('full_ai_password');
-                const name = (nameMain && nameMain.value.trim()) || (nameFull && nameFull.value.trim()) || '';
-                const pass = (passMain && passMain.value) || (passFull && passFull.value) || '';
-                if (name) {
-                    sessionStorage.setItem(FORM_SESSION_KEYS.restaurantName, name);
+                const subdomainMain = document.getElementById('subdomain');
+                const subdomain = (subdomainMain && subdomainMain.value.trim()) || '';
+                if (subdomain) {
+                    sessionStorage.setItem(FORM_SESSION_KEYS.subdomain, subdomain);
                 }
-                if (pass) {
-                    sessionStorage.setItem(FORM_SESSION_KEYS.password, pass);
+                const saved = getSavedCredentials();
+                if (saved && saved.environment) {
+                    sessionStorage.setItem(FORM_SESSION_KEYS.environment, saved.environment);
                 }
             } catch (e) {
                 /* sessionStorage may be unavailable */
@@ -1521,57 +1402,164 @@
 
         function restoreFormCredentials() {
             try {
-                const savedName = sessionStorage.getItem(FORM_SESSION_KEYS.restaurantName);
-                const savedPass = sessionStorage.getItem(FORM_SESSION_KEYS.password);
-                const nameMain = document.getElementById('restaurant_name');
-                const nameFull = document.getElementById('full_ai_restaurant_name');
-                const passMain = document.getElementById('password');
-                const passFull = document.getElementById('full_ai_password');
-                if (savedName) {
-                    if (nameMain && !nameMain.value.trim()) {
-                        nameMain.value = savedName;
-                    }
-                    if (nameFull && !nameFull.value.trim()) {
-                        nameFull.value = savedName;
-                    }
+                const savedSubdomain = sessionStorage.getItem(FORM_SESSION_KEYS.subdomain);
+                const saved = getSavedCredentials();
+                const subdomainMain = document.getElementById('subdomain');
+                if (savedSubdomain && subdomainMain && !subdomainMain.value.trim()) {
+                    subdomainMain.value = savedSubdomain;
                 }
-                if (savedPass) {
-                    if (passMain && !passMain.value) {
-                        passMain.value = savedPass;
-                    }
-                    if (passFull && !passFull.value) {
-                        passFull.value = savedPass;
-                    }
+                if (saved && saved.username && saved.password) {
+                    syncCredentialFields(saved.username, saved.password, saved.environment || 'rest');
                 }
             } catch (e) {
                 /* sessionStorage may be unavailable */
             }
         }
 
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                || document.querySelector('input[name="_token"]')?.value
+                || '';
+        }
+
+        async function performKamanLogin(options) {
+            const {
+                subdomainEl,
+                environmentEl,
+                usernameEl,
+                passwordEl,
+                credentialsPanelId,
+                statusEl,
+                loginBtn,
+                successMessage,
+            } = options;
+
+            const subdomain = (subdomainEl && subdomainEl.value) ? subdomainEl.value.trim() : '';
+            const environment = getLoginEnvironment(environmentEl);
+            const credentialsVisible = isLoginCredentialsPanelVisible(credentialsPanelId);
+
+            statusEl.textContent = '';
+            statusEl.className = 'text-sm min-h-[1.5em]';
+
+            if (!subdomain) {
+                statusEl.textContent = 'Enter a subdomain first.';
+                statusEl.classList.add('text-amber-700');
+                return;
+            }
+
+            loginBtn.disabled = true;
+
+            try {
+                if (!credentialsVisible) {
+                    statusEl.textContent = 'Checking session…';
+                    statusEl.classList.add('text-[#7c6a56]');
+
+                    const authCheck = await checkStoredKamanAuth(subdomain, environment);
+                    if (authCheck.authenticated) {
+                        hideLoginCredentialsPanels();
+                        persistFormCredentials();
+                        statusEl.textContent = authCheck.message || 'You are already signed in for this restaurant.';
+                        statusEl.className = 'text-sm min-h-[1.5em] text-emerald-700';
+                        return;
+                    }
+
+                    showLoginCredentialsPanel(credentialsPanelId);
+                    statusEl.textContent = 'No saved session. Enter your username and password, then click Login again.';
+                    statusEl.className = 'text-sm min-h-[1.5em] text-amber-700';
+                    return;
+                }
+
+                const username = (usernameEl && usernameEl.value) ? usernameEl.value.trim() : '';
+                const password = (passwordEl && passwordEl.value) ? passwordEl.value : '';
+
+                if (!username || !password) {
+                    statusEl.textContent = 'Enter your username and password.';
+                    statusEl.classList.add('text-amber-700');
+                    return;
+                }
+
+                statusEl.textContent = 'Signing in…';
+                statusEl.classList.add('text-[#7c6a56]');
+
+                const response = await fetch(FORM_AUTH_ROUTES.login, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        subdomain: subdomain,
+                        environment: environment,
+                        username: username,
+                        password: password,
+                    }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success) {
+                    saveCredentials({
+                        username: username,
+                        password: password,
+                        environment: environment,
+                    });
+                    syncCredentialFields(username, password, environment);
+                    hideLoginCredentialsPanels();
+                    persistFormCredentials();
+                    statusEl.textContent = data.message || successMessage;
+                    statusEl.className = 'text-sm min-h-[1.5em] text-emerald-700';
+                } else {
+                    statusEl.textContent = data.message || data.error || 'Something went wrong. Check your credentials.';
+                    statusEl.className = 'text-sm min-h-[1.5em] text-red-600';
+                }
+            } catch (err) {
+                statusEl.textContent = 'Network error. Try again.';
+                statusEl.className = 'text-sm min-h-[1.5em] text-red-600';
+            } finally {
+                loginBtn.disabled = false;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             restoreFormCredentials();
-            ['restaurant_name', 'password', 'full_ai_restaurant_name', 'full_ai_password'].forEach(function (id) {
+            const subdomainMain = document.getElementById('subdomain');
+            if (subdomainMain) {
+                subdomainMain.addEventListener('input', function () {
+                    hideLoginCredentialsPanels();
+                    const status = document.getElementById('unitLoginStatus');
+                    if (status) {
+                        status.textContent = '';
+                    }
+                    persistFormCredentials();
+                });
+            }
+            ['subdomain', 'environment', 'username', 'password'].forEach(function (id) {
                 const el = document.getElementById(id);
                 if (el) {
-                    el.addEventListener('input', persistFormCredentials);
+                    el.addEventListener('input', function () {
+                        if (id === 'username' || id === 'password' || id === 'environment') {
+                            const usernameEl = document.getElementById('username');
+                            const passwordEl = document.getElementById('password');
+                            const environmentEl = document.getElementById('environment');
+                            const username = (usernameEl && usernameEl.value.trim()) || '';
+                            const password = (passwordEl && passwordEl.value) || '';
+                            if (username && password) {
+                                saveCredentials({
+                                    username: username,
+                                    password: password,
+                                    environment: (environmentEl && environmentEl.value) || 'rest',
+                                });
+                            }
+                        }
+                        persistFormCredentials();
+                    });
                     el.addEventListener('change', persistFormCredentials);
                 }
             });
 
             const form = document.getElementById('restaurantForm');
             const methodTypeSelect = document.getElementById('method_type');
-            const automationToggleButtons = document.querySelectorAll('[data-automation-path]');
-            const unitAutomationPanelEl = document.getElementById('unitAutomationPanel');
-            const fullAutomationPanelEl = document.getElementById('fullAutomationPanel');
-            const fullAiForm = document.getElementById('fullAiForm');
-            const fullAiFormStatus = document.getElementById('fullAiFormStatus');
-            const fullAiLogEntries = document.getElementById('fullAiLogEntries');
-            const fullAiApprovalPanel = document.getElementById('fullAiApprovalPanel');
-            const fullAiDiagramEl = document.getElementById('fullAiDiagram');
-            const fullAiSessionBadge = document.getElementById('fullAiSessionBadge');
-            const fullAiClearLog = document.getElementById('fullAiClearLog');
-            const fullAiLoginBtn = document.getElementById('fullAiLoginBtn');
-            const fullAiLoginStatus = document.getElementById('fullAiLoginStatus');
             const unitLoginBtn = document.getElementById('unitLoginBtn');
             const unitLoginStatus = document.getElementById('unitLoginStatus');
             const descriptionSection = document.getElementById('descriptionSection');
@@ -1613,27 +1601,6 @@
                 return;
             }
 
-            let activeAutomationPath = 'unit';
-
-            function setAutomationPath(path) {
-                activeAutomationPath = path === 'full' ? 'full' : 'unit';
-                automationToggleButtons.forEach((btn) => {
-                    const isActive = (btn.dataset.automationPath || 'unit') === activeAutomationPath;
-                    btn.classList.toggle('is-active', isActive);
-                });
-                if (unitAutomationPanelEl) {
-                    unitAutomationPanelEl.classList.toggle('hidden', activeAutomationPath !== 'unit');
-                }
-                if (fullAutomationPanelEl) {
-                    fullAutomationPanelEl.classList.toggle('hidden', activeAutomationPath !== 'full');
-                }
-            }
-
-            automationToggleButtons.forEach((btn) => {
-                btn.addEventListener('click', () => setAutomationPath(btn.dataset.automationPath || 'unit'));
-            });
-            setAutomationPath('unit');
-
             // Workflow debug panel
             function appendLiveStep(message, step = '') {
                 const logEl = document.getElementById('workflowLiveLogEntries');
@@ -1667,26 +1634,36 @@
                 dataEl?.classList.remove('hidden');
                 if (clearLiveLog && liveLogEntries) liveLogEntries.innerHTML = '';
 
-                const safeJson = (obj) => {
-                    try {
-                        return JSON.stringify(obj, null, 2);
-                    } catch {
-                        return String(obj);
-                    }
-                };
-
                 const methodEl = document.getElementById('debugMethodType');
-                const payloadEl = document.getElementById('debugPayload');
-                const resultEl = document.getElementById('debugResult');
+                const summaryEl = document.getElementById('debugSummaryList');
                 const timestampEl = document.getElementById('debugTimestamp');
 
                 if (data) {
+                    const result = data.result ?? {};
+                    const success = !!result.success;
+                    const reason = result.message || result.error || data.error || 'No details provided.';
+                    const createdCount = Array.isArray(result.created) ? result.created.length : (Array.isArray(result.body?.created) ? result.body.created.length : 0);
+                    const failedCount = Array.isArray(result.failed) ? result.failed.length : (Array.isArray(result.body?.failed) ? result.body.failed.length : 0);
+
                     if (methodEl) methodEl.textContent = data.method_type ?? '-';
-                    if (payloadEl) payloadEl.textContent = safeJson(data.payload ?? {});
-                    if (resultEl) resultEl.textContent = safeJson(data.result ?? {});
                     if (timestampEl) timestampEl.textContent = data.timestamp ?? '-';
 
-                    const success = data.result?.success ?? false;
+                    if (summaryEl) {
+                        const messages = [];
+                        messages.push(success ? 'Workflow completed successfully.' : 'Workflow failed.');
+                        messages.push((success ? 'Success reason: ' : 'Failure reason: ') + reason);
+                        if (createdCount > 0 || failedCount > 0) {
+                            messages.push('Created: ' + createdCount + ', Failed: ' + failedCount + '.');
+                        }
+                        if (!success && failedCount > 0) {
+                            const firstFailure = result.failed?.[0]?.error || result.body?.failed?.[0]?.error;
+                            if (firstFailure) {
+                                messages.push('First failure detail: ' + firstFailure);
+                            }
+                        }
+                        summaryEl.innerHTML = messages.map((msg) => '<li>' + escapeHtml(String(msg)) + '</li>').join('');
+                    }
+
                     if (badge) {
                         badge.textContent = success ? 'Success' : 'Error';
                         badge.className = 'text-xs px-2 py-0.5 rounded-full ' + (success ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800');
@@ -1697,387 +1674,18 @@
                 panel.querySelector('#workflowDebugContent')?.classList.remove('hidden');
             }
 
-            const fullAiState = {
-                sessionId: null,
-                diagram: {
-                    categories: [],
-                    meals: [],
-                    category_ingredients: [],
-                    ingredients: [],
-                },
-            };
-
-            const emptyDiagram = () => ({
-                categories: [],
-                meals: [],
-                category_ingredients: [],
-                ingredients: [],
-            });
-
-            function appendFullAiLog(message, step = '') {
-                if (!fullAiLogEntries) {
-                    return;
-                }
-                const placeholder = fullAiLogEntries.querySelector('[data-full-ai-log-placeholder]');
-                if (placeholder) placeholder.remove();
-                const time = new Date().toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                const row = document.createElement('div');
-                row.className = 'flex gap-2 text-[#2b1e11]';
-                row.innerHTML = `<span class="text-[#a78a6c] shrink-0">[${time}]</span><span>${step ? `<span class="font-semibold text-[#f47a2e]">${escapeHtml(step)}</span> ` : ''}${escapeHtml(message)}</span>`;
-                fullAiLogEntries.appendChild(row);
-                fullAiLogEntries.scrollTop = fullAiLogEntries.scrollHeight;
-            }
-
-            function renderFullAiDiagram(diagram) {
-                if (!fullAiDiagramEl) {
-                    return;
-                }
-                const data = diagram || fullAiState.diagram || emptyDiagram();
-                const mealsByCategory = {};
-                (data.meals || []).forEach((meal) => {
-                    const key = meal.category || 'Unassigned';
-                    if (!mealsByCategory[key]) mealsByCategory[key] = [];
-                    mealsByCategory[key].push(meal);
-                });
-
-                const categoryList = (data.categories || [])
-                    .map((cat) => {
-                        const img = (cat.image_url) ? `<img src="/${escapeHtml(cat.image_url)}" alt="" class="inline-block w-10 h-10 rounded object-cover mr-2 align-middle" onerror="this.style.display='none'">` : '';
-                        return `<li class="pl-1 flex items-center gap-2 py-0.5">${img}<span>${escapeHtml(cat.label)}</span></li>`;
-                    })
-                    .join('') || '<li class="text-[#a78a6c]">No categories yet.</li>';
-
-                const mealSections = Object.keys(mealsByCategory).map((cat) => {
-                    const items = mealsByCategory[cat].map((meal) => `<li>${escapeHtml(meal.label)} <span class="text-[#a78a6c]">(${escapeHtml(meal.price)})</span></li>`).join('');
-                    return `<div><p class="font-semibold text-[#2b1e11]">${escapeHtml(cat)}</p><ul class="list-disc list-inside pl-4 text-[#7c6a56]">${items}</ul></div>`;
-                }).join('') || '<p class="text-[#a78a6c]">No meals yet.</p>';
-
-                const ingredientsList = (data.ingredients || [])
-                    .map((ingredient) => `<span class="rounded-full bg-[#fef8f0] px-2 py-1 text-xs text-[#2b1e11] border border-[#f1dfc5]">${escapeHtml(ingredient.name)}</span>`)
-                    .join('');
-
-                fullAiDiagramEl.innerHTML = `
-                    <div class="space-y-4 text-sm">
-                        <div>
-                            <p class="font-semibold text-[#2b1e11] mb-1">Categories (${(data.categories || []).length})</p>
-                            <ul class="list-disc list-inside text-[#7c6a56]">${categoryList}</ul>
-                        </div>
-                        <div>
-                            <p class="font-semibold text-[#2b1e11] mb-1">Meals</p>
-                            <div class="space-y-2">${mealSections}</div>
-                        </div>
-                        <div>
-                            <p class="font-semibold text-[#2b1e11] mb-1">Ingredients (${(data.ingredients || []).length})</p>
-                            <div class="flex flex-wrap gap-2">${ingredientsList || '<span class="text-[#a78a6c]">No ingredients yet.</span>'}</div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            function renderFullAiApproval(step) {
-                if (!fullAiApprovalPanel) {
-                    return;
-                }
-                if (!step) {
-                    fullAiApprovalPanel.innerHTML = '<p class="text-[#7c6a56] text-sm text-center">Nothing to approve right now. Run the automation or continue approving steps.</p>';
-                    fullAiApprovalPanel.classList.add('flex', 'items-center', 'justify-center');
-                    if (fullAiSessionBadge) {
-                        fullAiSessionBadge.textContent = 'Nothing running';
-                        fullAiSessionBadge.className = 'text-sm px-3 py-1 rounded-full bg-[#f1dfc5] text-[#7c6a56] font-medium';
-                    }
-                    return;
-                }
-                fullAiApprovalPanel.classList.remove('flex', 'items-center', 'justify-center');
-
-                const bodyPreview = JSON.stringify(step.http?.body ?? {}, null, 2);
-                fullAiApprovalPanel.innerHTML = `
-                    <div class="space-y-3">
-                        <div>
-                            <p class="text-sm font-semibold text-[#f47a2e]">${step.title || 'Next action'}</p>
-                            <p class="text-sm text-[#2b1e11]">${step.description || ''}</p>
-                        </div>
-                        <div class="rounded-xl border border-[#f1dfc5] bg-white px-4 py-3 text-sm text-[#7c6a56] space-y-1">
-                            <p><span class="font-semibold text-[#2b1e11]">Action:</span> ${step.http?.method ?? 'POST'} → ${(step.http?.url ?? 'N/A').replace(/^\//, '')}</p>
-                        </div>
-                        <p class="text-xs font-semibold text-[#2b1e11]">Data to send:</p>
-                        <pre class="max-h-40 overflow-auto rounded-xl border border-[#f1dfc5] bg-[#2b1e11] text-xs text-emerald-200 p-3">${escapeHtml(bodyPreview)}</pre>
-                        <div class="flex flex-wrap gap-3">
-                            <button
-                                type="button"
-                                data-full-ai-approve="1"
-                                class="kaman-button px-5 py-2.5 text-sm font-semibold text-white"
-                            >
-                                Send to Kaman
-                            </button>
-                            <button
-                                type="button"
-                                data-full-ai-skip="1"
-                                class="rounded-xl border-2 border-[#f1dfc5] px-5 py-2.5 text-sm font-semibold text-[#7c6a56] hover:bg-[#fef8f0]"
-                            >
-                                Skip
-                            </button>
-                        </div>
-                    </div>
-                `;
-
-                if (fullAiSessionBadge) {
-                    fullAiSessionBadge.textContent = 'Your turn';
-                    fullAiSessionBadge.className = 'text-sm px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-medium';
-                }
-
-                fullAiApprovalPanel.querySelector('[data-full-ai-approve]')?.addEventListener('click', () => approveFullAiStep(step.id ?? null, true));
-                fullAiApprovalPanel.querySelector('[data-full-ai-skip]')?.addEventListener('click', () => approveFullAiStep(step.id ?? null, false));
-            }
-
-            function getCsrfToken() {
-                return document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || document.querySelector('input[name=\"_token\"]')?.value || '';
-            }
-
-            async function executeFullAiHttpStep(stepHttp) {
-                if (!stepHttp || !stepHttp.url) {
-                    appendFullAiLog('No HTTP metadata found for this step.', 'http');
-                    return;
-                }
-                const method = (stepHttp.method || 'POST').toUpperCase();
-                const path = stepHttp.url;
-                const body = stepHttp.body ?? {};
-                const fullUrl = path.startsWith('http') ? path : '(Kaman) ' + path;
-
-                try {
-                    appendFullAiLog(`Sending ${method} ${fullUrl}`, 'http');
-                    const response = await fetch(FULL_AI_ROUTES.executeStep, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': getCsrfToken(),
-                        },
-                        body: JSON.stringify({ method, path, body }),
-                    });
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        appendFullAiLog(
-                            (data.error || 'Request failed') + (data.status ? ' (HTTP ' + data.status + ')' : ''),
-                            'http'
-                        );
-                        return;
-                    }
-
-                    const status = data.status ?? 0;
-                    const ok = data.success === true;
-                    appendFullAiLog(
-                        `HTTP ${status} ${ok ? 'OK' : 'ERROR'} for ${method} ${fullUrl}`,
-                        'http'
-                    );
-                    const payload = data.body;
-                    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
-                    appendFullAiLog('Response: ' + payloadStr, 'http');
-                } catch (error) {
-                    appendFullAiLog(`HTTP request failed: ${error.message}`, 'error');
-                }
-            }
-
-            async function approveFullAiStep(stepId, approved = true) {
-                if (!fullAiState.sessionId) {
-                    appendFullAiLog('No active session to approve.', 'warning');
-                    return;
-                }
-                try {
-                    appendFullAiLog(approved ? 'Approving pending request...' : 'Skipping request...', stepId || 'step');
-                    const response = await fetch(`${FULL_AI_ROUTES.approveBase}/${fullAiState.sessionId}/approve`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': getCsrfToken(),
-                        },
-                        body: JSON.stringify({ step_id: stepId, approved }),
-                    });
-                    const data = await response.json();
-                    if (!response.ok || !data.success) {
-                        throw new Error(data.error || 'Approval failed');
-                    }
-                    fullAiState.diagram = data.diagram || fullAiState.diagram;
-                    renderFullAiDiagram(fullAiState.diagram);
-                    renderFullAiApproval(data.next_step);
-                    appendFullAiLog(approved ? 'Applied step successfully.' : 'Skipped step.', data.applied_step?.id ?? '');
-                    if (approved && data.applied_step?.http) {
-                        await executeFullAiHttpStep(data.applied_step.http);
-                    }
-                    if (data.finished) {
-                        if (fullAiSessionBadge) {
-                            fullAiSessionBadge.textContent = 'All done';
-                            fullAiSessionBadge.className = 'text-sm px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-medium';
-                        }
-                    }
-                } catch (error) {
-                    appendFullAiLog(`Approval failed: ${error.message}`, 'error');
-                    alert(error.message || 'Approval failed.');
-                }
-            }
-
-            if (fullAiClearLog && fullAiLogEntries) {
-                fullAiClearLog.addEventListener('click', () => {
-                    fullAiLogEntries.innerHTML = '<p data-full-ai-log-placeholder class="text-[#a78a6c] italic">Log cleared.</p>';
-                });
-            }
-
             if (unitLoginBtn && unitLoginStatus) {
                 unitLoginBtn.addEventListener('click', async () => {
-                    const nameEl = document.getElementById('restaurant_name');
-                    const passEl = document.getElementById('password');
-                    const name = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
-                    const password = (passEl && passEl.value) ? passEl.value : '';
-                    unitLoginStatus.textContent = '';
-                    unitLoginStatus.className = 'text-sm min-h-[1.5em]';
-                    if (!name || !password) {
-                        unitLoginStatus.textContent = 'Enter restaurant name and password first.';
-                        unitLoginStatus.classList.add('text-amber-700');
-                        return;
-                    }
-                    unitLoginBtn.disabled = true;
-                    unitLoginStatus.textContent = 'Logging in…';
-                    unitLoginStatus.classList.add('text-[#7c6a56]');
-                    try {
-                        const response = await fetch(FULL_AI_ROUTES.login, {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRF-TOKEN': getCsrfToken(),
-                            },
-                            body: JSON.stringify({ restaurant_name: name, password: password }),
-                        });
-                        const data = await response.json().catch(() => ({}));
-                        if (response.ok && data.success) {
-                            unitLoginStatus.textContent = data.message || 'Token stored successfully. You can run the AI workflows.';
-                            unitLoginStatus.className = 'text-sm min-h-[1.5em] text-emerald-700';
-                        } else {
-                            unitLoginStatus.textContent = data.message || data.error || 'Something went wrong. Check your credentials.';
-                            unitLoginStatus.className = 'text-sm min-h-[1.5em] text-red-600';
-                        }
-                    } catch (err) {
-                        unitLoginStatus.textContent = 'Network error. Try again.';
-                        unitLoginStatus.className = 'text-sm min-h-[1.5em] text-red-600';
-                    } finally {
-                        unitLoginBtn.disabled = false;
-                    }
-                });
-            }
-
-            if (fullAiLoginBtn && fullAiLoginStatus) {
-                fullAiLoginBtn.addEventListener('click', async () => {
-                    const nameEl = document.getElementById('full_ai_restaurant_name');
-                    const passEl = document.getElementById('full_ai_password');
-                    const name = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
-                    const password = (passEl && passEl.value) ? passEl.value : '';
-                    fullAiLoginStatus.textContent = '';
-                    fullAiLoginStatus.className = 'text-sm min-h-[1.5em]';
-                    if (!name || !password) {
-                        fullAiLoginStatus.textContent = 'Enter restaurant name and password first.';
-                        fullAiLoginStatus.classList.add('text-amber-700');
-                        return;
-                    }
-                    fullAiLoginBtn.disabled = true;
-                    fullAiLoginStatus.textContent = 'Logging in…';
-                    fullAiLoginStatus.classList.add('text-[#7c6a56]');
-                    try {
-                        const response = await fetch(FULL_AI_ROUTES.login, {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRF-TOKEN': getCsrfToken(),
-                            },
-                            body: JSON.stringify({ restaurant_name: name, password: password }),
-                        });
-                        const data = await response.json().catch(() => ({}));
-                        if (response.ok && data.success) {
-                            fullAiLoginStatus.textContent = data.message || 'Token stored successfully. You can start Full AI automation.';
-                            fullAiLoginStatus.className = 'text-sm min-h-[1.5em] text-emerald-700';
-                        } else {
-                            fullAiLoginStatus.textContent = data.message || data.error || 'Something went wrong. Check your credentials.';
-                            fullAiLoginStatus.className = 'text-sm min-h-[1.5em] text-red-600';
-                        }
-                    } catch (err) {
-                        fullAiLoginStatus.textContent = 'Network error. Try again.';
-                        fullAiLoginStatus.className = 'text-sm min-h-[1.5em] text-red-600';
-                    } finally {
-                        fullAiLoginBtn.disabled = false;
-                    }
-                });
-            }
-
-            if (fullAiForm) {
-                fullAiForm.addEventListener('submit', async (event) => {
-                    event.preventDefault();
-                    persistFormCredentials();
-                    setAutomationPath('full');
-                    fullAiState.sessionId = null;
-                    fullAiState.diagram = emptyDiagram();
-                    renderFullAiDiagram(fullAiState.diagram);
-                    renderFullAiApproval(null);
-                    appendFullAiLog('Launching Full AI automation...', 'agent');
-                    const submitBtn = fullAiForm.querySelector('button[type=\"submit\"]');
-                    if (submitBtn) {
-                        submitBtn.disabled = true;
-                        submitBtn.textContent = 'Launching...';
-                    }
-                    if (fullAiFormStatus) {
-                        fullAiFormStatus.textContent = 'Preparing agent payload...';
-                    }
-                    const fullAiFilesInput = document.getElementById('full_ai_files');
-                    const fullAiDescription = document.getElementById('full_ai_description');
-                    const hasText = fullAiDescription && fullAiDescription.value.trim().length > 0;
-                    const hasFiles = fullAiFilesInput && fullAiFilesInput.files && fullAiFilesInput.files.length > 0;
-                    if (!hasText && !hasFiles) {
-                        appendFullAiLog('Provide either menu text or at least one file.', 'error');
-                        if (fullAiFormStatus) fullAiFormStatus.textContent = 'Upload a PDF/image or paste text.';
-                        if (submitBtn) {
-                            submitBtn.disabled = false;
-                            submitBtn.textContent = '⚡ Start Full AI Automation';
-                        }
-                        return;
-                    }
-                    try {
-                        const fd = new FormData(fullAiForm);
-                        const response = await fetch(FULL_AI_ROUTES.start, {
-                            method: 'POST',
-                            body: fd,
-                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        });
-                        const data = await response.json();
-                        if (!response.ok || !data.success) {
-                            throw new Error(data.error || 'Unable to start the agent.');
-                        }
-                        fullAiState.sessionId = data.session_id;
-                        fullAiState.diagram = data.diagram || emptyDiagram();
-                        renderFullAiDiagram(fullAiState.diagram);
-                        renderFullAiApproval(data.next_step);
-                        appendFullAiLog(`Session ${data.session_id.substring(0, 8)} created.`, 'session');
-                        if (fullAiSessionBadge) {
-                            fullAiSessionBadge.textContent = data.next_step ? 'Your turn' : 'All done';
-                            fullAiSessionBadge.className = 'text-sm px-3 py-1 rounded-full font-medium ' + (data.next_step ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800');
-                        }
-                        if (fullAiFormStatus) {
-                            fullAiFormStatus.textContent = data.next_step ? 'Awaiting your approval…' : 'Agent finished instantly.';
-                        }
-                    } catch (error) {
-                        appendFullAiLog(`Start failed: ${error.message}`, 'error');
-                        if (fullAiFormStatus) fullAiFormStatus.textContent = error.message || 'Start failed.';
-                        alert(error.message || 'Failed to start agent.');
-                    } finally {
-                        if (submitBtn) {
-                            submitBtn.disabled = false;
-                            submitBtn.textContent = '⚡ Start Full AI Automation';
-                        }
-                    }
+                    await performKamanLogin({
+                        subdomainEl: document.getElementById('subdomain'),
+                        environmentEl: document.getElementById('environment'),
+                        usernameEl: document.getElementById('username'),
+                        passwordEl: document.getElementById('password'),
+                        credentialsPanelId: 'unitLoginCredentials',
+                        statusEl: unitLoginStatus,
+                        loginBtn: unitLoginBtn,
+                        successMessage: 'Token stored successfully. You can run the AI workflows.',
+                    });
                 });
             }
 
@@ -2277,26 +1885,50 @@
             }
 
             function updateFormMode() {
-                setDrinksMode(null);
+                const mode = methodTypeSelect ? methodTypeSelect.value : '';
+                const categoryStoreHint = document.getElementById('categoryStoreHint');
+                const structuredBlocksHint = document.getElementById('structuredBlocksHint');
+                const categoryListModes = ['Category Store', 'Category Ingredients Store'];
+                const structuredModes = [
+                    'Meal Store',
+                    'Category and Meal Store',
+                    'Ingredients Store',
+                    'Category and Ingredients Store',
+                ];
+                const imageStoreModes = ['Drinks Store'];
+                const drinksModeMap = {
+                    'Drinks Store': 'cold',
+                };
+
+                setDrinksMode(drinksModeMap[mode] || null);
+
                 if (descriptionSection) {
                     descriptionSection.classList.remove('hidden');
                 }
                 if (descriptionField) {
                     descriptionField.setAttribute('name', 'description');
                     descriptionField.removeAttribute('disabled');
+                    if (categoryListModes.includes(mode) || structuredModes.includes(mode) || mode === 'Category Store With AI Image' || mode === 'Meal Store With AI Images') {
+                        descriptionField.setAttribute('required', 'required');
+                    } else if (mode === 'Drinks Store') {
+                        descriptionField.removeAttribute('required');
+                    }
                 }
-                if (categoryNameEnSection) {
-                    categoryNameEnSection.classList.add('hidden');
+
+                if (categoryStoreHint) {
+                    categoryStoreHint.classList.toggle('hidden', !categoryListModes.includes(mode));
                 }
-                if (mealAiStyleSection) {
-                    mealAiStyleSection.classList.add('hidden');
+                if (structuredBlocksHint) {
+                    structuredBlocksHint.classList.toggle('hidden', !structuredModes.includes(mode));
                 }
                 if (categoryLogoSection) {
-                    categoryLogoSection.classList.add('hidden');
+                    categoryLogoSection.classList.toggle('hidden', mode !== 'Category Store With AI Image');
                 }
-                const structuredBlocksHint = document.getElementById('structuredBlocksHint');
-                if (structuredBlocksHint) {
-                    structuredBlocksHint.classList.add('hidden');
+                if (mealAiStyleSection) {
+                    mealAiStyleSection.classList.toggle('hidden', mode !== 'Meal Store With AI Images');
+                }
+                if (categoryNameEnSection) {
+                    categoryNameEnSection.classList.toggle('hidden', !imageStoreModes.includes(mode));
                 }
             }
 
@@ -2584,28 +2216,22 @@
             form.addEventListener('submit', (event) => {
                 persistFormCredentials();
                 const mode = methodTypeSelect.value;
-                const restaurantNameInput = document.getElementById('restaurant_name');
-                const passwordInput = document.getElementById('password');
+                const subdomainInput = document.getElementById('subdomain');
                 
                 // Validate always-required fields
                 let hasBasicError = false;
                 
-                if (!restaurantNameInput || !restaurantNameInput.value.trim()) {
+                if (!subdomainInput || !subdomainInput.value.trim()) {
                     hasBasicError = true;
-                    if (restaurantNameInput) {
-                        restaurantNameInput.classList.add('border-red-400');
+                    if (subdomainInput) {
+                        subdomainInput.classList.add('border-red-400');
                     }
-                } else if (restaurantNameInput) {
-                    restaurantNameInput.classList.remove('border-red-400');
+                } else if (subdomainInput) {
+                    subdomainInput.classList.remove('border-red-400');
                 }
-                
-                if (!passwordInput || !passwordInput.value.trim()) {
+
+                if (!ensureFormCredentialsForSubmit()) {
                     hasBasicError = true;
-                    if (passwordInput) {
-                        passwordInput.classList.add('border-red-400');
-                    }
-                } else if (passwordInput) {
-                    passwordInput.classList.remove('border-red-400');
                 }
                 
                 if (!mode) {
@@ -2619,267 +2245,103 @@
                 
                 if (hasBasicError) {
                     event.preventDefault();
-                    alert('Please fill in all required fields: Restaurant Name and Password.');
+                    alert(hasSavedCredentials()
+                        ? 'Please fill in all required fields: Method Type and Subdomain.'
+                        : 'Please sign in first: enter subdomain, click Login, then provide your username and password.');
                     return;
                 }
 
-                if (!descriptionField || !descriptionField.value.trim()) {
-                    event.preventDefault();
-                    if (descriptionField) {
-                        descriptionField.classList.add('border-red-400');
+                const categoryListModes = ['Category Store', 'Category Ingredients Store'];
+                const structuredModes = [
+                    'Meal Store',
+                    'Category and Meal Store',
+                    'Ingredients Store',
+                    'Category and Ingredients Store',
+                ];
+                const textDescriptionModes = [
+                    ...categoryListModes,
+                    ...structuredModes,
+                    'Category Store With AI Image',
+                    'Meal Store With AI Images',
+                ];
+
+                if (textDescriptionModes.includes(mode)) {
+                    if (!descriptionField || !descriptionField.value.trim()) {
+                        event.preventDefault();
+                        if (descriptionField) {
+                            descriptionField.classList.add('border-red-400');
+                        }
+                        alert(categoryListModes.includes(mode)
+                            ? 'Please enter at least one category name in the description.'
+                            : 'Please enter a description for this method type.');
+                        return;
                     }
-                    alert('Please enter at least one category name in the description.');
-                    return;
-                }
-                if (descriptionField) {
-                    descriptionField.classList.remove('border-red-400');
+                    if (descriptionField) {
+                        descriptionField.classList.remove('border-red-400');
+                    }
                 }
 
                 event.preventDefault();
-                submitFormWithLiveDebug(form);
-                return;
-                
-                // Validate Image Renamer fields if Image Renamer is selected
-                if (mode === 'Image Renamer') {
-                    const customNameInput = document.getElementById('custom_name');
-                    const imagesFileNamesInput = document.getElementById('images_file_names');
-                    const folderInput = document.getElementById('folder');
-                    
-                    let hasError = false;
-                    
-                    if (!customNameInput || !customNameInput.value.trim()) {
-                        hasError = true;
-                        if (customNameInput) {
-                            customNameInput.classList.add('border-red-400');
-                        }
-                    } else if (customNameInput) {
-                        customNameInput.classList.remove('border-red-400');
-                    }
-                    
-                    if (!imagesFileNamesInput || !imagesFileNamesInput.value.trim()) {
-                        hasError = true;
-                        if (imagesFileNamesInput) {
-                            imagesFileNamesInput.classList.add('border-red-400');
-                        }
-                    } else if (imagesFileNamesInput) {
-                        imagesFileNamesInput.classList.remove('border-red-400');
-                    }
-                    
-                    if (!folderInput || !folderInput.files || folderInput.files.length === 0) {
-                        hasError = true;
-                        if (folderInput) {
-                            folderInput.classList.add('border-red-400');
-                        }
-                    } else if (folderInput) {
-                        folderInput.classList.remove('border-red-400');
-                    }
-                    
-                    if (hasError) {
-                        event.preventDefault();
-                        alert('Please fill in all required Image Renamer fields: Custom Name, Images File Names, and Upload Images.');
-                        return;
-                    }
-                    
-                    // If validation passes, allow form to submit
-                    return;
-                }
-                
-                // Handle Custom Image Named - AJAX submit with folder files
-                if (mode === 'Custom Image Named') {
-                    const folderUpload = document.getElementById('folder_upload');
-                    if (!folderUpload || !folderUpload.files || folderUpload.files.length === 0) {
-                        event.preventDefault();
-                        if (customImageNamedError) {
-                            customImageNamedError.textContent = '{{ __('form.error_choose_folder') }}';
-                            customImageNamedError.classList.remove('hidden');
-                        }
-                        if (folderUpload) folderUpload.classList.add('border-red-400');
-                        return;
-                    }
-                    const files = Array.from(folderUpload.files).filter(f => f.type.startsWith('image/'));
-                    if (files.length === 0) {
-                        event.preventDefault();
-                        if (customImageNamedError) {
-                            customImageNamedError.textContent = '{{ __('form.error_choose_folder') }}';
-                            customImageNamedError.classList.remove('hidden');
-                        }
-                        if (folderUpload) folderUpload.classList.add('border-red-400');
-                        return;
-                    }
-                    event.preventDefault();
-                    const formData = new FormData(form);
-                    formData.delete('folder_upload[]');
-                    formData.delete('_token');
-                    files.forEach((file) => {
-                        const path = file.webkitRelativePath || file.name;
-                        formData.append('folder_paths[]', path);
-                        formData.append('folder_files[]', file);
-                    });
-                    submitFormWithLiveDebug(form, formData);
-                    return;
-                }
 
-                // Handle Custom Images Meals Store validation
-                if (mode === 'Custom Images Meals Store') {
-                    const folderNameInput = document.getElementById('folder_name');
-                    const mealImagesFileInput = document.getElementById('meal_images');
-                    
-                    let hasError = false;
-                    
-                    if (!folderNameInput || !folderNameInput.value.trim()) {
-                        hasError = true;
-                        if (folderNameInput) {
-                            folderNameInput.classList.add('border-red-400');
-                        }
-                    } else if (folderNameInput) {
-                        folderNameInput.classList.remove('border-red-400');
-                    }
-                    
-                    if (!mealImagesFileInput || !mealImagesFileInput.files || mealImagesFileInput.files.length === 0) {
-                        hasError = true;
-                        if (mealImagesFileInput) {
-                            mealImagesFileInput.classList.add('border-red-400');
-                        }
-                        if (customImagesMealsError) {
-                            customImagesMealsError.textContent = 'Please upload at least one image.';
-                            customImagesMealsError.classList.remove('hidden');
-                        }
-                    } else {
-                        const fileCount = mealImagesFileInput.files.length;
-                        if (fileCount > 50) {
-                            hasError = true;
-                            if (mealImagesFileInput) {
-                                mealImagesFileInput.classList.add('border-red-400');
-                            }
-                            if (customImagesMealsError) {
-                                customImagesMealsError.textContent = 'Please upload no more than 50 images.';
-                                customImagesMealsError.classList.remove('hidden');
-                            }
-                        } else {
-                            if (mealImagesFileInput) {
-                                mealImagesFileInput.classList.remove('border-red-400');
-                            }
-                            if (customImagesMealsError) {
-                                customImagesMealsError.classList.add('hidden');
-                            }
-                        }
-                    }
-                    
-                    if (hasError) {
-                        event.preventDefault();
-                        return;
-                    }
-                    
-                    // Ensure description field is properly configured before submission
-                    if (descriptionField) {
-                        descriptionField.setAttribute('name', 'description');
-                        descriptionField.removeAttribute('disabled');
-                    }
-                    event.preventDefault();
-                    submitFormWithLiveDebug(form);
-                    return;
-                }
-                
-                // Structured text workflows — submit with live debug (long-running OpenAI)
-                if (mode === 'Meal Store' || mode === 'Category and Meal Store' || mode === 'Ingredients Store' || mode === 'Category and Ingredients Store') {
-                    // Ensure description field is properly configured before submission
-                    if (descriptionField) {
-                        descriptionField.setAttribute('name', 'description');
-                        descriptionField.removeAttribute('disabled');
-                    }
-                    event.preventDefault();
-                    submitFormWithLiveDebug(form);
-                    return;
-                }
-                
-                // Handle image-based methods (excluding Custom Images Meals Store as it's handled separately)
-                if (mode !== 'Drinks Store' && mode !== 'Hot Drinks Store' && mode !== 'Natural Juices Store' && mode !== 'Sweets Store' && mode !== 'Pasta Meals Store' && mode !== 'Burger Store' && mode !== 'Sandwiches Store' && mode !== 'Ingredients Images Store') {
-                    return;
-                }
-
-                let activeSection, errorElement;
                 if (mode === 'Drinks Store') {
-                    activeSection = drinksSection;
-                    errorElement = drinksError;
-                } else if (mode === 'Hot Drinks Store') {
-                    activeSection = hotDrinksSection;
-                    errorElement = hotDrinksError;
-                } else if (mode === 'Natural Juices Store') {
-                    activeSection = naturalJuicesSection;
-                    errorElement = naturalJuicesError;
-                } else if (mode === 'Sweets Store') {
-                    activeSection = sweetsSection;
-                    errorElement = sweetsError;
-                } else if (mode === 'Pasta Meals Store') {
-                    activeSection = pastaMealsSection;
-                    errorElement = pastaMealsError;
-                } else if (mode === 'Burger Store') {
-                    activeSection = burgerSection;
-                    errorElement = burgerError;
-                } else if (mode === 'Sandwiches Store') {
-                    activeSection = sandwichesSection;
-                    errorElement = sandwichesError;
-                } else if (mode === 'Ingredients Images Store') {
-                    activeSection = ingredientsSection;
-                    errorElement = ingredientsError;
-                }
+                    const activeSection = drinksSection;
+                    const errorElement = drinksError;
 
-                if (!activeSection) {
-                    return;
-                }
+                    if (!activeSection) {
+                        return;
+                    }
 
-                const activeCards = Array.from(activeSection.querySelectorAll('[data-drink-card]'));
-                const selections = [];
-                let hasError = false;
+                    const activeCards = Array.from(activeSection.querySelectorAll('[data-drink-card]'));
+                    const selections = [];
+                    let hasError = false;
 
-                activeCards.forEach((card) => {
-                    const checkbox = card.querySelector('.drink-checkbox');
-                    const priceInput = card.querySelector('[data-price-input]');
-                    const name = checkbox.dataset.drinkName;
-                    const label = checkbox.dataset.drinkLabel || name;
-                    const nameAr = checkbox.dataset.drinkNameAr || '';
+                    activeCards.forEach((card) => {
+                        const checkbox = card.querySelector('.drink-checkbox');
+                        const priceInput = card.querySelector('[data-price-input]');
+                        const name = checkbox.dataset.drinkName;
+                        const label = checkbox.dataset.drinkLabel || name;
 
-                    if (checkbox.checked) {
-                        const priceValue = priceInput.value.trim();
-                        if (priceValue === '' || isNaN(priceValue) || Number(priceValue) < 0) {
-                            hasError = true;
-                            card.classList.add('border-red-400');
+                        if (checkbox.checked) {
+                            const priceValue = priceInput.value.trim();
+                            if (priceValue === '' || isNaN(priceValue) || Number(priceValue) < 0) {
+                                hasError = true;
+                                card.classList.add('border-red-400');
+                            } else {
+                                card.classList.remove('border-red-400');
+                                selections.push({
+                                    key: name,
+                                    name: name ? name.toLowerCase() : name,
+                                    label,
+                                    price: Number(priceValue).toFixed(2),
+                                });
+                            }
                         } else {
                             card.classList.remove('border-red-400');
-                            const selection = {
-                                key: name,
-                                name: name ? name.toLowerCase() : name,
-                                label,
-                                price: Number(priceValue).toFixed(2),
-                            };
-                            // Include name_ar for Natural Juices Store
-                            if (mode === 'Natural Juices Store' && nameAr) {
-                                selection.name_ar = nameAr;
-                            }
-                            selections.push(selection);
                         }
-                    } else {
-                        card.classList.remove('border-red-400');
+                    });
+
+                    if (selections.length === 0) {
+                        hasError = true;
                     }
-                });
 
-                if (selections.length === 0) {
-                    hasError = true;
-                }
+                    if (hasError) {
+                        errorElement.classList.remove('hidden');
+                        return;
+                    }
 
-                if (hasError) {
-                    event.preventDefault();
-                    errorElement.classList.remove('hidden');
+                    errorElement.classList.add('hidden');
+                    drinksPayloadInput.value = JSON.stringify(selections);
+                    const descriptionLines = selections.map((item) => `${item.name} : ${item.price}`);
+                    descriptionField.value = `{\n${descriptionLines.join('\n')}\n}`;
+                    submitFormWithLiveDebug(form);
                     return;
                 }
 
-                errorElement.classList.add('hidden');
-                drinksPayloadInput.value = JSON.stringify(selections);
-                const descriptionLines = selections.map((item) => `${item.name} : ${item.price}`);
-                descriptionField.value = `{\n${descriptionLines.join('\n')}\n}`;
-                event.preventDefault();
+                if (descriptionField) {
+                    descriptionField.setAttribute('name', 'description');
+                    descriptionField.removeAttribute('disabled');
+                }
                 submitFormWithLiveDebug(form);
-                return;
             });
 
             methodTypeSelect.addEventListener('change', updateFormMode);

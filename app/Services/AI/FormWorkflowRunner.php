@@ -5,7 +5,15 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Services\AI\Contracts\FormWorkflowContract;
+use App\Services\AI\Workflows\CategoryAndIngredientsStoreWorkflow;
+use App\Services\AI\Workflows\CategoryAndMealStoreWorkflow;
+use App\Services\AI\Workflows\CategoryIngredientsStoreWorkflow;
+use App\Services\AI\Workflows\CategoryStoreWithAiImageWorkflow;
 use App\Services\AI\Workflows\CategoryStoreWorkflow;
+use App\Services\AI\Workflows\DrinksStoreWorkflow;
+use App\Services\AI\Workflows\IngredientsStoreWorkflow;
+use App\Services\AI\Workflows\MealStoreWithAiImagesWorkflow;
+use App\Services\AI\Workflows\MealStoreWorkflow;
 use Illuminate\Support\Facades\Log;
 
 final class FormWorkflowRunner
@@ -13,7 +21,23 @@ final class FormWorkflowRunner
     /** @var array<string, class-string<FormWorkflowContract>> */
     private const WORKFLOW_MAP = [
         'Category Store' => CategoryStoreWorkflow::class,
+        'Category Store With AI Image' => CategoryStoreWithAiImageWorkflow::class,
+        'Category Ingredients Store' => CategoryIngredientsStoreWorkflow::class,
+        'Meal Store' => MealStoreWorkflow::class,
+        'Meal Store With AI Images' => MealStoreWithAiImagesWorkflow::class,
+        'Category and Meal Store' => CategoryAndMealStoreWorkflow::class,
+        'Ingredients Store' => IngredientsStoreWorkflow::class,
+        'Category and Ingredients Store' => CategoryAndIngredientsStoreWorkflow::class,
+        'Drinks Store' => DrinksStoreWorkflow::class,
     ];
+
+    /**
+     * @return list<string>
+     */
+    public static function methodTypes(): array
+    {
+        return array_keys(self::WORKFLOW_MAP);
+    }
 
     /**
      * @param  callable(string, string, array): void|null  $onProgress

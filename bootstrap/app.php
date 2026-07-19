@@ -47,12 +47,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
-            'ai-chatbot.auth' => \App\Http\Middleware\AiChatbotAuthenticate::class,
+        $middleware->web(append: [
+            \App\Http\Middleware\SetLocale::class,
         ]);
 
-        $middleware->redirectGuestsTo('/');
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'project' => \App\Http\Middleware\EnsureUserCanAccessProject::class,
+        ]);
+
+        $middleware->redirectGuestsTo('/login');
 
         $middleware->validateCsrfTokens(except: [
             'whatsapp-bot/webhook',

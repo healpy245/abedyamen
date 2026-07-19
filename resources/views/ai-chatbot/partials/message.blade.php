@@ -9,21 +9,22 @@
 
 <div class="flex items-start gap-2 mb-3 {{ $isUser ? 'justify-end' : '' }}">
     @unless($isUser)
-        <div class="mt-0.5 h-7 w-7 rounded-full bg-emerald-500/20 border border-emerald-400/60 flex items-center justify-center text-[11px] font-semibold text-emerald-300">
-            AI
+        <div class="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-[#f47a2e]/12 border border-[#f47a2e]/30 flex items-center justify-center text-[11px] font-bold text-[#f16229]">
+            {{ __('chatbot.ai_label') }}
         </div>
     @endunless
 
     <div dir="{{ $dir }}"
-         class="max-w-[80%] px-3 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap {{ $align }}
-             {{ $isUser ? 'bg-emerald-500 text-slate-950 rounded-br-sm shadow-md' : 'bg-slate-900/80 border border-slate-700/80 rounded-bl-sm text-slate-50' }}">
+         class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap {{ $align }}
+             {{ $isUser
+                 ? 'bg-gradient-to-br from-[#f59f43] to-[#f47a2e] text-white rounded-br-sm shadow-md'
+                 : 'bg-white border border-[#f1dfc5] rounded-bl-sm text-[#2b1e11]' }}">
         {{ $text }}
     </div>
 
     @if($isUser)
-        <div class="mt-0.5 h-7 w-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[11px] font-semibold text-slate-200">
+        <div class="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-[#2b1e11]/8 border border-[#2b1e11]/15 flex items-center justify-center text-[11px] font-bold text-[#2b1e11]">
             {{ mb_strtoupper(mb_substr(auth()->user()?->name ?? 'U', 0, 1)) }}
         </div>
     @endif
 </div>
-
