@@ -1,4 +1,16 @@
+<<<<<<< HEAD
 @extends('layouts.kaman')
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WhatsApp Bot - KAMAN POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+>>>>>>> parent of cd712ea (First)
 
 @section('title', __('whatsapp.title'))
 @section('tag', __('whatsapp.tag'))

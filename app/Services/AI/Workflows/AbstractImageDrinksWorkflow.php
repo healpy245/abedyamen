@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
-use App\Support\KamanUrl;
-
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -47,7 +45,11 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
+<<<<<<< HEAD
         $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
+=======
+        $baseUrl = "https://{$subdomain}.kaman.rest";
+>>>>>>> parent of cd712ea (First)
         $imageBasePath = public_path($imageDirectory);
 
         set_time_limit(600);
@@ -63,9 +65,8 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
             $progress('categories', 'Fetched ' . count($categories) . ' categories', ['count' => count($categories)]);
 
             $progress('ai', 'Parsing ' . $this->getItemLabel() . 's with AI (with images)...', []);
-            $drinks = $this->parseDrinksWithAi($description, $drinksSelection, $imageBasePath, $categories, $payload);
+            $drinks = $this->parseDrinksWithAi($description, $drinksSelection, $imageBasePath, $categories);
             $progress('ai', 'Parsed ' . count($drinks) . ' ' . $this->getItemLabel() . 's', ['count' => count($drinks)]);
-            $drinks = $this->localizeMenuRecords($drinks, $payload, $progress);
 
             $progress('items', 'Creating ' . $this->getItemLabel() . 's via Kaman API...', []);
             $itemsResult = $this->createDrinkItems($baseUrl, $token, $drinks, $progress);
@@ -108,8 +109,13 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
 
     protected function login(string $baseUrl, string $email, string $password): string
     {
+<<<<<<< HEAD
         $response = $this->http()->post("{$baseUrl}/login", [
             'email' => $email,
+=======
+        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
+            'email' => "{$subdomain}@kaman.rest",
+>>>>>>> parent of cd712ea (First)
             'password' => $password,
         ]);
         if (!$response->successful()) {
@@ -127,7 +133,7 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
 
     protected function fetchCategories(string $baseUrl, string $token): array
     {
-        $response = $this->http()->withToken($token)->get("{$baseUrl}/categories");
+        $response = $this->http()->withToken($token)->get("{$baseUrl}/api/manager/categories");
         if (!$response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
             throw new \RuntimeException('Failed to fetch categories: ' . (is_string($message) ? $message : json_encode($message)));
@@ -158,10 +164,9 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
         return null;
     }
 
-    protected function parseDrinksWithAi(string $description, array $drinksSelection, string $imageBasePath, array $categories, array $payload = []): array
+    protected function parseDrinksWithAi(string $description, array $drinksSelection, string $imageBasePath, array $categories): array
     {
         $categoryName = $this->extractCategoryFromDescription($description);
-        $translateNames = $this->shouldTranslateNames($payload);
         $drinks = [];
         $idx = 0;
         foreach ($drinksSelection as $item) {
@@ -169,21 +174,6 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
             $nameEn = trim((string) ($item['name'] ?? $item['label'] ?? $key));
             $price = isset($item['price']) ? number_format((float) $item['price'], 2, '.', '') : '0.00';
             $imagePath = $this->findImagePath($imageBasePath, $key);
-
-            if (!$translateNames) {
-                $drinks[$key] = [
-                    'name_ar' => $nameEn,
-                    'name_en' => $nameEn,
-                    'name_he' => $nameEn,
-                    'price' => $price,
-                    'category_id' => $this->matchCategoryId($categories, $categoryName),
-                    'description_ar' => '',
-                    'description_en' => '',
-                    'description_he' => '',
-                    'image_path' => $imagePath,
-                ];
-                continue;
-            }
 
             if ($imagePath) {
                 $prompt = "Extract the drink/product name from this image. Return a JSON object with: name_ar (proper Arabic translation), name_en (English), name_he (proper Hebrew translation). Use native Arabic and Hebrew script - do not use transliteration. Add brief 1-line descriptions in description_ar, description_en, description_he. Output ONLY valid JSON, no markdown.";
@@ -398,7 +388,7 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
                 if (!empty($drink['image_path']) && File::exists($drink['image_path'])) {
                     $http = $http->attach('image', File::get($drink['image_path']), File::basename($drink['image_path']));
                 }
-                $response = $http->post("{$baseUrl}/items", $body);
+                $response = $http->post("{$baseUrl}/api/manager/items", $body);
             } catch (\Throwable $e) {
                 $failed[] = ['key' => $key, 'error' => $e->getMessage()];
                 Log::warning(static::class . ' item request failed', ['key' => $key, 'error' => $e->getMessage()]);

@@ -8,26 +8,26 @@ use App\Services\WhatsApp\WhatsAppStaffAgentService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppBotController extends Controller
 {
-    private const PUBLIC_BASE_URL = 'https://kaman-workspace.com';
+    private const PUBLIC_BASE_URL = 'https://yc-fit.com';
     private const GREEN_API_SEND_MESSAGE_URL = 'https://7107.api.greenapi.com/waInstance7107542731/sendMessage/9e37d1ee067f4a21bc79cf714d5f250d265f7e31b6294b22b8';
-    private const GREEN_API_SEND_TYPING_URL = 'https://7107.api.greenapi.com/waInstance7107542731/sendTyping/9e37d1ee067f4a21bc79cf714d5f250d265f7e31b6294b22b8';
     private const LEAD_CREATE_URL = 'https://mfit.karmelfiber.com/new-lead-mfit';
     private const LEAD_STATUS_VALUE = 4;
+<<<<<<< HEAD
     private const TEAM_MEMBER_PHONE = '972584680001';
+=======
+>>>>>>> parent of cd712ea (First)
     private const CHAT_CACHE_PREFIX = 'whatsapp_lead_chat_';
     private const WEBHOOK_EVENTS_CACHE_KEY = 'whatsapp_webhook_events';
     private const WEBHOOK_ACTIVE_CACHE_KEY = 'whatsapp_webhook_active';
     /** Unix timestamp: ignore incoming messages older than this after a resume. */
     private const WEBHOOK_RESUME_AFTER_CACHE_KEY = 'whatsapp_webhook_resume_after';
     private const PROMPT_CACHE_KEY = 'whatsapp_chatbot_prompt';
-    private const PROMPT_DB_KEY = 'system_prompt';
     private const PROCESSED_MESSAGE_CACHE_PREFIX = 'whatsapp_processed_message_';
     private const CHAT_HISTORY_LIMIT = 40;
     private const MAX_INCOMING_MESSAGE_AGE_SECONDS = 300;
@@ -63,7 +63,21 @@ class WhatsAppBotController extends Controller
 إذا سأل العميل:
 "هل أنت إنسان؟"
 
+<<<<<<< HEAD
 أجب بشكل طبيعي:
+=======
+FEATURES:
+- نظام كاشير سحابي
+- نظام للنادل
+- شاشة مطبخ
+- طباعة عربي/عبري/إنجليزي
+- تكامل Haat
+- منيو رقمي
+- CRM
+- تقرير Z
+- إرسال فواتير SMS
+- دعم سليكا و4G
+>>>>>>> parent of cd712ea (First)
 
 "أنا مساعد ذكاء اصطناعي من فريق KAMAN، ومدرب على نظام المطاعم الخاص فينا. وإذا احتجت أي مساعدة إضافية بقدر أوصلك مع أحد أعضاء الفريق."
 
@@ -199,10 +213,21 @@ class WhatsAppBotController extends Controller
 
 مرحبا 👋
 
+<<<<<<< HEAD
 معك KAMAN Assistant من فريق KAMAN POS.
+=======
+DISCOVERY QUESTIONS:
+شو اسمك الكريم؟
+بأي مدينة موجود مطعمك؟
+شو نوع المطعم عندك؟
+كم فرع عندك؟
+هل عندك توصيل؟
+هل تستخدم معريخت حالياً؟
+>>>>>>> parent of cd712ea (First)
 
 هاي معريخت متكاملة لإدارة المطاعم من الكاشير والطلبات وحتى متابعة المبيعات.
 
+<<<<<<< HEAD
 قبل ما نكمل، ممكن اسمك والمدينة اللي موجود فيها المطعم؟
 
 ---
@@ -219,11 +244,16 @@ class WhatsAppBotController extends Controller
 اسأل عن الثانية بشكل قصير وطبيعي.
 
 بعد الحصول على الاثنين تابع المحادثة.
+=======
+WHEN ASKED ABOUT PRICE:
+Explain exactly: 599 monthly + 2000 setup, with current free setup offer for first 5 restaurants.
+>>>>>>> parent of cd712ea (First)
 
 ---
 
 # أسئلة التعرف على المطعم
 
+<<<<<<< HEAD
 اسأل بشكل تدريجي وليس دفعة واحدة:
 
 * شو نوع المطعم عندك؟
@@ -513,6 +543,8 @@ KAMAN POS هي معريخت متكاملة لإدارة المطاعم بطري�
 
 إذا احتجت أي مساعدة إحنا موجودين."
 
+=======
+>>>>>>> parent of cd712ea (First)
 OUTPUT RULE:
 Return plain text only, no JSON, no markdown.
 PROMPT;
@@ -538,12 +570,6 @@ PROMPT;
         ]);
 
         $prompt = trim($validated['prompt']);
-
-        DB::table('whatsapp_settings')->updateOrInsert(
-            ['key' => self::PROMPT_DB_KEY],
-            ['value' => $prompt, 'updated_at' => now(), 'created_at' => now()]
-        );
-
         Cache::forever(self::PROMPT_CACHE_KEY, $prompt);
 
         return response()->json([
@@ -554,10 +580,6 @@ PROMPT;
 
     public function resetPrompt()
     {
-        DB::table('whatsapp_settings')
-            ->where('key', self::PROMPT_DB_KEY)
-            ->delete();
-
         Cache::forget(self::PROMPT_CACHE_KEY);
 
         return response()->json([
@@ -818,9 +840,8 @@ PROMPT;
 
         try {
             $reply = $this->generateReply($chatId, $incomingMessage);
-            $this->emitTypingIndicator($chatId);
-            $this->applyHumanLikeDelay($reply);
             $sendResult = $this->sendWhatsAppMessage($chatId, $reply);
+<<<<<<< HEAD
             $postReply = $this->handlePostReplyActions($chatId, $incomingMessage);
             $leadSync = $postReply['lead_sync'];
             $teamNotify = $postReply['team_notify'];
@@ -830,10 +851,15 @@ PROMPT;
             $postReply = $this->handlePostReplyActions($chatId, $incomingMessage);
             $leadSync = $postReply['lead_sync'];
             $teamNotify = $postReply['team_notify'];
+=======
+            $leadSync = $this->syncLeadIfReady($chatId, $incomingMessage);
+        } catch (\Throwable $e) {
+            $fallbackReply = $this->fallbackReply($chatId, $incomingMessage);
+            $sendResult = null;
+            $leadSync = $this->syncLeadIfReady($chatId, $incomingMessage);
+>>>>>>> parent of cd712ea (First)
 
             try {
-                $this->emitTypingIndicator($chatId);
-                $this->applyHumanLikeDelay($fallbackReply);
                 $sendResult = $this->sendWhatsAppMessage($chatId, $fallbackReply);
             } catch (\Throwable $sendError) {
                 Log::error('Fallback Green API send failed', [
@@ -848,9 +874,7 @@ PROMPT;
                 'incoming' => $incomingMessage,
                 'reply' => $fallbackReply,
                 'green_api_status' => $sendResult['status'] ?? null,
-                'reason' => $e->getMessage()
-                    . ($leadSync['message'] !== '' ? ' | Lead sync: ' . $leadSync['message'] : '')
-                    . ($teamNotify['message'] !== '' ? ' | Team notify: ' . $teamNotify['message'] : ''),
+                'reason' => $e->getMessage() . ($leadSync['message'] !== '' ? ' | Lead sync: ' . $leadSync['message'] : ''),
             ]);
 
             Log::error('WhatsApp webhook chatbot failed', [
@@ -875,10 +899,7 @@ PROMPT;
             'incoming' => $incomingMessage,
             'reply' => $reply,
             'green_api_status' => $sendResult['status'] ?? null,
-            'reason' => trim(implode(' | ', array_values(array_filter([
-                $leadSync['message'] !== '' ? 'Lead sync: ' . $leadSync['message'] : null,
-                $teamNotify['message'] !== '' ? 'Team notify: ' . $teamNotify['message'] : null,
-            ])))) ?: null,
+            'reason' => $leadSync['message'] !== '' ? 'Lead sync: ' . $leadSync['message'] : null,
         ]);
 
         return response()->json([
@@ -1030,35 +1051,6 @@ PROMPT;
             'status' => $response->status(),
             'body' => $response->json() ?? $response->body(),
         ];
-    }
-
-    private function emitTypingIndicator(string $chatId): void
-    {
-        try {
-            Http::timeout(10)
-                ->acceptJson()
-                ->post(self::GREEN_API_SEND_TYPING_URL, [
-                    'chatId' => $chatId,
-                ]);
-        } catch (\Throwable $e) {
-            // Keep silent: typing indicator is best-effort only.
-        }
-    }
-
-    private function applyHumanLikeDelay(string $reply): void
-    {
-        $length = mb_strlen(trim($reply));
-        $minMs = 1200;
-        $maxMs = 2600;
-
-        if ($length > 180) {
-            $maxMs = 3600;
-        } elseif ($length > 90) {
-            $maxMs = 3000;
-        }
-
-        $delayMs = random_int($minMs, $maxMs);
-        usleep($delayMs * 1000);
     }
 
     private function fallbackReply(string $chatId, string $incomingMessage): string
@@ -1396,7 +1388,13 @@ PROMPT;
     private function syncLeadIfReady(string $chatId, string $latestIncomingMessage): array
     {
         $path = $this->leadStatePath($chatId);
-        $state = $this->loadLeadState($chatId);
+        $state = [];
+        if (File::exists($path)) {
+            $decoded = json_decode((string) File::get($path), true);
+            if (is_array($decoded)) {
+                $state = $decoded;
+            }
+        }
 
         if (($state['submitted'] ?? false) === true) {
             return ['synced' => true, 'message' => 'already submitted'];
@@ -1440,6 +1438,7 @@ PROMPT;
         return ['synced' => true, 'message' => 'submitted successfully'];
     }
 
+<<<<<<< HEAD
     /**
      * @return array{lead_sync: array{synced:bool,message:string}, team_notify: array{notified:bool,message:string}}
      */
@@ -1525,6 +1524,8 @@ PROMPT;
         return false;
     }
 
+=======
+>>>>>>> parent of cd712ea (First)
     private function normalizePhoneFromChatId(string $chatId): ?string
     {
         $raw = trim((string) explode('@', $chatId)[0]);
@@ -1640,20 +1641,6 @@ PROMPT;
     }
 
     /**
-     * @return array<string,mixed>
-     */
-    private function loadLeadState(string $chatId): array
-    {
-        $path = $this->leadStatePath($chatId);
-        if (!File::exists($path)) {
-            return [];
-        }
-
-        $decoded = json_decode((string) File::get($path), true);
-        return is_array($decoded) ? $decoded : [];
-    }
-
-    /**
      * @param array<string,mixed> $state
      */
     private function saveLeadState(string $path, array $state): void
@@ -1666,6 +1653,7 @@ PROMPT;
         File::put($path, json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     }
 
+<<<<<<< HEAD
     private function teamMemberChatId(): ?string
     {
         $digits = preg_replace('/\D+/', '', self::TEAM_MEMBER_PHONE) ?? '';
@@ -1682,6 +1670,8 @@ PROMPT;
         return $digits . '@c.us';
     }
 
+=======
+>>>>>>> parent of cd712ea (First)
     private function isWebhookActive(): bool
     {
         return (bool) Cache::get(self::WEBHOOK_ACTIVE_CACHE_KEY, true);
@@ -1707,18 +1697,6 @@ PROMPT;
             $customPrompt = trim($customPrompt);
             if ($customPrompt !== '') {
                 return $customPrompt;
-            }
-        }
-
-        $customPromptFromDb = DB::table('whatsapp_settings')
-            ->where('key', self::PROMPT_DB_KEY)
-            ->value('value');
-
-        if (is_string($customPromptFromDb)) {
-            $customPromptFromDb = trim($customPromptFromDb);
-            if ($customPromptFromDb !== '') {
-                Cache::forever(self::PROMPT_CACHE_KEY, $customPromptFromDb);
-                return $customPromptFromDb;
             }
         }
 

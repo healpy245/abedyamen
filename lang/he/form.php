@@ -30,9 +30,6 @@ return [
     
     'description' => 'תיאור',
     'description_placeholder' => 'שתף את הסיפור שלך, מנות חתימה או הערות מיוחדות (אופציונלי)',
-    'category_store_placeholder' => "הזן שמות קטגוריות, שורה לכל קטגוריה.\n\nדוגמה:\nסמוזי\nמיצים טבעיים\nמשקאות קרים",
-    'category_store_hint' => 'שם קטגוריה אחד בכל שורה (כל שפה). השמות מתורגמים לערבית, אנגלית ועברית אלא אם כיבית את התרגום למטה.',
-    'structured_blocks_hint' => 'בלוקים: שם קטגוריה : { שם פריט : מחיר }. Meal Store / Ingredients Store — קטגוריות קיימות. Category and Meal / Category and Ingredients — יוצר קטגוריות חסרות; { } ריק = קטגוריה בלבד.',
     
     'category_name_en' => 'שם קטגוריה (אנגלית)',
     'category_name_en_desc' => '(אופציונלי, משמש לנתיבי חנות כמו חנות המבורגרים, חנות פסטה, מרכיבים עם תמונות, משקאות וכו\')',
@@ -106,9 +103,6 @@ return [
     'submitting' => 'שולח...',
     'error_upload_images' => 'אנא העלה תמונה אחת לפחות.',
     'error_max_images' => 'אנא העלה לא יותר מ-50 תמונות.',
-
-    'translate_names_label' => 'תרגם שמות לערבית, אנגלית ועברית',
-    'translate_names_help' => 'פעיל (ברירת מחדל): כל פריט מקבל תרגום בשלוש השפות. כבוי: הטקסט שלך מועתק כמו שהוא ל-name_ar, name_en ו-name_he.',
     
     'language' => 'שפה',
     'english' => 'אנגלית',

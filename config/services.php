@@ -42,6 +42,7 @@ return [
     ],
 
     'kaman' => [
+<<<<<<< HEAD
         'ssl_verify' => filter_var(env('KAMAN_SSL_VERIFY', 'false'), FILTER_VALIDATE_BOOLEAN),
         /** API host TLD: dev → {name}.kaman.dev, rest → {name}.kaman.rest */
         'api_tld' => env('KAMAN_API_TLD', 'dev'),
@@ -60,6 +61,9 @@ return [
             env('OPENAI_VERIFY_SSL', env('OPENAI_SSL_VERIFY', env('APP_ENV') === 'production' ? 'true' : 'false')),
             FILTER_VALIDATE_BOOLEAN
         ),
+=======
+        'ssl_verify' => filter_var(env('KAMAN_SSL_VERIFY', 'true'), FILTER_VALIDATE_BOOLEAN),
+>>>>>>> parent of cd712ea (First)
     ],
 
 ];

@@ -38,29 +38,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Workflow max execution time (seconds)
+    | Request Timeout
     |--------------------------------------------------------------------------
     |
-    | PHP script time limit for form workflows that call OpenAI (possibly many
-    | times in one request). Override with OPENAI_WORKFLOW_MAX_EXECUTION_TIME.
+    | The timeout may be used to specify the maximum number of seconds to wait
+    | for a response. By default, the client will time out after 30 seconds.
     */
-    'workflow_max_execution_time' => (int) env('OPENAI_WORKFLOW_MAX_EXECUTION_TIME', 1800),
 
-    /*
-    |--------------------------------------------------------------------------
-    | OpenAI HTTP request timeout (seconds)
-    |--------------------------------------------------------------------------
-    |
-    | Max wait for each chat/completions response. Large menus need high values.
-    | Override with OPENAI_REQUEST_TIMEOUT (default 600).
-    */
-    'request_timeout' => (int) env('OPENAI_REQUEST_TIMEOUT', 600),
-
-    /** Max tokens per AI parse pass for Meal Store (large category blocks). */
-    'meal_store_max_tokens' => (int) env('OPENAI_MEAL_STORE_MAX_TOKENS', 16384),
-
-    /** Max tokens per AI parse pass for Ingredients Store (defaults to meal_store_max_tokens). */
-    'ingredients_store_max_tokens' => (int) env('OPENAI_INGREDIENTS_STORE_MAX_TOKENS', env('OPENAI_MEAL_STORE_MAX_TOKENS', 16384)),
+    'request_timeout' => env('OPENAI_REQUEST_TIMEOUT', 30),
 
     /*
     |--------------------------------------------------------------------------

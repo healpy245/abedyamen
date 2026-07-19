@@ -1,7 +1,11 @@
 @extends('layouts.kaman')
 
+<<<<<<< HEAD
 @section('title', __('workspace.title'))
 @section('tag', __('workspace.tag'))
+=======
+        <title>Laravel</title>
+>>>>>>> parent of cd712ea (First)
 
 @section('content')
     @php

@@ -1,20 +1,21 @@
 <?php
 
-use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\ChatLoginController;
 use App\Http\Controllers\FormController;
+<<<<<<< HEAD
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Admin\ChatbotSettingsController;
+=======
+>>>>>>> parent of cd712ea (First)
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\WhatsAppBotController;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
+<<<<<<< HEAD
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
@@ -245,6 +246,20 @@ Route::get('/ops/refresh/28814', function () {
 | Everything below this block sits behind the workspace login. Only the
 | marketing landing page and the Green API webhook stay open.
 */
+=======
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::get('/form', [FormController::class, 'index'])->name('form.index');
+Route::post('/form', [FormController::class, 'submit'])->name('form.submit');
+Route::post('/form/full-ai/login', [FormController::class, 'loginFullAi'])->name('form.full-ai.login');
+Route::post('/form/full-ai/chat', [FormController::class, 'chatFullAutomation'])->name('form.full-ai.chat');
+Route::post('/form/full-ai/execute-step', [FormController::class, 'executeFullAiStep'])->name('form.full-ai.execute-step');
+Route::post('/form/full-ai/start', [FormController::class, 'startFullAutomation'])->name('form.full-ai.start');
+Route::post('/form/full-ai/{session}/approve', [FormController::class, 'approveFullAutomation'])->name('form.full-ai.approve');
+Route::get('/lang/{locale}', [FormController::class, 'setLocale'])->name('lang.switch');
+>>>>>>> parent of cd712ea (First)
 
 Route::get('/landing', [LandingController::class, 'show'])->name('landing.show');
 Route::post('/landing', [LandingController::class, 'submit'])->name('landing.submit');
@@ -253,7 +268,22 @@ Route::post('/landing', [LandingController::class, 'submit'])->name('landing.sub
 // stays open. It only writes a locale to the session.
 Route::get('/lang/{locale}', [LocaleController::class, 'switch'])->name('lang.switch');
 
+<<<<<<< HEAD
 // Green API posts here server-to-server: no session, no CSRF, no login.
+=======
+// ChatGPT-style login assistant
+Route::get('/ai/login-chat', [ChatLoginController::class, 'index'])->name('ai.login-chat.index');
+Route::post('/ai/login-chat/message', [ChatLoginController::class, 'message'])->name('ai.login-chat.message');
+
+// WhatsApp chatbot + Green API webhook
+Route::get('/whatsapp-bot', [WhatsAppBotController::class, 'index'])->name('whatsapp.bot.index');
+Route::get('/whatsapp-bot/events', [WhatsAppBotController::class, 'events'])->name('whatsapp.bot.events');
+Route::post('/whatsapp-bot/prompt/save', [WhatsAppBotController::class, 'savePrompt'])->name('whatsapp.bot.prompt.save');
+Route::post('/whatsapp-bot/prompt/reset', [WhatsAppBotController::class, 'resetPrompt'])->name('whatsapp.bot.prompt.reset');
+Route::post('/whatsapp-bot/toggle', [WhatsAppBotController::class, 'toggleWebhook'])->name('whatsapp.bot.toggle');
+Route::post('/whatsapp-bot/events/clear', [WhatsAppBotController::class, 'clearEvents'])->name('whatsapp.bot.events.clear');
+Route::post('/whatsapp-bot/test-send', [WhatsAppBotController::class, 'testSend'])->name('whatsapp.bot.test-send');
+>>>>>>> parent of cd712ea (First)
 Route::post('/whatsapp-bot/webhook', [WhatsAppBotController::class, 'webhook'])
     ->withoutMiddleware([
         ValidateCsrfToken::class,
@@ -262,6 +292,7 @@ Route::post('/whatsapp-bot/webhook', [WhatsAppBotController::class, 'webhook'])
         ShareErrorsFromSession::class,
     ])
     ->name('whatsapp.bot.webhook');
+<<<<<<< HEAD
 
 /*
 |--------------------------------------------------------------------------
@@ -322,3 +353,5 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/chatbot/settings', [ChatbotSettingsController::class, 'index'])->name('admin.chatbot.settings.index');
     Route::put('/admin/chatbot/settings', [ChatbotSettingsController::class, 'update'])->name('admin.chatbot.settings.update');
 });
+=======
+>>>>>>> parent of cd712ea (First)

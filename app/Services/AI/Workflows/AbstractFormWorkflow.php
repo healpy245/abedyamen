@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Workflows;
 
 use App\Services\AI\Contracts\FormWorkflowContract;
-use App\Services\AI\MenuNameLocalization;
-use App\Services\AI\StructuredMealsParser;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -116,7 +114,7 @@ abstract class AbstractFormWorkflow implements FormWorkflowContract
         $sslVerify = filter_var(config('openai.ssl_verify', true), FILTER_VALIDATE_BOOLEAN);
 
         $http = Http::withToken($apiKey)
-            ->timeout((int) config('openai.request_timeout', 600))
+            ->timeout((int) config('openai.request_timeout', 30))
             ->acceptJson()
             ->baseUrl(rtrim($baseUrl, '/'));
 
@@ -165,31 +163,5 @@ abstract class AbstractFormWorkflow implements FormWorkflowContract
         $content = $body['choices'][0]['message']['content'] ?? '';
 
         return (string) $content;
-    }
-
-    /** Empty or invalid prices become "0.00". */
-    protected function normalizeExtractedPrice(string $price): string
-    {
-        return StructuredMealsParser::normalizePrice($price);
-    }
-
-    protected function shouldTranslateNames(array $payload): bool
-    {
-        return MenuNameLocalization::translateNamesEnabled($payload);
-    }
-
-    /**
-     * @param  array<string, array<string, mixed>>  $records
-     * @param  callable(string, string, array): void|null  $progress
-     * @return array<string, array<string, mixed>>
-     */
-    protected function localizeMenuRecords(array $records, array $payload, ?callable $progress = null): array
-    {
-        return MenuNameLocalization::apply(
-            $records,
-            $this->shouldTranslateNames($payload),
-            fn (string $system, string $user, array $options = []) => $this->chat($system, $user, $options),
-            $progress
-        );
     }
 }

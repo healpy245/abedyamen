@@ -4,13 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
-use App\Support\KamanUrl;
-
-use App\Services\AI\KamanMealItemsCreator;
-use App\Services\AI\KamanMenuCategoryEnsurer;
-use App\Services\AI\MealImageFilenameHelper;
-use App\Services\AI\StructuredCategoryBlocksParser;
-use App\Services\AI\StructuredMealsParser;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -50,7 +44,11 @@ final class CustomImageNamedWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
+<<<<<<< HEAD
         $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
+=======
+        $baseUrl = "https://{$subdomain}.kaman.rest";
+>>>>>>> parent of cd712ea (First)
 
         set_time_limit(600);
 
@@ -64,32 +62,16 @@ final class CustomImageNamedWorkflow extends AbstractFormWorkflow
             $categories = $this->fetchCategories($baseUrl, $token);
             $progress('categories', 'Fetched ' . count($categories) . ' categories', ['count' => count($categories)]);
 
-            KamanMenuCategoryEnsurer::ensureFromDescription(
-                $baseUrl,
-                $token,
-                $description,
-                $categories,
-                $payload,
-                fn (string $system, string $user, array $options = []) => $this->chat($system, $user, $options),
-                $progress
-            );
-
-            $meals = $this->parseMealsFromDescription($description, $categories, $progress);
+            $progress('ai', 'Parsing meals with AI...', []);
+            $meals = $this->parseMealsWithAi($description, $categories);
+            $progress('ai', 'Parsed ' . count($meals) . ' meals', ['count' => count($meals)]);
 
             $progress('match', 'Matching meals to images...', []);
-            $mealsWithImages = MealImageFilenameHelper::attachImagesByRelativePaths($meals, $imagePaths);
-            $mealsWithImages = $this->localizeMenuRecords($mealsWithImages, $payload, $progress);
+            $mealsWithImages = $this->matchMealsToImages($meals, $imagePaths);
             $progress('match', 'Matched ' . count(array_filter($mealsWithImages, fn ($m) => !empty($m['image_path']))) . ' meals with images', []);
 
             $progress('items', 'Creating items via Kaman API...', []);
-            $itemsResult = KamanMealItemsCreator::create(
-                $baseUrl,
-                $token,
-                $mealsWithImages,
-                $progress,
-                4,
-                'CustomImageNamedWorkflow'
-            );
+            $itemsResult = $this->createItems($baseUrl, $token, $mealsWithImages, $progress);
             $progress('items', 'Created ' . count($itemsResult['created']) . ' items, ' . count($itemsResult['failed']) . ' failed', $itemsResult);
 
             Log::info('CustomImageNamedWorkflow completed', [
@@ -129,8 +111,13 @@ final class CustomImageNamedWorkflow extends AbstractFormWorkflow
 
     private function login(string $baseUrl, string $email, string $password): string
     {
+<<<<<<< HEAD
         $response = $this->http(30)->post("{$baseUrl}/login", [
             'email' => $email,
+=======
+        $response = $this->http(30)->post("{$baseUrl}/api/manager/login", [
+            'email' => "{$subdomain}@kaman.rest",
+>>>>>>> parent of cd712ea (First)
             'password' => $password,
         ]);
         if (!$response->successful()) {
@@ -148,7 +135,7 @@ final class CustomImageNamedWorkflow extends AbstractFormWorkflow
 
     private function fetchCategories(string $baseUrl, string $token): array
     {
-        $response = $this->http(30)->withToken($token)->get("{$baseUrl}/categories");
+        $response = $this->http(30)->withToken($token)->get("{$baseUrl}/api/manager/categories");
         if (!$response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
             throw new \RuntimeException('Failed to fetch categories: ' . (is_string($message) ? $message : json_encode($message)));
@@ -159,35 +146,6 @@ final class CustomImageNamedWorkflow extends AbstractFormWorkflow
             throw new \RuntimeException('Categories response format is invalid.');
         }
         return $list;
-    }
-
-    /**
-     * @param  array<int, array{id?: mixed, name?: string, name_ar?: string, name_en?: string}>  $categories
-     * @param  callable(string, string, array): void|null  $progress
-     * @return array<string, array{name_ar: string, name_en: string, name_he: string, price: string, category_id: string, description_ar: string, description_en: string, description_he: string}>
-     */
-    private function parseMealsFromDescription(string $description, array $categories, ?callable $progress = null): array
-    {
-        $parsed = StructuredCategoryBlocksParser::parseStrict($description);
-
-        if ($parsed['ok']) {
-            try {
-                $meals = StructuredMealsParser::parseBlocks($parsed['blocks'], $categories);
-                if ($meals !== []) {
-                    $progress && $progress('parse', 'Parsed ' . count($meals) . ' meals', ['count' => count($meals)]);
-
-                    return $meals;
-                }
-            } catch (\RuntimeException $e) {
-                throw $e;
-            }
-        }
-
-        $progress && $progress('ai', 'Parsing meals with AI (fallback)...', []);
-        $meals = $this->parseMealsWithAi($description, $categories);
-        $progress && $progress('ai', 'Parsed ' . count($meals) . ' meals', ['count' => count($meals)]);
-
-        return $meals;
     }
 
     /**
@@ -226,12 +184,11 @@ You must output a JSON object with this EXACT structure. Use ONLY valid JSON, no
 
 Rules:
 - Assign category_id from the available categories list. Match the input category name to the closest category. Use the id as string (e.g. "1", "2").
-- name_en: MUST be identical to the meal name from the input (same spelling and spacing) so image filenames can be matched.
-- name_ar: Arabic translation of the meal name, WITHOUT tashkeel/diacritics.
+- name_en: the meal name from input (or sensible English translation). Keep it simple and close to the original for image matching.
+- name_ar: Arabic translation of the meal name.
 - name_he: Hebrew translation of the meal name.
-- price: from input as string (e.g. "25.00"). If missing, blank, or only whitespace after ":", use "0.00".
+- price: the price from input as string (e.g. "25.00").
 - description_ar, description_en, description_he: brief 1-line description of the meal in each language. Can be empty string if no description.
-- `description_ar` must also be WITHOUT Arabic tashkeel/diacritics.
 - Use meal1, meal2, meal3... as keys.
 - Output ONLY the JSON object, no other text.
 PROMPT;
@@ -289,10 +246,117 @@ PROMPT;
             foreach ($required as $field) {
                 $normalized[$field] = (string) ($meal[$field] ?? '');
             }
-            $normalized['price'] = $this->normalizeExtractedPrice($normalized['price']);
             $meals[$key] = $normalized;
         }
         return $meals;
+    }
+
+    /**
+     * Match each meal to an image by comparing meal name_en to image filename (without extension).
+     * Normalizes both: lowercase, remove spaces/dashes/underscores for comparison.
+     *
+     * @param  array<string, array{name_ar: string, name_en: string, name_he: string, price: string, category_id: string, description_ar: string, description_en: string, description_he: string}>  $meals
+     * @param  array<int, string>  $imagePaths  Relative paths like "folderName/caesar salad.jpg"
+     * @return array<string, array{name_ar: string, name_en: string, name_he: string, price: string, category_id: string, description_ar: string, description_en: string, description_he: string, image_path?: string}>
+     */
+    private function matchMealsToImages(array $meals, array $imagePaths): array
+    {
+        $imageMap = [];
+        foreach ($imagePaths as $relPath) {
+            $relPath = str_replace('\\', '/', trim((string) $relPath));
+            if ($relPath === '') {
+                continue;
+            }
+            $fullPath = public_path($relPath);
+            if (!File::exists($fullPath)) {
+                continue;
+            }
+            $basename = pathinfo($relPath, PATHINFO_FILENAME);
+            $keyNorm = $this->normalizeForMatch($basename);
+            if ($keyNorm !== '') {
+                $imageMap[$keyNorm] = $fullPath;
+            }
+        }
+
+        $result = [];
+        foreach ($meals as $mealKey => $meal) {
+            $mealCopy = $meal;
+            $mealCopy['image_path'] = null;
+
+            $nameEn = trim($meal['name_en'] ?? '');
+            if ($nameEn === '') {
+                $result[$mealKey] = $mealCopy;
+                continue;
+            }
+
+            $mealNorm = $this->normalizeForMatch($nameEn);
+            if ($mealNorm !== '' && isset($imageMap[$mealNorm])) {
+                $mealCopy['image_path'] = $imageMap[$mealNorm];
+            }
+            $result[$mealKey] = $mealCopy;
+        }
+
+        return $result;
+    }
+
+    private function normalizeForMatch(string $s): string
+    {
+        $s = strtolower(trim($s));
+        $s = preg_replace('/[\s\-_]+/', '', $s);
+        return $s ?? '';
+    }
+
+    /**
+     * @param  array<string, array{name_ar: string, name_en: string, name_he: string, price: string, category_id: string, description_ar: string, description_en: string, description_he: string, image_path?: string|null}>  $meals
+     * @param  callable(string, string, array): void|null  $progress
+     * @return array{created: array<int, array{key: string, id?: mixed}>, failed: array<int, array{key: string, error: string}>}
+     */
+    private function createItems(string $baseUrl, string $token, array $meals, ?callable $progress = null): array
+    {
+        $created = [];
+        $failed = [];
+        $total = count($meals);
+        $i = 0;
+        $timeout = 90;
+
+        foreach ($meals as $key => $meal) {
+            $i++;
+            $progress && $progress('item', 'Creating item ' . $i . '/' . $total . ': ' . ($meal['name_en'] ?? $key), ['key' => $key]);
+
+            $body = [
+                'name_ar' => $meal['name_ar'],
+                'name_en' => $meal['name_en'],
+                'name_he' => $meal['name_he'],
+                'price' => $meal['price'],
+                'category_id' => $meal['category_id'],
+                'description_ar' => $meal['description_ar'],
+                'description_en' => $meal['description_en'],
+                'description_he' => $meal['description_he'],
+            ];
+
+            try {
+                $http = $this->http($timeout)->withToken($token);
+                if (!empty($meal['image_path']) && File::exists($meal['image_path'])) {
+                    $http = $http->attach('image', File::get($meal['image_path']), File::basename($meal['image_path']));
+                }
+                $response = $http->post("{$baseUrl}/api/manager/items", $body);
+            } catch (\Throwable $e) {
+                $failed[] = ['key' => $key, 'error' => $e->getMessage()];
+                Log::warning('CustomImageNamedWorkflow item request failed', ['key' => $key, 'error' => $e->getMessage()]);
+                continue;
+            }
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $created[] = ['key' => $key, 'id' => $data['data']['id'] ?? $data['id'] ?? $data['item']['id'] ?? null];
+            } else {
+                $message = $response->json('message') ?? $response->json('error') ?? $response->body();
+                $failed[] = ['key' => $key, 'error' => is_string($message) ? $message : json_encode($message)];
+                Log::warning('CustomImageNamedWorkflow item creation failed', ['key' => $key, 'status' => $response->status(), 'response' => $message]);
+            }
+        }
+
+        return ['created' => $created, 'failed' => $failed];
     }
 
     private function toSubdomain(string $name): string
