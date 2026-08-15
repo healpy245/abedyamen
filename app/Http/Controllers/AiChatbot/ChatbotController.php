@@ -4,15 +4,21 @@ namespace App\Http\Controllers\AiChatbot;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AiChatbot\SendChatbotMessageRequest;
+use App\Http\Requests\AiChatbot\UploadChatbotImageRequest;
 use App\Models\AiChatbot\ChatbotConversation;
 use App\Models\AiChatbot\ChatbotInstance;
+use App\Models\AiChatbot\ChatbotMessage;
 use App\Services\AiChatbot\AiChatbotInstanceService;
 use App\Services\AiChatbot\AiChatbotService;
 use App\Services\AiChatbot\AiChatbotSettingsService;
+use App\Services\AiChatbot\ChatbotAuthorizationService;
+use App\Services\AiChatbot\ChatbotImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class ChatbotController extends Controller
@@ -21,6 +27,8 @@ class ChatbotController extends Controller
         protected AiChatbotService $chatbotService,
         protected AiChatbotSettingsService $settingsService,
         protected AiChatbotInstanceService $instanceService,
+        protected ChatbotImageUploadService $imageUploadService,
+        protected ChatbotAuthorizationService $authorizationService,
     ) {
     }
 
@@ -31,14 +39,15 @@ class ChatbotController extends Controller
         $this->settingsService->ensureDefaults();
         $instance->loadCount('members');
 
-        $instances = ChatbotInstance::query()
-            ->where('user_id', $user->id)
-            ->latest('updated_at')
-            ->get();
+        $instances = $this->authorizationService->instancesForUser($user);
 
         $conversations = ChatbotConversation::query()
-            ->where('user_id', $user->id)
             ->where('instance_id', $instance->id)
+            ->where(function ($q) use ($user): void {
+                $q->where('user_id', $user->id)
+                    ->orWhere('channel', ChatbotConversation::CHANNEL_WHATSAPP);
+            })
+            ->where('channel', '!=', ChatbotConversation::CHANNEL_TEST)
             ->latest('updated_at')
             ->get();
 
@@ -64,14 +73,15 @@ class ChatbotController extends Controller
         $this->settingsService->ensureDefaults();
         $instance->loadCount('members');
 
-        $instances = ChatbotInstance::query()
-            ->where('user_id', $user->id)
-            ->latest('updated_at')
-            ->get();
+        $instances = $this->authorizationService->instancesForUser($user);
 
         $conversations = ChatbotConversation::query()
-            ->where('user_id', $user->id)
             ->where('instance_id', $instance->id)
+            ->where(function ($q) use ($user): void {
+                $q->where('user_id', $user->id)
+                    ->orWhere('channel', ChatbotConversation::CHANNEL_WHATSAPP);
+            })
+            ->where('channel', '!=', ChatbotConversation::CHANNEL_TEST)
             ->latest('updated_at')
             ->get();
 
@@ -156,10 +166,12 @@ class ChatbotController extends Controller
 
         $userMessageHtml = view('ai-chatbot.partials.message', [
             'message' => $userMessage,
+            'instance' => $instance,
         ])->render();
 
         $assistantMessageHtml = view('ai-chatbot.partials.message', [
             'message' => $assistantMessage,
+            'instance' => $instance,
         ])->render();
 
         return response()->json([
@@ -171,6 +183,91 @@ class ChatbotController extends Controller
             'assistant_message_html' => $assistantMessageHtml,
             'typing_delay_ms' => $this->settingsService->typingDelayMs((string) $assistantMessage->message),
         ]);
+    }
+
+    public function uploadImage(UploadChatbotImageRequest $request, ChatbotInstance $instance)
+    {
+        $user = $request->user();
+        $this->instanceService->authorizeForUser($instance, $user);
+
+        $validated = $request->validated();
+        $conversationId = isset($validated['conversation_id']) ? (int) $validated['conversation_id'] : null;
+
+        try {
+            $result = $this->imageUploadService->handle(
+                $user,
+                $instance,
+                $request->file('image'),
+                $conversationId,
+                $validated['caption'] ?? null,
+            );
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (Throwable $e) {
+            Log::error('AiChatbot image upload failed', [
+                'user_id' => $user?->id,
+                'instance_id' => $instance->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->errorResponse('An unexpected error occurred while uploading the image.', Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        $instance->touch();
+
+        $conversation = $result['conversation'];
+        $userMessage = $result['user_message'];
+        $assistantMessage = $result['assistant_message'];
+
+        return response()->json([
+            'conversation' => [
+                'id' => $conversation->id,
+                'title' => $conversation->title,
+            ],
+            'user_message_html' => view('ai-chatbot.partials.message', [
+                'message' => $userMessage,
+                'instance' => $instance,
+            ])->render(),
+            'assistant_message_html' => view('ai-chatbot.partials.message', [
+                'message' => $assistantMessage,
+                'instance' => $instance,
+            ])->render(),
+            'typing_delay_ms' => $this->settingsService->typingDelayMs((string) $assistantMessage->message),
+        ]);
+    }
+
+    public function attachment(Request $request, ChatbotInstance $instance, ChatbotMessage $message): StreamedResponse
+    {
+        $user = $request->user();
+        $this->instanceService->authorizeForUser($instance, $user);
+
+        $message->loadMissing('conversation');
+        $conversation = $message->conversation;
+
+        if ($conversation === null
+            || (int) $conversation->instance_id !== (int) $instance->id
+            || ! $this->authorizationService->canAccessInstance($user, $instance)
+        ) {
+            abort(404);
+        }
+
+        if (! $message->hasAttachment()) {
+            abort(404);
+        }
+
+        $disk = (string) ($message->attachment_disk ?: 'local');
+        if (! Storage::disk($disk)->exists((string) $message->attachment_path)) {
+            abort(404);
+        }
+
+        return Storage::disk($disk)->response(
+            (string) $message->attachment_path,
+            null,
+            [
+                'Content-Type' => (string) ($message->attachment_mime ?: 'application/octet-stream'),
+                'Cache-Control' => 'private, max-age=3600',
+            ],
+        );
     }
 
     public function destroyConversation(Request $request, ChatbotInstance $instance, ChatbotConversation $conversation)
@@ -193,11 +290,20 @@ class ChatbotController extends Controller
         ChatbotInstance $instance,
         $user,
     ): void {
-        if ($conversation->user_id !== $user->id && !($user->is_admin ?? false)) {
+        if ((int) $conversation->instance_id !== (int) $instance->id) {
             abort(404);
         }
 
-        if ($conversation->instance_id !== $instance->id) {
+        if (! $this->authorizationService->canAccessInstance($user, $instance)) {
+            abort(404);
+        }
+
+        // Web studio conversations remain owner-scoped; WhatsApp workspace chats are instance-scoped.
+        if (
+            $conversation->channel !== ChatbotConversation::CHANNEL_WHATSAPP
+            && (int) $conversation->user_id !== (int) $user->id
+            && ! ($user->is_admin ?? false)
+        ) {
             abort(404);
         }
     }

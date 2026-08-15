@@ -42,15 +42,19 @@ final class DrinksStoreWorkflow extends AbstractImageDrinksWorkflow
     protected function getBrands(): array
     {
         return [
-            'cocacola' => 'Coca-Cola',
+            'colazero' => 'Cola Zero',
+            'colabig' => 'Cola Big',
+            'cola' => 'Cola',
+            'cocacolazero' => 'Cola Zero',
+            'cocacola' => 'Cola',
             'pepsi' => 'Pepsi',
-            'sprite' => 'Sprite',
             'spritezero' => 'Sprite Zero',
+            'sprite' => 'Sprite',
             'fanta' => 'Fanta',
             'redbull' => 'Red Bull',
             '7up' => '7Up',
-            'xl' => 'XL',
             'xlten' => 'XL Ten',
+            'xl' => 'XL',
             'fuzetea' => 'Fuze Tea',
             'nescafe' => 'Nescafé',
             'espresso' => 'Espresso',
@@ -59,8 +63,6 @@ final class DrinksStoreWorkflow extends AbstractImageDrinksWorkflow
             'latte' => 'Latte',
             'mocha' => 'Mocha',
             'macchiato' => 'Macchiato',
-            'colazero' => 'Cola Zero',
-            'colabig' => 'Cola Big',
         ];
     }
 }

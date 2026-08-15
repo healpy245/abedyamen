@@ -4,17 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Services\AI\FormWorkflowRunner;
 use App\Services\AI\FullAiAutomationService;
+use App\Support\KamanUrl;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-<<<<<<< HEAD
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-=======
->>>>>>> parent of cd712ea (First)
+use Throwable;
 
 class FormController extends Controller
 {
@@ -262,11 +263,11 @@ class FormController extends Controller
                 $label = ucwords(str_replace(['-', '_'], ' ', $name));
                 if (str_ends_with($normalized, 'big')) {
                     $trimmed = substr($name, 0, -3);
-                    $label = trim(ucwords(str_replace(['-', '_'], ' ', $trimmed))) . ' Big';
+                    $label = trim(ucwords(str_replace(['-', '_'], ' ', $trimmed))).' Big';
                 }
 
                 // Build URL from the actual path to avoid case-sensitivity issues on Linux hosts
-                $relativePath = str_replace(public_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relativePath = str_replace(public_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
                 $relativePath = str_replace('\\', '/', $relativePath);
 
                 $drink = [
@@ -308,7 +309,7 @@ class FormController extends Controller
                     'name' => $label,
                     'key' => strtolower($name),
                     'filename' => $filename,
-                    'url' => asset('HotDrinks/' . $filename),
+                    'url' => asset('HotDrinks/'.$filename),
                 ];
 
                 if ($this->stringContainsAny($normalized, $teaKeywords)) {
@@ -344,7 +345,7 @@ class FormController extends Controller
                     'name_ar' => $nameAr,
                     'key' => strtolower($name),
                     'filename' => $filename,
-                    'url' => asset('NaturalJuice/' . $filename),
+                    'url' => asset('NaturalJuice/'.$filename),
                 ];
 
                 $naturalJuicesGroups['natural']['items'][] = $juice;
@@ -365,16 +366,16 @@ class FormController extends Controller
                 $filename = $file->getFilename();
                 $name = pathinfo($filename, PATHINFO_FILENAME);
                 $label = ucwords(str_replace(['-', '_'], ' ', $name));
-                
+
                 // Get the actual directory name from the file path to handle case sensitivity
-                $relativePath = str_replace(public_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relativePath = str_replace(public_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
                 $relativePath = str_replace('\\', '/', $relativePath); // Normalize path separators
 
                 $sweet = [
                     'name' => $label,
                     'key' => strtolower($name),
                     'filename' => $filename,
-                    'url' => asset('Sweets/' . $filename),
+                    'url' => asset('Sweets/'.$filename),
                 ];
 
                 $sweetsGroups['sweets']['items'][] = $sweet;
@@ -397,7 +398,7 @@ class FormController extends Controller
                 $label = ucwords(str_replace(['-', '_'], ' ', $name));
 
                 // Use actual relative path to avoid case-sensitivity issues
-                $relativePath = str_replace(public_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relativePath = str_replace(public_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
                 $relativePath = str_replace('\\', '/', $relativePath);
 
                 $normalized = strtolower($name);
@@ -439,7 +440,7 @@ class FormController extends Controller
                 $name = pathinfo($filename, PATHINFO_FILENAME);
                 $label = ucwords(str_replace(['-', '_'], ' ', $name));
 
-                $relativePath = str_replace(public_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relativePath = str_replace(public_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
                 $relativePath = str_replace('\\', '/', $relativePath);
 
                 $burgerGroups['burgers']['items'][] = [
@@ -466,7 +467,7 @@ class FormController extends Controller
                 $name = pathinfo($filename, PATHINFO_FILENAME);
                 $label = ucwords(str_replace(['-', '_'], ' ', $name));
 
-                $relativePath = str_replace(public_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relativePath = str_replace(public_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
                 $relativePath = str_replace('\\', '/', $relativePath);
 
                 $normalized = strtolower($name);
@@ -504,7 +505,7 @@ class FormController extends Controller
                 $name = pathinfo($filename, PATHINFO_FILENAME);
                 $label = ucwords(str_replace(['-', '_'], ' ', $name));
 
-                $relativePath = str_replace(public_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relativePath = str_replace(public_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
                 $relativePath = str_replace('\\', '/', $relativePath);
 
                 $normalized = strtolower($name);
@@ -536,28 +537,28 @@ class FormController extends Controller
 
         return view('form', [
             'drinksGroups' => array_filter($drinksGroups, function ($group) {
-                return !empty($group['items']);
+                return ! empty($group['items']);
             }),
             'hotDrinksGroups' => array_filter($hotDrinksGroups, function ($group) {
-                return !empty($group['items']);
+                return ! empty($group['items']);
             }),
             'naturalJuicesGroups' => array_filter($naturalJuicesGroups, function ($group) {
-                return !empty($group['items']);
+                return ! empty($group['items']);
             }),
             'sweetsGroups' => array_filter($sweetsGroups, function ($group) {
-                return !empty($group['items']);
+                return ! empty($group['items']);
             }),
             'pastaMealsGroups' => array_filter($pastaMealsGroups, function ($group) {
-                return !empty($group['items']);
+                return ! empty($group['items']);
             }),
             'burgerGroups' => array_filter($burgerGroups, function ($group) {
-                return !empty($group['items']);
+                return ! empty($group['items']);
             }),
             'sandwichGroups' => array_filter($sandwichGroups, function ($group) {
-                return !empty($group['items']);
+                return ! empty($group['items']);
             }),
             'ingredientsGroups' => array_filter($ingredientsGroups, function ($group) {
-                return !empty($group['items']);
+                return ! empty($group['items']);
             }),
             'methodTypes' => FormWorkflowRunner::methodTypes(),
         ]);
@@ -576,7 +577,6 @@ class FormController extends Controller
 
         // Validate the form data
         $validated = $request->validate([
-<<<<<<< HEAD
             'method_type' => ['required', Rule::in(FormWorkflowRunner::methodTypes())],
             'subdomain' => 'required|string|max:64',
             'username' => 'required|string|max:255',
@@ -590,198 +590,6 @@ class FormController extends Controller
         $username = trim($validated['username']);
         $environment = KamanUrl::tldFromEnvironment($validated['environment'] ?? null);
 
-=======
-            'method_type' => 'required|in:Meal Store,Meal Store With AI Images,Category Store,Category Store With AI Image,Category Ingredients Store,Ingredients Store,Drinks Store,Natural Juices Store,Ingredients Images Store,Custom Images Meals Store,Custom Image Named',
-            'restaurant_name' => 'required|string|max:255',
-            'password' => 'required|string',
-            'description' => 'nullable|string',
-            'category_name_en' => 'nullable|string|max:255',
-            'drinks_payload' => 'nullable|string',
-            'folder_name' => 'nullable|string|max:255|required_if:method_type,Custom Images Meals Store',
-            'meal_images' => 'nullable|array|max:50|required_if:method_type,Custom Images Meals Store',
-            'meal_images.*' => 'nullable|image|max:10240', // 10MB max per image
-            'folder_paths' => 'nullable|array|required_if:method_type,Custom Image Named',
-            'folder_paths.*' => 'nullable|string|max:500',
-            'folder_files' => 'nullable|array|required_if:method_type,Custom Image Named',
-            'folder_files.*' => 'nullable|image|max:10240', // 10MB max per image
-            'meal_style_image' => 'nullable|image|max:10240',
-            'category_logo' => 'nullable|image|max:10240|required_if:method_type,Category Store With AI Image',
-        ]);
-
-        // Image-based flows use the drinks_payload builder
-        if (in_array($validated['method_type'] ?? '', ['Drinks Store', 'Natural Juices Store', 'Ingredients Images Store'], true)) {
-            $drinksPayload = $request->input('drinks_payload');
-            $drinksSelection = json_decode($drinksPayload ?? '[]', true);
-
-            if (!is_array($drinksSelection) || empty($drinksSelection)) {
-                // Context-aware error message based on method type
-                $itemName = $validated['method_type'] === 'Ingredients Images Store' ? 'ingredient' : 'item';
-                
-                return back()
-                    ->withErrors(['drinks_payload' => "Please select at least one {$itemName} and provide its price."])
-                    ->withInput();
-            }
-
-            $lines = [];
-
-            foreach ($drinksSelection as $drink) {
-                if (
-                    !isset($drink['name'], $drink['price']) ||
-                    trim((string) $drink['name']) === '' ||
-                    trim((string) $drink['price']) === '' ||
-                    !is_numeric($drink['price']) ||
-                    (float) $drink['price'] < 0
-                ) {
-                    // Context-aware error message based on method type
-                    $itemName = $validated['method_type'] === 'Ingredients Images Store' ? 'ingredient' : 'item';
-                    
-                    return back()
-                        ->withErrors(['drinks_payload' => "Each selected {$itemName} must include a valid price."])
-                        ->withInput();
-                }
-
-                $name = trim((string) $drink['name']);
-                $price = number_format((float) $drink['price'], 2, '.', '');
-                $lines[] = strtolower($drink['key'] ?? $name) . ' : ' . $price;
-            }
-
-            // Use category_name_en if provided, otherwise fall back to default title
-            $categoryNameEn = !empty($validated['category_name_en']) ? trim($validated['category_name_en']) : null;
-            
-            if ($validated['method_type'] === 'Natural Juices Store') {
-                $title = $categoryNameEn ?? 'عصائر طبيعية';
-                // For Natural Juices, include name_ar in the format: key : price : name_ar
-                $juiceLines = [];
-                foreach ($drinksSelection as $juice) {
-                    $key = strtolower($juice['key'] ?? $juice['name']);
-                    $price = number_format((float) $juice['price'], 2, '.', '');
-                    $nameAr = $juice['name_ar'] ?? '';
-                    $juiceLines[] = $key . ' : ' . $price . ($nameAr ? ' : ' . $nameAr : '');
-                }
-                $validated['description'] = $title . " : {{\n" . implode("\n", $juiceLines) . "\n}}";
-            } elseif ($validated['method_type'] === 'Ingredients Images Store') {
-                $title = $categoryNameEn ?? 'مكونات';
-                $validated['description'] = $title . " : {{\n" . implode("\n", $lines) . "\n}}";
-            } else {
-                $title = $categoryNameEn ?? 'مشروبات باردة';
-                $validated['description'] = $title . " : {{\n" . implode("\n", $lines) . "\n}}";
-            }
-        }
-
-        // Handle Custom Image Named - upload folder with exact names to public path
-        $folderImageNames = [];
-        if (($validated['method_type'] ?? null) === 'Custom Image Named') {
-            $paths = $request->input('folder_paths', []);
-            $files = $request->file('folder_files', []);
-            if (empty($paths) || empty($files) || count($paths) !== count($files)) {
-                $response = ['success' => false, 'error' => 'Invalid folder upload.'];
-                return $request->ajax() || $request->wantsJson()
-                    ? response()->json($response, 400)
-                    : back()->withErrors(['folder_upload' => 'Invalid folder upload.'])->withInput();
-            }
-            $rootFolder = null;
-            foreach ($paths as $i => $path) {
-                $path = trim((string) str_replace('\\', '/', $path));
-                if ($path === '' || str_contains($path, '..') || str_starts_with($path, '/')) {
-                    continue;
-                }
-                $segments = explode('/', $path);
-                $currentRoot = $segments[0] ?? '';
-                if ($currentRoot === '') {
-                    continue;
-                }
-                if ($rootFolder === null) {
-                    $rootFolder = $currentRoot;
-                }
-                if ($currentRoot !== $rootFolder || !isset($files[$i]) || !$files[$i]->isValid()) {
-                    continue;
-                }
-                $targetPath = public_path($path);
-                $targetDir = dirname($targetPath);
-                if (!File::exists($targetDir)) {
-                    File::makeDirectory($targetDir, 0755, true);
-                }
-                $filename = basename($path);
-                $files[$i]->move($targetDir, $filename);
-                $folderImageNames[] = $path;
-            }
-            if (empty($folderImageNames)) {
-                $response = ['success' => false, 'error' => 'No valid images could be uploaded.'];
-                return $request->ajax() || $request->wantsJson()
-                    ? response()->json($response, 400)
-                    : back()->withErrors(['folder_upload' => 'No valid images could be uploaded.'])->withInput();
-            }
-        }
-
-        // Optional style image for Meal Store With AI Images
-        $mealStyleImagePath = null;
-        if ($validated['method_type'] === 'Meal Store With AI Images' && $request->hasFile('meal_style_image')) {
-            $file = $request->file('meal_style_image');
-            if ($file && $file->isValid()) {
-                $targetDirectory = storage_path('app/meal-style');
-                if (!File::exists($targetDirectory)) {
-                    File::makeDirectory($targetDirectory, 0755, true);
-                }
-                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $file->move($targetDirectory, $filename);
-                $mealStyleImagePath = $targetDirectory . DIRECTORY_SEPARATOR . $filename;
-            }
-        }
-
-        // Required logo image for Category Store With AI Image
-        $categoryLogoPath = null;
-        if ($validated['method_type'] === 'Category Store With AI Image' && $request->hasFile('category_logo')) {
-            $file = $request->file('category_logo');
-            if ($file && $file->isValid()) {
-                $targetDirectory = storage_path('app/category-logos');
-                if (!File::exists($targetDirectory)) {
-                    File::makeDirectory($targetDirectory, 0755, true);
-                }
-                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $file->move($targetDirectory, $filename);
-                $categoryLogoPath = $targetDirectory . DIRECTORY_SEPARATOR . $filename;
-            }
-        }
-
-        // Handle Custom Images Meals Store - store images in public folder
-        $imageNames = [];
-        if ($validated['method_type'] === 'Custom Images Meals Store') {
-            $folderName = $validated['folder_name'];
-            
-            // Sanitize folder name - only allow alphanumeric, dash, and underscore
-            $folderName = preg_replace('/[^a-zA-Z0-9_-]/', '-', $folderName);
-            $folderName = trim($folderName, '-_');
-            
-            if (empty($folderName)) {
-                return back()
-                    ->withErrors(['folder_name' => 'Folder name cannot be empty or contain only invalid characters.'])
-                    ->withInput();
-            }
-            
-            // Create directory in public folder
-            $targetDirectory = public_path($folderName);
-            
-            if (!File::exists($targetDirectory)) {
-                File::makeDirectory($targetDirectory, 0755, true);
-            }
-            
-            // Store uploaded images
-            if ($request->hasFile('meal_images')) {
-                $uploadedFiles = $request->file('meal_images');
-                
-                foreach ($uploadedFiles as $file) {
-                    if ($file->isValid()) {
-                        // Generate unique filename to avoid conflicts
-                        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                        $file->move($targetDirectory, $filename);
-                        $imageNames[] = $filename;
-                    }
-                }
-            }
-        }
-
-        // Prepare webhook payload
->>>>>>> parent of cd712ea (First)
         $payload = [
             'method_type' => $validated['method_type'],
             'subdomain' => $subdomain,
@@ -789,19 +597,15 @@ class FormController extends Controller
             'username' => $username,
             'environment' => $environment,
             'password' => $validated['password'],
-<<<<<<< HEAD
             'description' => trim((string) ($validated['description'] ?? '')),
             'translate_names' => $request->boolean('translate_names', true),
-=======
-            'description' => $validated['description'] ?? '',
->>>>>>> parent of cd712ea (First)
             'submitted_at' => now()->toIso8601String(),
             'ip_address' => $request->ip(),
         ];
-        
+
         // Add category_name_en in the requested format if filled
-        if (!empty($validated['category_name_en'])) {
-            $payload['category_name_en'] = 'Category name (english) field value : ' . $validated['category_name_en'];
+        if (! empty($validated['category_name_en'])) {
+            $payload['category_name_en'] = 'Category name (english) field value : '.$validated['category_name_en'];
         }
 
         // Pass style image path to Meal Store With AI Images workflow
@@ -813,19 +617,19 @@ class FormController extends Controller
         if ($validated['method_type'] === 'Category Store With AI Image' && $categoryLogoPath) {
             $payload['category_logo_path'] = $categoryLogoPath;
         }
-        
+
         // Add folder_name and image_names for Custom Images Meals Store
         if ($validated['method_type'] === 'Custom Images Meals Store') {
-            if (!empty($validated['folder_name'])) {
+            if (! empty($validated['folder_name'])) {
                 $payload['folder_name'] = $validated['folder_name'];
             }
-            if (!empty($imageNames)) {
+            if (! empty($imageNames)) {
                 $payload['image_names'] = $imageNames;
             }
         }
 
         // Add folder structure for Custom Image Named
-        if ($validated['method_type'] === 'Custom Image Named' && !empty($folderImageNames)) {
+        if ($validated['method_type'] === 'Custom Image Named' && ! empty($folderImageNames)) {
             $firstPath = $folderImageNames[0];
             $payload['folder_name'] = explode('/', $firstPath)[0] ?? $firstPath;
             $payload['image_paths'] = $folderImageNames;
@@ -847,7 +651,7 @@ class FormController extends Controller
             return response()->stream(function () use ($workflowRunner, $validated, $payload) {
                 set_time_limit(600);
                 $emit = function (array $event) {
-                    echo 'data: ' . json_encode($event) . "\n\n";
+                    echo 'data: '.json_encode($event)."\n\n";
                     if (ob_get_level()) {
                         ob_flush();
                     }
@@ -876,6 +680,7 @@ class FormController extends Controller
                         'result' => ['success' => false, 'error' => $e->getMessage()],
                         'timestamp' => now()->toIso8601String(),
                     ]);
+
                     return;
                 }
 
@@ -929,12 +734,14 @@ class FormController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 session()->flash('success', $result['message'] ?? 'Form submitted successfully! AI workflow completed.');
                 session()->flash('workflow_debug', $debugData);
+
                 return response()->json([
                     'success' => true,
                     'redirect' => $redirect->getTargetUrl(),
                     'workflow_debug' => $debugData,
                 ]);
             }
+
             return $redirect;
         }
 
@@ -946,6 +753,7 @@ class FormController extends Controller
             session()->flash('warning', $errorMessage);
             session()->flash('workflow_debug', $debugData);
             session()->flashInput($request->input());
+
             return response()->json([
                 'success' => false,
                 'error' => $errorMessage,
@@ -953,6 +761,7 @@ class FormController extends Controller
                 'workflow_debug' => $debugData,
             ]);
         }
+
         return $redirect;
     }
 
@@ -1042,7 +851,6 @@ class FormController extends Controller
      */
     public function loginFullAi(Request $request)
     {
-<<<<<<< HEAD
         try {
             $validated = $request->validate([
                 'subdomain' => 'required|string|max:64',
@@ -1076,12 +884,12 @@ class FormController extends Controller
                 ]);
 
                 return $this->formJsonError(
-                    'Could not reach the restaurant API (' . $subdomain . '.kaman.' . KamanUrl::tld() . '). Check the subdomain, username, password, and server outbound HTTPS.',
+                    'Could not reach the restaurant API ('.$subdomain.'.kaman.'.KamanUrl::tld().'). Check the subdomain, username, password, and server outbound HTTPS.',
                     503
                 );
             }
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $body = $response->json();
                 $detail = is_array($body)
                     ? ($body['message'] ?? $body['error'] ?? $response->body())
@@ -1102,7 +910,7 @@ class FormController extends Controller
             }
 
             $data = $response->json();
-            if (!is_array($data)) {
+            if (! is_array($data)) {
                 Log::error('Full AI login: invalid JSON from Kaman', [
                     'subdomain' => $subdomain,
                     'body' => $response->body(),
@@ -1125,7 +933,7 @@ class FormController extends Controller
                 return $this->formJsonError('Login succeeded but no token was returned.', 502);
             }
 
-            if (!$this->persistFullAiAuth($request, $token, $baseUrl)) {
+            if (! $this->persistFullAiAuth($request, $token, $baseUrl)) {
                 return $this->formJsonError(
                     'Login succeeded but credentials could not be stored. Ensure storage/framework/sessions is writable or set SESSION_DRIVER=file.',
                     503
@@ -1159,60 +967,65 @@ class FormController extends Controller
     {
         $http = Http::timeout($timeoutSeconds)->connectTimeout(20)->acceptJson();
 
-        if (!config('services.kaman.ssl_verify', false)) {
-=======
-        $validated = $request->validate([
-            'restaurant_name' => 'required|string|max:255',
-            'password' => 'required|string|max:255',
-        ]);
-
-        $subdomain = $this->fullAiSubdomain($validated['restaurant_name']);
-        $baseUrl = "https://{$subdomain}.kaman.rest";
-
-        $http = Http::timeout(30)->acceptJson();
-        if (!config('services.kaman.ssl_verify', true)) {
->>>>>>> parent of cd712ea (First)
+        if (! config('services.kaman.ssl_verify', false)) {
             $http = $http->withoutVerifying();
         }
 
-        $response = $http->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
-            'password' => $validated['password'],
-        ]);
+        return $http;
+    }
 
-        if (!$response->successful()) {
-            $body = $response->json();
-            $message = is_array($body) ? ($body['message'] ?? $body['error'] ?? $response->body()) : $response->body();
-            $message = is_string($message) ? $message : json_encode($message);
+    /**
+     * @return array{token: string, base_url: string}|null
+     */
+    private function resolveFullAiAuth(Request $request): ?array
+    {
+        $token = $request->session()->get('full_ai_kaman_token');
+        $baseUrl = $request->session()->get('full_ai_kaman_base_url');
 
-            Log::warning('Full AI login failed', ['status' => $response->status(), 'response' => $message]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Login failed. Check restaurant name and password.',
-                'detail' => $message,
-            ], 401);
+        if (! is_string($token) || $token === '' || ! is_string($baseUrl) || $baseUrl === '') {
+            return null;
         }
 
-        $data = $response->json();
-        $token = $data['token'] ?? $data['access_token'] ?? $data['data']['token'] ?? null;
+        return [
+            'token' => $token,
+            'base_url' => $baseUrl,
+        ];
+    }
 
-        if ($token === null || $token === '') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Login succeeded but no token was returned.',
-            ], 502);
+    private function persistFullAiAuth(Request $request, string $token, string $baseUrl): bool
+    {
+        try {
+            $request->session()->put([
+                'full_ai_kaman_token' => $token,
+                'full_ai_kaman_base_url' => rtrim($baseUrl, '/'),
+            ]);
+            $request->session()->save();
+
+            return $request->session()->get('full_ai_kaman_token') === $token;
+        } catch (Throwable $e) {
+            Log::error('Full AI auth could not be stored', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
         }
+    }
 
-        session([
-            'full_ai_kaman_token' => $token,
-            'full_ai_kaman_base_url' => $baseUrl,
-        ]);
-
-        return response()->json([
+    private function formJsonSuccess(string $message, array $extra = []): JsonResponse
+    {
+        return response()->json(array_merge([
             'success' => true,
-            'message' => 'Token stored successfully. You can start Full AI automation.',
-        ]);
+            'message' => $message,
+        ], $extra));
+    }
+
+    private function formJsonError(string $message, int $status = 400, array $extra = []): JsonResponse
+    {
+        return response()->json(array_merge([
+            'success' => false,
+            'error' => $message,
+            'message' => $message,
+        ], $extra), $status);
     }
 
     private function fullAiSubdomain(string $name): string
@@ -1246,19 +1059,20 @@ class FormController extends Controller
             ], 401);
         }
 
-        $path = '/' . ltrim($validated['path'], '/');
-        $url = $baseUrl . $path;
+        $path = '/'.ltrim($validated['path'], '/');
+        $url = KamanUrl::join($baseUrl, $path);
         $method = strtoupper($validated['method']);
         $body = $validated['body'] ?? [];
 
         $http = Http::timeout(60)->acceptJson()->withToken($token);
-        if (!config('services.kaman.ssl_verify', true)) {
+        if (! config('services.kaman.ssl_verify', true)) {
             $http = $http->withoutVerifying();
         }
 
         try {
             if (in_array($method, ['GET', 'HEAD'], true)) {
                 $response = $http->{$method === 'HEAD' ? 'head' : 'get'}($url);
+
                 return response()->json([
                     'success' => $response->successful(),
                     'status' => $response->status(),
@@ -1270,7 +1084,7 @@ class FormController extends Controller
             if ($path === '/api/manager/categories' && $this->isSequentialArray($body)) {
                 $results = ['created' => [], 'failed' => []];
                 foreach ($body as $index => $category) {
-                    if (!is_array($category)) {
+                    if (! is_array($category)) {
                         continue;
                     }
                     $imageRelative = $category['image_relative_path'] ?? null;
@@ -1281,7 +1095,7 @@ class FormController extends Controller
                         'position' => (int) ($category['position'] ?? $index + 1),
                     ];
                     if ($single['name_en'] === '') {
-                        $single['name_en'] = $single['name_ar'] = $single['name_he'] = 'Category ' . ($index + 1);
+                        $single['name_en'] = $single['name_ar'] = $single['name_he'] = 'Category '.($index + 1);
                     }
                     $imagePath = null;
                     if (is_string($imageRelative) && $imageRelative !== '') {
@@ -1303,6 +1117,7 @@ class FormController extends Controller
                         $results['failed'][] = ['index' => $index, 'error' => $response->json('message') ?? $response->body()];
                     }
                 }
+
                 return response()->json([
                     'success' => count($results['failed']) === 0,
                     'status' => count($results['created']) > 0 ? 200 : 422,
@@ -1312,7 +1127,7 @@ class FormController extends Controller
 
             // Kaman expects one item per POST with category_id; Full AI sends an array with category name.
             if ($path === '/api/manager/items' && $this->isSequentialArray($body)) {
-                $categoriesResponse = $http->get($baseUrl . '/api/manager/categories');
+                $categoriesResponse = $http->get(KamanUrl::join($baseUrl, '/categories'));
                 $categoryIdMap = [];
                 if ($categoriesResponse->successful()) {
                     $data = $categoriesResponse->json();
@@ -1336,7 +1151,7 @@ class FormController extends Controller
                 }
                 $results = ['created' => [], 'failed' => []];
                 foreach ($body as $index => $item) {
-                    if (!is_array($item)) {
+                    if (! is_array($item)) {
                         continue;
                     }
                     $categoryName = trim((string) ($item['category'] ?? ''));
@@ -1368,6 +1183,7 @@ class FormController extends Controller
                         $results['failed'][] = ['index' => $index, 'error' => $response->json('message') ?? $response->body()];
                     }
                 }
+
                 return response()->json([
                     'success' => count($results['failed']) === 0,
                     'status' => count($results['created']) > 0 ? 200 : 422,
@@ -1399,12 +1215,13 @@ class FormController extends Controller
 
     private function isSequentialArray(mixed $value): bool
     {
-        if (!is_array($value)) {
+        if (! is_array($value)) {
             return false;
         }
         if ($value === []) {
             return true;
         }
+
         return array_keys($value) === range(0, count($value) - 1);
     }
 
@@ -1423,6 +1240,7 @@ class FormController extends Controller
             $reply = $service->chatAssistant($validated['messages']);
         } catch (\Throwable $e) {
             Log::error('Full AI chat failed', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'error' => 'Assistant is temporarily unavailable. Try again in a moment.',
@@ -1452,7 +1270,7 @@ class FormController extends Controller
         $hasDescription = isset($validated['description']) && trim($validated['description']) !== '';
         $hasFiles = $request->hasFile('attachments');
 
-        if (!$hasDescription && !$hasFiles) {
+        if (! $hasDescription && ! $hasFiles) {
             return response()->json([
                 'success' => false,
                 'error' => 'Provide menu text or upload at least one PDF/image.',
@@ -1472,26 +1290,26 @@ class FormController extends Controller
             'attachments' => [],
         ];
 
-        $targetDir = public_path('full-ai-sessions/' . $sessionId);
+        $targetDir = public_path('full-ai-sessions/'.$sessionId);
         if ($hasFiles || $request->hasFile('logo')) {
-            if (!File::exists($targetDir)) {
+            if (! File::exists($targetDir)) {
                 File::makeDirectory($targetDir, 0755, true);
             }
         }
         if ($hasFiles) {
             foreach ($request->file('attachments') as $file) {
-                if (!$file->isValid()) {
+                if (! $file->isValid()) {
                     continue;
                 }
                 $originalName = $file->getClientOriginalName();
                 $slug = Str::slug(pathinfo($originalName, PATHINFO_FILENAME));
                 $extension = $file->getClientOriginalExtension();
-                $filename = time() . '_' . uniqid() . '_' . ($slug ?: 'menu') . '.' . $extension;
+                $filename = time().'_'.uniqid().'_'.($slug ?: 'menu').'.'.$extension;
                 $file->move($targetDir, $filename);
                 $payload['attachments'][] = [
                     'name' => $originalName,
-                    'path' => $targetDir . '/' . $filename,
-                    'relative_path' => 'full-ai-sessions/' . $sessionId . '/' . $filename,
+                    'path' => $targetDir.'/'.$filename,
+                    'relative_path' => 'full-ai-sessions/'.$sessionId.'/'.$filename,
                     'mime' => $file->getClientMimeType(),
                 ];
             }
@@ -1499,10 +1317,10 @@ class FormController extends Controller
         if ($request->hasFile('logo') && $request->file('logo')->isValid()) {
             $logoFile = $request->file('logo');
             $logoExt = $logoFile->getClientOriginalExtension() ?: 'png';
-            $logoFilename = 'logo.' . $logoExt;
+            $logoFilename = 'logo.'.$logoExt;
             $logoFile->move($targetDir, $logoFilename);
-            $payload['logo_path'] = $targetDir . '/' . $logoFilename;
-            $payload['logo_relative_path'] = 'full-ai-sessions/' . $sessionId . '/' . $logoFilename;
+            $payload['logo_path'] = $targetDir.'/'.$logoFilename;
+            $payload['logo_relative_path'] = 'full-ai-sessions/'.$sessionId.'/'.$logoFilename;
         }
 
         try {
@@ -1510,6 +1328,7 @@ class FormController extends Controller
             $result = $service->start($payload, $sessionId);
         } catch (\Throwable $e) {
             Log::error('Full AI automation start failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -1552,7 +1371,6 @@ class FormController extends Controller
      * keywords like "rose" and "ravioli" are mapped to their Arabic/Hebrew
      * equivalents as requested.
      *
-     * @param string $label
      * @return array{0:string,1:string,2:string} Returns [name_en, name_ar, name_he]
      */
     private function translatePastaNameToLanguages(string $label): array
@@ -1564,24 +1382,24 @@ class FormController extends Controller
 
         // Normalize label (replace underscores with spaces, collapse whitespace)
         $normalized = preg_replace('/\s+/', ' ', str_replace('_', ' ', strtolower($label))) ?? '';
-        
+
         // Multi-word phrases that should be translated as a unit
         $multiWordPhrases = [
             'aglio e olio' => ['Aglio e Olio', 'أجليو أوليو', 'אגליו אוליו'],
         ];
-        
+
         // Replace multi-word phrases with placeholders, then translate word by word
         $phrasePlaceholders = [];
         $placeholderCounter = 0;
         foreach ($multiWordPhrases as $phrase => $translation) {
             if (str_contains($normalized, $phrase)) {
-                $placeholder = '__PHRASE_' . $placeholderCounter . '__';
+                $placeholder = '__PHRASE_'.$placeholderCounter.'__';
                 $phrasePlaceholders[$placeholder] = $translation;
                 $normalized = str_replace($phrase, $placeholder, $normalized);
                 $placeholderCounter++;
             }
         }
-        
+
         $words = explode(' ', $normalized);
 
         // Comprehensive translation dictionary for pasta-related terms
@@ -1599,7 +1417,7 @@ class FormController extends Controller
             'fusilli' => ['Fusilli', 'فوسيلي', 'פוסילי'],
             'rigatoni' => ['Rigatoni', 'ريجاتوني', 'ריגטוני'],
             'gnocchi' => ['Gnocchi', 'جنوكי', 'גנוקי'],
-            
+
             // Sandwich types
             'baguette' => ['Baguette', 'باجيت', 'באגט'],
             'ciabatta' => ['Ciabatta', 'جبيتا', 'גאבטה'],
@@ -1607,7 +1425,7 @@ class FormController extends Controller
             'rolls' => ['Rolls', 'رول', 'רול'],
             'sandwich' => ['Sandwich', 'ساندويتش', 'כריך'],
             'sandwiches' => ['Sandwiches', 'ساندويتشات', 'כריכים'],
-            
+
             // Sauces and preparations
             'alfredo' => ['Alfredo', 'ألفريدو', 'אלפרדו'],
             'rose' => ['Rose', 'روزيه', 'רוזה'],
@@ -1619,7 +1437,7 @@ class FormController extends Controller
             'aglio' => ['Aglio', 'أجليو', 'אגליו'],
             'olio' => ['Olio', 'أوليو', 'אוליו'],
             'aglio e olio' => ['Aglio e Olio', 'أجليو أوليو', 'אגליו אוליו'],
-            
+
             // Ingredients
             'chicken' => ['Chicken', 'دجاج', 'עוף'],
             'breast' => ['Breast', 'صدر', 'חזה'],
@@ -1667,7 +1485,7 @@ class FormController extends Controller
             'noodles' => ['Noodles', 'نودل', 'נודלס'],
             'dish' => ['Dish', 'طبق', 'מנה'],
             'dishes' => ['Dishes', 'أطباق', 'מנות'],
-            
+
             // Common words
             'pasta' => ['Pasta', 'باستا', 'פסטה'],
             'sauce' => ['Sauce', 'صلصة', 'רוטב'],
@@ -1758,15 +1576,15 @@ class FormController extends Controller
         }
 
         // Ensure filename has an extension
-        if (!pathinfo($filename, PATHINFO_EXTENSION)) {
+        if (! pathinfo($filename, PATHINFO_EXTENSION)) {
             $extension = $request->file('image')->getClientOriginalExtension();
-            $filename = $filename . '.' . $extension;
+            $filename = $filename.'.'.$extension;
         }
 
         // Create directory in public folder
         $targetDirectory = public_path($customName);
 
-        if (!File::exists($targetDirectory)) {
+        if (! File::exists($targetDirectory)) {
             File::makeDirectory($targetDirectory, 0755, true);
         }
 
@@ -1782,7 +1600,7 @@ class FormController extends Controller
                 'message' => 'Image uploaded successfully',
                 // Return only the folder name in path as requested
                 'path' => $customName,
-                'url' => asset($customName . '/' . rawurlencode($filename)),
+                'url' => asset($customName.'/'.rawurlencode($filename)),
             ], 200);
         } catch (\Exception $e) {
             Log::error('Image upload failed', [
@@ -1793,9 +1611,8 @@ class FormController extends Controller
 
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to upload image: ' . $e->getMessage(),
+                'error' => 'Failed to upload image: '.$e->getMessage(),
             ], 500);
         }
     }
-
 }

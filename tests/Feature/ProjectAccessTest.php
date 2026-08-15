@@ -22,16 +22,15 @@ class ProjectAccessTest extends TestCase
      * @var array<string, list<string>>
      */
     private const MATRIX = [
-        'yamen@kaman.rest' => ['form', 'whatsapp-bot', 'ai-chatbot'],
+        'yamen@kaman.rest' => ['form', 'ai-chatbot'],
         'ahmad@kaman.rest' => ['form'],
-        'mohamed@kaman.rest' => ['form', 'whatsapp-bot'],
+        'mohamed@kaman.rest' => ['form', 'ai-chatbot'],
     ];
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Nothing in this test should reach the network.
         Http::preventStrayRequests();
         Http::fake();
 
@@ -64,8 +63,6 @@ class ProjectAccessTest extends TestCase
                 $response = $this->actingAs($user)->get($project->url());
 
                 if (in_array($project->value, $allowed, true)) {
-                    // Must actually render/redirect — not merely "not 403",
-                    // which a 500 would also satisfy.
                     $this->assertLessThan(
                         400,
                         $response->getStatusCode(),
@@ -88,27 +85,21 @@ class ProjectAccessTest extends TestCase
     public function test_public_routes_stay_reachable_without_login(): void
     {
         $this->get(route('landing.show'))->assertOk();
-
-        // Green API posts server-to-server; it must be handled, not bounced to /login.
-        $webhook = $this->post(route('whatsapp.bot.webhook'), []);
-
-        $this->assertNotSame(302, $webhook->getStatusCode(), 'Webhook must not redirect to login.');
-        $this->assertLessThan(500, $webhook->getStatusCode(), 'Webhook must still be handled.');
     }
 
     public function test_welcome_page_lists_only_the_projects_a_user_can_open(): void
     {
         $cases = [
             'ahmad@kaman.rest' => [
-                'visible' => ['Restaurant Form'],
-                'hidden' => ['WhatsApp Bot', 'AI Chatbot Studio'],
+                'visible' => [__('projects.form.label')],
+                'hidden' => [__('projects.ai-chatbot.label')],
             ],
             'mohamed@kaman.rest' => [
-                'visible' => ['Restaurant Form', 'WhatsApp Bot'],
-                'hidden' => ['AI Chatbot Studio'],
+                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label')],
+                'hidden' => [],
             ],
             'yamen@kaman.rest' => [
-                'visible' => ['Restaurant Form', 'WhatsApp Bot', 'AI Chatbot Studio'],
+                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label')],
                 'hidden' => [],
             ],
         ];
@@ -132,7 +123,6 @@ class ProjectAccessTest extends TestCase
         $admin = User::where('email', 'yamen@kaman.rest')->firstOrFail();
         $member = User::where('email', 'mohamed@kaman.rest')->firstOrFail();
 
-        // Settings live inside the chatbot studio sidebar, not on the homepage.
         $this->actingAs($admin)->get(route('home'))->assertDontSee('Chatbot Settings');
         $this->actingAs($member)->get(route('home'))->assertDontSee('Chatbot Settings');
 
@@ -146,7 +136,7 @@ class ProjectAccessTest extends TestCase
 
         $this->actingAs($stranger)->get(route('home'))
             ->assertOk()
-            ->assertSee('No tools assigned');
+            ->assertSee(__('workspace.no_tools_title'));
 
         foreach (Project::cases() as $project) {
             $this->actingAs($stranger)->get($project->url())->assertForbidden();

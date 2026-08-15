@@ -16,6 +16,16 @@ use Illuminate\Support\Facades\Hash;
  */
 class WorkspaceUserSeeder extends Seeder
 {
+    /**
+     * Users who must not own chatbot instances — they receive instance access
+     * grants only (see MalanCompanyMemberSeeder).
+     *
+     * @var list<string>
+     */
+    public const CHATBOT_MEMBER_ONLY_EMAILS = [
+        'malan@kaman.rest',
+    ];
+
     public function run(): void
     {
         $users = [
@@ -42,8 +52,18 @@ class WorkspaceUserSeeder extends Seeder
                 'password' => 'mohamed123@',
                 'is_admin' => false,
                 'projects' => [
-                    Project::WhatsAppBot->value,
+                    Project::AiChatbot->value,
                     Project::Form->value,
+                ],
+            ],
+            [
+                // Malan company staff: chatbot project only; MALAN bot via grant (not ownership).
+                'name' => 'Malan Team',
+                'email' => 'malan@kaman.rest',
+                'password' => 'Malan123@',
+                'is_admin' => false,
+                'projects' => [
+                    Project::AiChatbot->value,
                 ],
             ],
         ];

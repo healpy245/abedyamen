@@ -10,26 +10,36 @@ class AiChatbotInstanceService
 {
     public function __construct(
         protected AiChatbotSettingsService $settingsService,
-    ) {
-    }
+        protected ChatbotAuthorizationService $authorizationService,
+    ) {}
 
     public function defaultPrompt(): string
     {
         return (string) ($this->settingsService->defaults()['system_prompt'] ?? 'You are a helpful AI assistant.');
     }
 
+    /**
+     * Seeded bots only — never auto-create a blank instance from the UI.
+     */
+    public function firstForUser(User $user): ?ChatbotInstance
+    {
+        return $this->authorizationService->firstAccessibleForUser($user);
+    }
+
+    /**
+     * @deprecated Use firstForUser(); kept for older call sites during transition.
+     */
     public function ensureDefaultForUser(User $user): ChatbotInstance
     {
-        $existing = ChatbotInstance::query()
-            ->where('user_id', $user->id)
-            ->oldest('id')
-            ->first();
+        $existing = $this->firstForUser($user);
 
         if ($existing) {
             return $existing;
         }
 
-        return $this->createForUser($user, 'General Assistant', $this->defaultPrompt());
+        throw new \RuntimeException(
+            'No chatbot instances are configured for this account. Run the Sally Malan and Kaman WhatsApp seeders.'
+        );
     }
 
     public function createForUser(User $user, string $name, ?string $systemPrompt = null): ChatbotInstance
@@ -43,9 +53,7 @@ class AiChatbotInstanceService
 
     public function authorizeForUser(ChatbotInstance $instance, User $user): void
     {
-        if ($instance->user_id !== $user->id && !($user->is_admin ?? false)) {
-            abort(404);
-        }
+        $this->authorizationService->authorize($user, $instance, ChatbotAuthorizationService::ABILITY_VIEW);
     }
 
     /**
@@ -62,15 +70,21 @@ class AiChatbotInstanceService
 
         $instance->loadCount('members');
 
+        $instances = $this->authorizationService->instancesForUser($user);
+
         return [
             'instance' => $instance,
-            'instances' => ChatbotInstance::query()
-                ->where('user_id', $user->id)
-                ->latest('updated_at')
-                ->get(),
+            'instances' => $instances,
             'conversations' => ChatbotConversation::query()
-                ->where('user_id', $user->id)
                 ->where('instance_id', $instance->id)
+                ->where(function ($q) use ($user, $instance): void {
+                    // Owner/admin: all non-test; members: all customer-facing for the instance
+                    if (($user->is_admin ?? false) || (int) $instance->user_id === (int) $user->id) {
+                        $q->customerFacing();
+                    } else {
+                        $q->customerFacing();
+                    }
+                })
                 ->latest('updated_at')
                 ->get(),
             'activeConversation' => $activeConversation,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -40,16 +41,12 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
         if ($description === '' || empty($drinksSelection)) {
             return [
                 'success' => false,
-                'error' => 'Please select at least one ' . $this->getItemLabel() . ' and provide its price.',
+                'error' => 'Please select at least one '.$this->getItemLabel().' and provide its price.',
             ];
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-<<<<<<< HEAD
         $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
-=======
-        $baseUrl = "https://{$subdomain}.kaman.rest";
->>>>>>> parent of cd712ea (First)
         $imageBasePath = public_path($imageDirectory);
 
         set_time_limit(600);
@@ -62,17 +59,24 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
 
             $progress('categories', 'Fetching categories...', []);
             $categories = $this->fetchCategories($baseUrl, $token);
-            $progress('categories', 'Fetched ' . count($categories) . ' categories', ['count' => count($categories)]);
+            $progress('categories', 'Fetched '.count($categories).' categories', ['count' => count($categories)]);
 
-            $progress('ai', 'Parsing ' . $this->getItemLabel() . 's with AI (with images)...', []);
-            $drinks = $this->parseDrinksWithAi($description, $drinksSelection, $imageBasePath, $categories);
-            $progress('ai', 'Parsed ' . count($drinks) . ' ' . $this->getItemLabel() . 's', ['count' => count($drinks)]);
+            $preferredCategory = $this->extractCategoryFromDescription($description);
+            $categoryId = $this->resolveCategoryId($categories, $preferredCategory);
+            $progress('categories', 'Selected category id '.$categoryId.' for "'.$preferredCategory.'"', [
+                'category_id' => $categoryId,
+                'preferred' => $preferredCategory,
+            ]);
 
-            $progress('items', 'Creating ' . $this->getItemLabel() . 's via Kaman API...', []);
+            $progress('ai', 'Parsing '.$this->getItemLabel().'s with AI (with images)...', []);
+            $drinks = $this->parseDrinksWithAi($drinksSelection, $imageBasePath, $categoryId);
+            $progress('ai', 'Parsed '.count($drinks).' '.$this->getItemLabel().'s', ['count' => count($drinks)]);
+
+            $progress('items', 'Creating '.$this->getItemLabel().'s via Kaman API...', []);
             $itemsResult = $this->createDrinkItems($baseUrl, $token, $drinks, $progress);
-            $progress('items', 'Created ' . count($itemsResult['created']) . ' items, ' . count($itemsResult['failed']) . ' failed', $itemsResult);
+            $progress('items', 'Created '.count($itemsResult['created']).' items, '.count($itemsResult['failed']).' failed', $itemsResult);
 
-            Log::info(static::class . ' completed', [
+            Log::info(static::class.' completed', [
                 'restaurant' => $restaurantName,
                 'items_count' => count($drinks),
                 'items_created' => $itemsResult['created'],
@@ -81,7 +85,7 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
 
             return [
                 'success' => true,
-                'message' => ucfirst($this->getItemLabel()) . ' store processed successfully',
+                'message' => ucfirst($this->getItemLabel()).' store processed successfully',
                 'data' => [
                     'token' => $token,
                     'items' => $drinks,
@@ -90,7 +94,7 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
                 ],
             ];
         } catch (\Throwable $e) {
-            Log::error(static::class . ' failed', [
+            Log::error(static::class.' failed', [
                 'error' => $e->getMessage(),
                 'restaurant' => $restaurantName,
             ]);
@@ -101,54 +105,52 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
     protected function http(int $timeout = 30): \Illuminate\Http\Client\PendingRequest
     {
         $http = Http::timeout($timeout)->acceptJson();
-        if (!config('services.kaman.ssl_verify', false)) {
+        if (! config('services.kaman.ssl_verify', false)) {
             $http = $http->withoutVerifying();
         }
+
         return $http;
     }
 
     protected function login(string $baseUrl, string $email, string $password): string
     {
-<<<<<<< HEAD
         $response = $this->http()->post("{$baseUrl}/login", [
             'email' => $email,
-=======
-        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
->>>>>>> parent of cd712ea (First)
             'password' => $password,
         ]);
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $body = $response->json();
             $message = $body['message'] ?? $body['error'] ?? $response->body();
-            throw new \RuntimeException('Login failed: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Login failed: '.(is_string($message) ? $message : json_encode($message)));
         }
         $data = $response->json();
         $token = $data['token'] ?? $data['access_token'] ?? $data['data']['token'] ?? null;
         if ($token === null) {
             throw new \RuntimeException('Login response did not contain a token.');
         }
+
         return $token;
     }
 
     protected function fetchCategories(string $baseUrl, string $token): array
     {
-        $response = $this->http()->withToken($token)->get("{$baseUrl}/api/manager/categories");
-        if (!$response->successful()) {
+        $response = $this->http()->withToken($token)->get("{$baseUrl}/categories");
+        if (! $response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
-            throw new \RuntimeException('Failed to fetch categories: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Failed to fetch categories: '.(is_string($message) ? $message : json_encode($message)));
         }
         $data = $response->json();
         $list = $data['data'] ?? $data['categories'] ?? $data;
-        if (!is_array($list)) {
+        if (! is_array($list)) {
             throw new \RuntimeException('Categories response format is invalid.');
         }
+
         return $list;
     }
 
     protected function findImagePath(string $basePath, string $key): ?string
     {
-        if (!File::isDirectory($basePath)) {
+        if (! File::isDirectory($basePath)) {
             return null;
         }
         $keyLower = strtolower(trim($key));
@@ -161,56 +163,89 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
                 return $file->getPathname();
             }
         }
+
         return null;
     }
 
-    protected function parseDrinksWithAi(string $description, array $drinksSelection, string $imageBasePath, array $categories): array
+    protected function parseDrinksWithAi(array $drinksSelection, string $imageBasePath, string $categoryId): array
     {
-        $categoryName = $this->extractCategoryFromDescription($description);
         $drinks = [];
         $idx = 0;
         foreach ($drinksSelection as $item) {
-            $key = $item['key'] ?? $item['name'] ?? ($this->getItemLabel() . (++$idx));
-            $nameEn = trim((string) ($item['name'] ?? $item['label'] ?? $key));
+            $key = $item['key'] ?? $item['name'] ?? ($this->getItemLabel().(++$idx));
+            $catalogName = trim((string) ($item['name'] ?? $item['label'] ?? $key));
             $price = isset($item['price']) ? number_format((float) $item['price'], 2, '.', '') : '0.00';
             $imagePath = $this->findImagePath($imageBasePath, $key);
 
+            // Catalog key/label is the source of truth for short menu names (e.g. Cola / كولا).
+            // Image AI is only used for descriptions (and as a naming fallback for unknown drinks).
+            $nameEnFormatted = $this->formatProfessionalName($catalogName);
+            $translated = $this->translateNameToArabicHebrew($nameEnFormatted);
+            $nameAr = trim($translated['name_ar'] ?? '');
+            $nameHe = trim($translated['name_he'] ?? '');
+            $descriptionAr = '';
+            $descriptionEn = '';
+            $descriptionHe = '';
+
             if ($imagePath) {
-                $prompt = "Extract the drink/product name from this image. Return a JSON object with: name_ar (proper Arabic translation), name_en (English), name_he (proper Hebrew translation). Use native Arabic and Hebrew script - do not use transliteration. Add brief 1-line descriptions in description_ar, description_en, description_he. Output ONLY valid JSON, no markdown.";
+                $prompt = 'Look at this drink image and return ONLY JSON with short 1-line descriptions: description_ar, description_en, description_he. Do not invent a product name. Output ONLY valid JSON, no markdown.';
                 try {
-                    $aiResponse = $this->analyzeImage($imagePath, $prompt, ['max_tokens' => 512]);
-                    $parsed = $this->parseSingleDrinkAiResponse($aiResponse, $nameEn);
+                    $aiResponse = $this->analyzeImage($imagePath, $prompt, ['max_tokens' => 256]);
+                    $parsed = $this->parseSingleDrinkAiResponse($aiResponse, $nameEnFormatted);
+                    $descriptionAr = trim($parsed['description_ar'] ?? '');
+                    $descriptionEn = trim($parsed['description_en'] ?? '');
+                    $descriptionHe = trim($parsed['description_he'] ?? '');
                 } catch (\Throwable $e) {
-                    $parsed = $this->translateNameToArabicHebrew($nameEn);
+                    // Keep empty descriptions on vision failure.
                 }
-            } else {
-                $parsed = $this->translateNameToArabicHebrew($nameEn);
             }
 
-            $nameEnFormatted = $this->formatProfessionalName($parsed['name_en'] ?? $nameEn);
-            $nameAr = trim($parsed['name_ar'] ?? '');
-            $nameHe = trim($parsed['name_he'] ?? '');
-
             if ($nameAr === '' || $nameHe === '' || $this->looksLikeEnglish($nameAr) || $this->looksLikeEnglish($nameHe)) {
-                $translated = $this->translateNameToArabicHebrew($nameEnFormatted);
+                $translated = $this->translateNameToArabicHebrew($catalogName);
                 $nameAr = $translated['name_ar'] ?: $nameEnFormatted;
                 $nameHe = $translated['name_he'] ?: $nameEnFormatted;
             }
 
-            $categoryId = $this->matchCategoryId($categories, $categoryName);
+            $shortNames = $this->shortMenuNamesForKey((string) $key, $catalogName);
+            if ($shortNames !== null) {
+                $nameEnFormatted = $shortNames['name_en'];
+                $nameAr = $shortNames['name_ar'];
+                $nameHe = $shortNames['name_he'];
+            }
+
             $drinks[$key] = [
                 'name_ar' => $nameAr,
                 'name_en' => $nameEnFormatted,
                 'name_he' => $nameHe,
                 'price' => $price,
                 'category_id' => $categoryId,
-                'description_ar' => $parsed['description_ar'] ?? '',
-                'description_en' => $parsed['description_en'] ?? '',
-                'description_he' => $parsed['description_he'] ?? '',
+                'description_ar' => $descriptionAr,
+                'description_en' => $descriptionEn,
+                'description_he' => $descriptionHe,
                 'image_path' => $imagePath,
             ];
         }
+
         return $drinks;
+    }
+
+    /**
+     * Force short basic menu names for known catalog keys (overrides verbose brand/AI names).
+     *
+     * @return array{name_en: string, name_ar: string, name_he: string}|null
+     */
+    protected function shortMenuNamesForKey(string $key, string $catalogName): ?array
+    {
+        $norm = str_replace(['-', '_', ' '], '', mb_strtolower(trim($key !== '' ? $key : $catalogName)));
+
+        $map = [
+            'cola' => ['name_en' => 'Cola', 'name_ar' => 'كولا', 'name_he' => 'קולה'],
+            'colazero' => ['name_en' => 'Cola Zero', 'name_ar' => 'كولا زيرو', 'name_he' => 'קולה זירו'],
+            'cocacola' => ['name_en' => 'Cola', 'name_ar' => 'كولا', 'name_he' => 'קולה'],
+            'cocacolazero' => ['name_en' => 'Cola Zero', 'name_ar' => 'كولا زيرو', 'name_he' => 'קולה זירו'],
+        ];
+
+        return $map[$norm] ?? null;
     }
 
     protected function translateNameToArabicHebrew(string $nameEn): array
@@ -223,6 +258,7 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
         $key = strtolower($nameEn);
         if (isset($translations[$key])) {
             $t = $translations[$key];
+
             return ['name_ar' => $t['ar'], 'name_en' => $nameEn, 'name_he' => $t['he'], 'description_ar' => '', 'description_en' => '', 'description_he' => ''];
         }
         $sorted = $translations;
@@ -234,17 +270,18 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
                     return ['name_ar' => $t['ar'], 'name_en' => $nameEn, 'name_he' => $t['he'], 'description_ar' => '', 'description_en' => '', 'description_he' => ''];
                 }
                 $suffixTrans = $this->translateNameToArabicHebrew($suffix);
+
                 return [
-                    'name_ar' => $t['ar'] . ' ' . $suffixTrans['name_ar'],
+                    'name_ar' => $t['ar'].' '.$suffixTrans['name_ar'],
                     'name_en' => $nameEn,
-                    'name_he' => $t['he'] . ' ' . $suffixTrans['name_he'],
+                    'name_he' => $t['he'].' '.$suffixTrans['name_he'],
                     'description_ar' => '',
                     'description_en' => '',
                     'description_he' => '',
                 ];
             }
         }
-        $prompt = "Translate this drink/product name to Arabic and Hebrew. Return JSON: {\"name_ar\":\"...\",\"name_en\":\"...\",\"name_he\":\"...\"}. Use native Arabic and Hebrew script. name_en stays as given. Output ONLY valid JSON.";
+        $prompt = 'Translate this drink/product name to Arabic and Hebrew. Return JSON: {"name_ar":"...","name_en":"...","name_he":"..."}. Use native Arabic and Hebrew script. name_en stays as given. Output ONLY valid JSON.';
         try {
             $response = $this->chat($prompt, $nameEn, ['max_tokens' => 256]);
             $decoded = json_decode(trim(preg_replace('/```(?:json)?\s*|```/', '', $response)), true);
@@ -259,8 +296,9 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
                 ];
             }
         } catch (\Throwable $e) {
-            Log::warning(static::class . ' translateNameToArabicHebrew failed', ['name' => $nameEn, 'error' => $e->getMessage()]);
+            Log::warning(static::class.' translateNameToArabicHebrew failed', ['name' => $nameEn, 'error' => $e->getMessage()]);
         }
+
         return ['name_ar' => $nameEn, 'name_en' => $nameEn, 'name_he' => $nameEn, 'description_ar' => '', 'description_en' => '', 'description_he' => ''];
     }
 
@@ -276,9 +314,10 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
             $response = trim($m[1]);
         }
         $decoded = json_decode($response, true);
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             return ['name_ar' => $fallbackName, 'name_en' => $fallbackName, 'name_he' => $fallbackName, 'description_ar' => '', 'description_en' => '', 'description_he' => ''];
         }
+
         return [
             'name_ar' => (string) ($decoded['name_ar'] ?? $decoded['nameAr'] ?? $fallbackName),
             'name_en' => (string) ($decoded['name_en'] ?? $decoded['nameEn'] ?? $fallbackName),
@@ -304,7 +343,8 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
             if (str_starts_with($nameNorm, $pattern)) {
                 $rest = substr($nameNorm, strlen($pattern));
                 $suffix = $this->formatSuffixWords($rest);
-                return $suffix !== '' ? $proper . ' ' . $suffix : $proper;
+
+                return $suffix !== '' ? $proper.' '.$suffix : $proper;
             }
         }
         $suffixPattern = '/(zero|big|glass|can|bottle|regular|large|small|ice|iced|cola|lemonade|sprite|xl|ten|tea|coffee|espresso|mocha|latte)/i';
@@ -314,8 +354,10 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
             if (preg_match('/^\d+[a-z]?$/i', $word)) {
                 return $word;
             }
+
             return ucfirst(strtolower($word));
         }, $words);
+
         return implode(' ', $formatted);
     }
 
@@ -334,11 +376,12 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
                     break;
                 }
             }
-            if (!$matched) {
+            if (! $matched) {
                 $result[] = ucfirst($remaining);
                 break;
             }
         }
+
         return implode(' ', $result);
     }
 
@@ -347,20 +390,231 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
         if (preg_match('/^([^:]+)\s*:\s*\{\{/', trim($description), $m)) {
             return trim($m[1]);
         }
+
         return $this->getDefaultCategory();
     }
 
+    /**
+     * Pick the restaurant category that best matches drinks (or juices/hot drinks).
+     * Prefer an exact name match, then ask AI to choose from the fetched categories by name.
+     *
+     * @param  array<int, array<string, mixed>>  $categories
+     */
+    protected function resolveCategoryId(array $categories, string $preferredCategoryName): string
+    {
+        if ($categories === []) {
+            return '';
+        }
+
+        $matched = $this->matchCategoryId($categories, $preferredCategoryName);
+        if ($matched !== '') {
+            return $matched;
+        }
+
+        $aiId = $this->askAiForCategoryId($categories, $preferredCategoryName);
+        if ($aiId !== null && $aiId !== '') {
+            return $aiId;
+        }
+
+        return $this->fallbackDrinksCategoryId($categories);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $categories
+     */
     protected function matchCategoryId(array $categories, string $categoryName): string
     {
-        $catLower = strtolower($categoryName);
+        $want = $this->normalizeCategoryLabel($categoryName);
+        if ($want === '') {
+            return '';
+        }
+
+        $bestId = '';
+        $bestScore = 0;
+
         foreach ($categories as $cat) {
-            $name = strtolower((string) ($cat['name'] ?? $cat['name_en'] ?? $cat['name_ar'] ?? ''));
-            if ($name === $catLower || str_contains($name, $catLower) || str_contains($catLower, $name)) {
-                return (string) ($cat['id'] ?? $cat['category_id'] ?? '');
+            $id = (string) ($cat['id'] ?? $cat['category_id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+
+            foreach ($this->categoryLabels($cat) as $label) {
+                $have = $this->normalizeCategoryLabel($label);
+                if ($have === '') {
+                    continue;
+                }
+
+                $score = 0;
+                if ($have === $want) {
+                    $score = 100;
+                } elseif (str_contains($have, $want) || str_contains($want, $have)) {
+                    $score = 80;
+                }
+
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestId = $id;
+                }
             }
         }
+
+        return $bestScore >= 80 ? $bestId : '';
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $categories
+     */
+    protected function askAiForCategoryId(array $categories, string $preferredCategoryName): ?string
+    {
+        $categoryList = $this->formatCategoriesForPrompt($categories);
+        $itemLabel = $this->getItemLabel();
+        $preferred = trim($preferredCategoryName) !== '' ? $preferredCategoryName : $this->getDefaultCategory();
+
+        $systemPrompt = <<<'PROMPT'
+You assign restaurant menu items to an existing category.
+
+You receive:
+1) A preferred category hint (may be Arabic, English, or Hebrew)
+2) The item type (drink, juice, etc.)
+3) The restaurant's available categories with their ids and names
+
+Pick the ONE category whose name is most related to drinks/beverages/juices (or the preferred hint).
+Never pick a meals/food category when a drinks-related category exists.
+
+Return ONLY valid JSON: {"category_id":"<id>"}
+PROMPT;
+
+        $userPrompt = "Preferred category hint: {$preferred}\nItem type: {$itemLabel}\n\nAvailable categories:\n{$categoryList}\n\nReturn JSON with the best matching category_id.";
+
+        try {
+            $response = $this->chat($systemPrompt, $userPrompt, ['max_tokens' => 128, 'temperature' => 0]);
+            $response = trim(preg_replace('/```(?:json)?\s*|```/', '', $response) ?? $response);
+            if (preg_match('/\{[\s\S]*\}/', $response, $m)) {
+                $response = $m[0];
+            }
+            $decoded = json_decode($response, true);
+            $id = is_array($decoded) ? (string) ($decoded['category_id'] ?? $decoded['id'] ?? '') : '';
+            if ($id !== '' && $this->categoryIdExists($categories, $id)) {
+                Log::info(static::class.' AI selected category', [
+                    'preferred' => $preferred,
+                    'category_id' => $id,
+                ]);
+
+                return $id;
+            }
+        } catch (\Throwable $e) {
+            Log::warning(static::class.' askAiForCategoryId failed', ['error' => $e->getMessage()]);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $categories
+     */
+    protected function fallbackDrinksCategoryId(array $categories): string
+    {
+        $drinkKeywords = [
+            'drink', 'drinks', 'beverage', 'beverages', 'soda', 'soft', 'cold', 'hot',
+            'juice', 'juices', 'water', 'coffee', 'tea',
+            'مشروب', 'مشروبات', 'عصير', 'عصائر', 'باردة', 'ساخن', 'ساخنة', 'شراب',
+            'משקה', 'משקאות', 'שתייה', 'מיץ', 'מיצים', 'קפה', 'תה',
+        ];
+        $mealKeywords = [
+            'meal', 'meals', 'food', 'foods', 'dish', 'dishes',
+            'وجبة', 'وجبات', 'طعام', 'أطباق', 'מנה', 'מנות', 'ארוחה', 'אוכל',
+        ];
+
+        foreach ($categories as $cat) {
+            $id = (string) ($cat['id'] ?? $cat['category_id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+            $haystack = $this->normalizeCategoryLabel(implode(' ', $this->categoryLabels($cat)));
+            foreach ($drinkKeywords as $keyword) {
+                if (str_contains($haystack, $this->normalizeCategoryLabel($keyword))) {
+                    return $id;
+                }
+            }
+        }
+
+        foreach ($categories as $cat) {
+            $id = (string) ($cat['id'] ?? $cat['category_id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+            $haystack = $this->normalizeCategoryLabel(implode(' ', $this->categoryLabels($cat)));
+            $looksLikeMeal = false;
+            foreach ($mealKeywords as $keyword) {
+                if (str_contains($haystack, $this->normalizeCategoryLabel($keyword))) {
+                    $looksLikeMeal = true;
+                    break;
+                }
+            }
+            if (! $looksLikeMeal) {
+                return $id;
+            }
+        }
+
         $first = $categories[0] ?? null;
+
         return $first ? (string) ($first['id'] ?? $first['category_id'] ?? '') : '';
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $categories
+     */
+    protected function formatCategoriesForPrompt(array $categories): string
+    {
+        $lines = [];
+        foreach ($categories as $cat) {
+            $id = $cat['id'] ?? $cat['category_id'] ?? '?';
+            $names = array_values(array_unique(array_filter($this->categoryLabels($cat))));
+            $name = $names !== [] ? implode(' / ', $names) : (string) $id;
+            $lines[] = "- id: {$id}, name: {$name}";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $cat
+     * @return list<string>
+     */
+    protected function categoryLabels(array $cat): array
+    {
+        $labels = [];
+        foreach (['name', 'name_en', 'name_ar', 'name_he', 'title', 'label'] as $key) {
+            $value = trim((string) ($cat[$key] ?? ''));
+            if ($value !== '') {
+                $labels[] = $value;
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $categories
+     */
+    protected function categoryIdExists(array $categories, string $id): bool
+    {
+        foreach ($categories as $cat) {
+            $candidate = (string) ($cat['id'] ?? $cat['category_id'] ?? '');
+            if ($candidate !== '' && $candidate === $id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function normalizeCategoryLabel(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return $value;
     }
 
     protected function createDrinkItems(string $baseUrl, string $token, array $drinks, ?callable $progress = null): array
@@ -372,7 +626,7 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
         $uploadTimeout = 90;
         foreach ($drinks as $key => $drink) {
             $i++;
-            $progress && $progress('item', 'Creating ' . $this->getItemLabel() . ' ' . $i . '/' . $total . ': ' . ($drink['name_en'] ?? $key), ['key' => $key]);
+            $progress && $progress('item', 'Creating '.$this->getItemLabel().' '.$i.'/'.$total.': '.($drink['name_en'] ?? $key), ['key' => $key]);
             try {
                 $body = [
                     'name_ar' => $drink['name_ar'],
@@ -385,13 +639,14 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
                     'description_he' => $drink['description_he'],
                 ];
                 $http = $this->http($uploadTimeout)->withToken($token);
-                if (!empty($drink['image_path']) && File::exists($drink['image_path'])) {
+                if (! empty($drink['image_path']) && File::exists($drink['image_path'])) {
                     $http = $http->attach('image', File::get($drink['image_path']), File::basename($drink['image_path']));
                 }
-                $response = $http->post("{$baseUrl}/api/manager/items", $body);
+                $response = $http->post("{$baseUrl}/items", $body);
             } catch (\Throwable $e) {
                 $failed[] = ['key' => $key, 'error' => $e->getMessage()];
-                Log::warning(static::class . ' item request failed', ['key' => $key, 'error' => $e->getMessage()]);
+                Log::warning(static::class.' item request failed', ['key' => $key, 'error' => $e->getMessage()]);
+
                 continue;
             }
             if ($response->successful()) {
@@ -400,9 +655,10 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
             } else {
                 $message = $response->json('message') ?? $response->json('error') ?? $response->body();
                 $failed[] = ['key' => $key, 'error' => is_string($message) ? $message : json_encode($message)];
-                Log::warning(static::class . ' item creation failed', ['key' => $key, 'status' => $response->status(), 'response' => $message]);
+                Log::warning(static::class.' item creation failed', ['key' => $key, 'status' => $response->status(), 'response' => $message]);
             }
         }
+
         return ['created' => $created, 'failed' => $failed];
     }
 
@@ -412,6 +668,7 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
         $subdomain = preg_replace('/[^a-z0-9\-]/', '-', $subdomain);
         $subdomain = trim($subdomain, '-');
         $subdomain = preg_replace('/-+/', '-', $subdomain);
+
         return $subdomain ?: 'default';
     }
 }

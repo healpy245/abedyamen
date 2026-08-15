@@ -1,26 +1,18 @@
 <?php
 
-use App\Http\Controllers\ChatLoginController;
 use App\Http\Controllers\FormController;
-<<<<<<< HEAD
-use App\Http\Controllers\LocaleController;
-use App\Http\Controllers\Admin\ChatbotSettingsController;
-=======
->>>>>>> parent of cd712ea (First)
 use App\Http\Controllers\LandingController;
-use App\Http\Controllers\WhatsAppBotController;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Http\Controllers\LocaleController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
-<<<<<<< HEAD
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
-Route::post('/login', function (Request $request) {
+Route::post('/login', function (Illuminate\Http\Request $request) {
     $credentials = $request->validate([
         'email' => ['required', 'email'],
         'password' => ['required', 'string'],
@@ -37,7 +29,7 @@ Route::post('/login', function (Request $request) {
         ->onlyInput('email');
 });
 
-Route::post('/logout', function (Request $request) {
+Route::post('/logout', function (Illuminate\Http\Request $request) {
     Auth::logout();
 
     $request->session()->invalidate();
@@ -52,7 +44,6 @@ Route::middleware('auth')->group(function () {
     })->name('home');
 });
 
-// GET https://kaman-workspace.com/ops/clear/483275634
 Route::get('/ops/clear/483275634', function () {
     $commands = [
         'optimize:clear',
@@ -73,7 +64,7 @@ Route::get('/ops/clear/483275634', function () {
                 'exit_code' => $exitCode,
                 'output' => trim(Artisan::output()),
             ];
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $results[$command] = [
                 'ok' => false,
                 'error' => $e->getMessage(),
@@ -102,58 +93,70 @@ Route::get('/ops/clear/483275634', function () {
     ])
     ->name('ops.clear');
 
-// GET /ops/migrate-seed/9274618053?seeder=AiChatbotStudioSeeder
-Route::get('/ops/migrate-seed/9274618053', function (Request $request) {
-    $rawSeeder = trim((string) $request->query('seeder', ''));
-    $seederClass = null;
-
-    if ($rawSeeder !== '') {
-        $seederClass = str_contains($rawSeeder, '\\')
-            ? $rawSeeder
-            : 'Database\\Seeders\\'.$rawSeeder;
-
-        if (!class_exists($seederClass) || !is_subclass_of($seederClass, \Illuminate\Database\Seeder::class)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid seeder class.',
-                'seeder' => $rawSeeder,
-            ], 422);
-        }
-    }
+Route::get('/ops/migrate-fresh-seed/9274618053', function () {
+    @set_time_limit(0);
+    @ini_set('max_execution_time', '0');
+    @ini_set('memory_limit', '512M');
 
     $results = [];
 
     try {
-        $migrateExit = Artisan::call('migrate', ['--force' => true]);
-        $results['migrate'] = [
+        $connection = Schema::getConnection();
+        $database = $connection->getDatabaseName();
+        $driver = $connection->getDriverName();
+
+        if ($driver === 'mysql') {
+            $connection->statement('SET FOREIGN_KEY_CHECKS=0');
+            $tables = $connection->select('SHOW FULL TABLES WHERE Table_type = ?', ['BASE TABLE']);
+            $key = 'Tables_in_'.$database;
+            foreach ($tables as $table) {
+                $name = $table->{$key} ?? null;
+                if (is_string($name) && $name !== '') {
+                    $connection->statement('DROP TABLE IF EXISTS `'.$name.'`');
+                }
+            }
+            $connection->statement('SET FOREIGN_KEY_CHECKS=1');
+            $results['wipe'] = [
+                'ok' => true,
+                'dropped' => count($tables),
+            ];
+        } else {
+            $wipeExit = Artisan::call('db:wipe', ['--force' => true]);
+            $results['wipe'] = [
+                'ok' => $wipeExit === 0,
+                'exit_code' => $wipeExit,
+                'output' => trim(Artisan::output()),
+            ];
+        }
+    } catch (\Throwable $e) {
+        $results['wipe'] = [
+            'ok' => false,
+            'error' => $e->getMessage(),
+        ];
+    }
+
+    if (($results['wipe']['ok'] ?? false) !== true) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Database wipe failed before migrate/seed.',
+            'results' => $results,
+            'timestamp' => now()->toIso8601String(),
+        ], 500);
+    }
+
+    try {
+        $migrateExit = Artisan::call('migrate', [
+            '--force' => true,
+            '--seed' => true,
+        ]);
+        $results['migrate --seed'] = [
             'ok' => $migrateExit === 0,
             'exit_code' => $migrateExit,
             'output' => trim(Artisan::output()),
         ];
-    } catch (Throwable $e) {
-        $results['migrate'] = [
+    } catch (\Throwable $e) {
+        $results['migrate --seed'] = [
             'ok' => false,
-            'error' => $e->getMessage(),
-        ];
-    }
-
-    try {
-        $seedArgs = ['--force' => true];
-        if ($seederClass !== null) {
-            $seedArgs['--class'] = $seederClass;
-        }
-
-        $seedExit = Artisan::call('db:seed', $seedArgs);
-        $results['seed'] = [
-            'ok' => $seedExit === 0,
-            'exit_code' => $seedExit,
-            'class' => $seederClass,
-            'output' => trim(Artisan::output()),
-        ];
-    } catch (Throwable $e) {
-        $results['seed'] = [
-            'ok' => false,
-            'class' => $seederClass,
             'error' => $e->getMessage(),
         ];
     }
@@ -163,142 +166,111 @@ Route::get('/ops/migrate-seed/9274618053', function (Request $request) {
     return response()->json([
         'success' => $allOk,
         'message' => $allOk
-            ? 'Migrations and seeding completed.'
-            : 'Migrate/seed failed. See results.',
+            ? 'Database wiped and migrate --seed completed.'
+            : 'migrate/seed failed. See results.',
         'results' => $results,
         'timestamp' => now()->toIso8601String(),
     ], $allOk ? 200 : 500);
 })
     ->withoutMiddleware([
-        ValidateCsrfToken::class,
-        VerifyCsrfToken::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
     ])
-    ->name('ops.migrate-seed');
+    ->name('ops.migrate-fresh-seed');
 
-// GET /ops/refresh/28814
-Route::get('/ops/refresh/28814', function () {
-    $results = [];
+Route::get('/ops/malan-greenapi/9274618053', function () {
+    $instance = \App\Models\AiChatbot\ChatbotInstance::query()
+        ->where('integration_type', 'malan')
+        ->where('name', \Database\Seeders\SallyMalanChatbotInstanceSeeder::INSTANCE_NAME)
+        ->orderBy('id')
+        ->first();
 
-    try {
-        $refreshExit = Artisan::call('migrate:fresh', [
-            '--seed' => true,
-            '--force' => true,
-        ]);
-
-        $results['migrate:fresh --seed'] = [
-            'ok' => $refreshExit === 0,
-            'exit_code' => $refreshExit,
-            'output' => trim(Artisan::output()),
-        ];
-    } catch (Throwable $e) {
-        $results['migrate:fresh --seed'] = [
-            'ok' => false,
-            'error' => $e->getMessage(),
-        ];
+    if ($instance === null) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Malan chatbot instance not found.',
+        ], 404);
     }
 
-    $clearCommands = [
-        'optimize:clear',
-        'config:clear',
-        'cache:clear',
-        'route:clear',
-        'view:clear',
-        'event:clear',
+    $settings = is_array($instance->integration_settings) ? $instance->integration_settings : [];
+    $settings['enabled'] = true;
+    $settings['label'] = $settings['label'] ?? 'Sally — Malan Internet CRM';
+    $settings['allowed_reply_phones'] = [
+        '0533046830',
+        '0524060606',
     ];
 
-    foreach ($clearCommands as $command) {
-        try {
-            $exitCode = Artisan::call($command);
-            $results[$command] = [
-                'ok' => $exitCode === 0,
-                'exit_code' => $exitCode,
-                'output' => trim(Artisan::output()),
-            ];
-        } catch (Throwable $e) {
-            $results[$command] = [
-                'ok' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
+    $instance->forceFill([
+        'greenapi_url' => 'https://7107.api.greenapi.com/waInstance7107621968/sendMessage/e8f81a4913314e39b52c24dbd1f0ae440e90eb90e273475d97',
+        'integration_settings' => $settings,
+        'is_active' => true,
+    ])->save();
 
-    $allOk = collect($results)->every(fn (array $r) => ($r['ok'] ?? false) === true);
+    $webhookUrl = app(\App\Services\AiChatbot\ChatbotGreenApiService::class)->webhookUrl($instance);
 
     return response()->json([
-        'success' => $allOk,
-        'message' => $allOk
-            ? 'Database refreshed, seeded, and clears completed.'
-            : 'Refresh/seed/clear failed. See results.',
-        'results' => $results,
+        'success' => true,
+        'message' => 'Malan Green API linked with reply allowlist.',
+        'instance_id' => $instance->id,
+        'greenapi_url_set' => filled($instance->greenapi_url),
+        'allowed_reply_phones' => $instance->allowedReplyPhones(),
+        'webhook_url' => $webhookUrl,
         'timestamp' => now()->toIso8601String(),
-    ], $allOk ? 200 : 500);
+    ]);
 })
     ->withoutMiddleware([
-        ValidateCsrfToken::class,
-        VerifyCsrfToken::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
     ])
-    ->name('ops.refresh-seed-clear');
+    ->name('ops.malan-greenapi');
 
-/*
-|--------------------------------------------------------------------------
-| Public routes
-|--------------------------------------------------------------------------
-| Everything below this block sits behind the workspace login. Only the
-| marketing landing page and the Green API webhook stay open.
-*/
-=======
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/ops/malan-refresh-prompt/9274618053', function () {
+    $instance = \App\Models\AiChatbot\ChatbotInstance::query()
+        ->where('integration_type', 'malan')
+        ->where('name', \Database\Seeders\SallyMalanChatbotInstanceSeeder::INSTANCE_NAME)
+        ->orderBy('id')
+        ->first();
 
-Route::get('/form', [FormController::class, 'index'])->name('form.index');
-Route::post('/form', [FormController::class, 'submit'])->name('form.submit');
-Route::post('/form/full-ai/login', [FormController::class, 'loginFullAi'])->name('form.full-ai.login');
-Route::post('/form/full-ai/chat', [FormController::class, 'chatFullAutomation'])->name('form.full-ai.chat');
-Route::post('/form/full-ai/execute-step', [FormController::class, 'executeFullAiStep'])->name('form.full-ai.execute-step');
-Route::post('/form/full-ai/start', [FormController::class, 'startFullAutomation'])->name('form.full-ai.start');
-Route::post('/form/full-ai/{session}/approve', [FormController::class, 'approveFullAutomation'])->name('form.full-ai.approve');
-Route::get('/lang/{locale}', [FormController::class, 'setLocale'])->name('lang.switch');
->>>>>>> parent of cd712ea (First)
+    if ($instance === null) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Malan chatbot instance not found.',
+        ], 404);
+    }
+
+    $compiler = app(\App\Services\AiChatbot\PromptCompiler::class);
+    $sections = $compiler->sallyMalanDefaultSections();
+    $fallbackPath = database_path('seeders/prompts/sally_malan_system_prompt.txt');
+    $fallback = is_file($fallbackPath) ? trim((string) file_get_contents($fallbackPath)) : '';
+    $compiled = $compiler->compile($sections, $fallback);
+
+    $settings = is_array($instance->integration_settings) ? $instance->integration_settings : [];
+    $settings['enabled'] = $settings['enabled'] ?? true;
+    $settings['label'] = $settings['label'] ?? 'Sally — Malan Internet CRM';
+
+    $instance->forceFill([
+        'system_prompt' => $compiled !== '' ? $compiled : $fallback,
+        'prompt_sections' => $sections,
+        'settings_schema_version' => \App\Services\AiChatbot\PromptCompiler::SCHEMA_VERSION,
+        'integration_settings' => $settings,
+    ])->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Malan prompt refreshed from seeder sections.',
+        'instance_id' => $instance->id,
+        'prompt_chars' => mb_strlen((string) $instance->system_prompt),
+        'sections' => array_keys($sections),
+        'timestamp' => now()->toIso8601String(),
+    ]);
+})
+    ->withoutMiddleware([
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+    ])
+    ->name('ops.malan-refresh-prompt');
 
 Route::get('/landing', [LandingController::class, 'show'])->name('landing.show');
 Route::post('/landing', [LandingController::class, 'submit'])->name('landing.submit');
 
-// Locale switch is used by the login screen and the public landing page, so it
-// stays open. It only writes a locale to the session.
 Route::get('/lang/{locale}', [LocaleController::class, 'switch'])->name('lang.switch');
-
-<<<<<<< HEAD
-// Green API posts here server-to-server: no session, no CSRF, no login.
-=======
-// ChatGPT-style login assistant
-Route::get('/ai/login-chat', [ChatLoginController::class, 'index'])->name('ai.login-chat.index');
-Route::post('/ai/login-chat/message', [ChatLoginController::class, 'message'])->name('ai.login-chat.message');
-
-// WhatsApp chatbot + Green API webhook
-Route::get('/whatsapp-bot', [WhatsAppBotController::class, 'index'])->name('whatsapp.bot.index');
-Route::get('/whatsapp-bot/events', [WhatsAppBotController::class, 'events'])->name('whatsapp.bot.events');
-Route::post('/whatsapp-bot/prompt/save', [WhatsAppBotController::class, 'savePrompt'])->name('whatsapp.bot.prompt.save');
-Route::post('/whatsapp-bot/prompt/reset', [WhatsAppBotController::class, 'resetPrompt'])->name('whatsapp.bot.prompt.reset');
-Route::post('/whatsapp-bot/toggle', [WhatsAppBotController::class, 'toggleWebhook'])->name('whatsapp.bot.toggle');
-Route::post('/whatsapp-bot/events/clear', [WhatsAppBotController::class, 'clearEvents'])->name('whatsapp.bot.events.clear');
-Route::post('/whatsapp-bot/test-send', [WhatsAppBotController::class, 'testSend'])->name('whatsapp.bot.test-send');
->>>>>>> parent of cd712ea (First)
-Route::post('/whatsapp-bot/webhook', [WhatsAppBotController::class, 'webhook'])
-    ->withoutMiddleware([
-        ValidateCsrfToken::class,
-        VerifyCsrfToken::class,
-        StartSession::class,
-        ShareErrorsFromSession::class,
-    ])
-    ->name('whatsapp.bot.webhook');
-<<<<<<< HEAD
-
-/*
-|--------------------------------------------------------------------------
-| Project: Restaurant Form
-|--------------------------------------------------------------------------
-*/
 
 Route::middleware(['auth', 'project:form'])->group(function () {
     Route::get('/form', [FormController::class, 'index'])->name('form.index');
@@ -309,49 +281,5 @@ Route::middleware(['auth', 'project:form'])->group(function () {
     Route::post('/form/full-ai/execute-step', [FormController::class, 'executeFullAiStep'])->name('form.full-ai.execute-step');
     Route::post('/form/full-ai/start', [FormController::class, 'startFullAutomation'])->name('form.full-ai.start');
     Route::post('/form/full-ai/{session}/approve', [FormController::class, 'approveFullAutomation'])->name('form.full-ai.approve');
-
-    // Image upload is only ever driven by the form UI.
     Route::post('/api/upload-image', [FormController::class, 'uploadImage'])->name('api.upload-image');
 });
-
-/*
-|--------------------------------------------------------------------------
-| Project: WhatsApp Bot
-|--------------------------------------------------------------------------
-*/
-
-Route::middleware(['auth', 'project:whatsapp-bot'])->group(function () {
-    Route::get('/whatsapp-bot', [WhatsAppBotController::class, 'index'])->name('whatsapp.bot.index');
-    Route::get('/whatsapp-bot/events', [WhatsAppBotController::class, 'events'])->name('whatsapp.bot.events');
-    Route::post('/whatsapp-bot/prompt/save', [WhatsAppBotController::class, 'savePrompt'])->name('whatsapp.bot.prompt.save');
-    Route::post('/whatsapp-bot/prompt/reset', [WhatsAppBotController::class, 'resetPrompt'])->name('whatsapp.bot.prompt.reset');
-    Route::post('/whatsapp-bot/toggle', [WhatsAppBotController::class, 'toggleWebhook'])->name('whatsapp.bot.toggle');
-    Route::post('/whatsapp-bot/events/clear', [WhatsAppBotController::class, 'clearEvents'])->name('whatsapp.bot.events.clear');
-    Route::post('/whatsapp-bot/test-send', [WhatsAppBotController::class, 'testSend'])->name('whatsapp.bot.test-send');
-    Route::post('/whatsapp-bot/test-chat', [WhatsAppBotController::class, 'testChat'])->name('whatsapp.bot.test-chat');
-    Route::post('/whatsapp-bot/test-chat/reset', [WhatsAppBotController::class, 'resetTestChat'])->name('whatsapp.bot.test-chat.reset');
-    Route::post('/whatsapp-bot/test-staff-chat', [WhatsAppBotController::class, 'testStaffChat'])->name('whatsapp.bot.test-staff-chat');
-    Route::post('/whatsapp-bot/test-staff-chat/reset', [WhatsAppBotController::class, 'resetTestStaffChat'])->name('whatsapp.bot.test-staff-chat.reset');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Project: AI Chatbot Studio (legacy single-instance chatbot)
-|--------------------------------------------------------------------------
-| The multi-instance studio lives in routes/ai-chatbot.php.
-*/
-
-Route::middleware(['auth', 'project:ai-chatbot'])->group(function () {
-    Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot.index');
-    Route::post('/chatbot/conversations', [ChatbotController::class, 'storeConversation'])->name('chatbot.conversations.store');
-    Route::get('/chatbot/conversations/{conversation}', [ChatbotController::class, 'showConversation'])->name('chatbot.conversations.show');
-    Route::post('/chatbot/send', [ChatbotController::class, 'sendMessage'])->name('chatbot.send');
-    Route::delete('/chatbot/conversations/{conversation}', [ChatbotController::class, 'destroyConversation'])->name('chatbot.conversations.destroy');
-});
-
-Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/admin/chatbot/settings', [ChatbotSettingsController::class, 'index'])->name('admin.chatbot.settings.index');
-    Route::put('/admin/chatbot/settings', [ChatbotSettingsController::class, 'update'])->name('admin.chatbot.settings.update');
-});
-=======
->>>>>>> parent of cd712ea (First)

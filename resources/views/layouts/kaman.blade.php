@@ -40,9 +40,9 @@
     'activeProject' => $activeProject ?? null,
 ])
 
-<main class="relative flex-1 flex flex-col">
+<main class="relative flex min-h-0 flex-1 flex-col">
     <div class="stamp-band pointer-events-none absolute inset-x-0 bottom-0 h-32 opacity-70"></div>
-    <div class="relative flex-1 flex flex-col">
+    <div class="relative flex min-h-0 flex-1 flex-col">
         @yield('content')
     </div>
 </main>

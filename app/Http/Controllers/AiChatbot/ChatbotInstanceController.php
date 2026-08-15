@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\AiChatbot;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\AiChatbot\StoreChatbotInstanceRequest;
 use App\Http\Requests\AiChatbot\UpdateChatbotInstanceRequest;
 use App\Models\AiChatbot\ChatbotInstance;
 use App\Services\AiChatbot\AiChatbotInstanceService;
+use App\Services\AiChatbot\ChatbotGreenApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -14,22 +14,8 @@ class ChatbotInstanceController extends Controller
 {
     public function __construct(
         protected AiChatbotInstanceService $instanceService,
-    ) {
-    }
-
-    public function store(StoreChatbotInstanceRequest $request): RedirectResponse
-    {
-        $user = $request->user();
-        $validated = $request->validated();
-
-        $instance = $this->instanceService->createForUser(
-            $user,
-            $validated['name'],
-            $validated['system_prompt'] ?? null,
-        );
-
-        return redirect()->route('ai-chatbot.instances.show', $instance);
-    }
+        protected ChatbotGreenApiService $greenApiService,
+    ) {}
 
     public function edit(Request $request, ChatbotInstance $instance)
     {
@@ -37,6 +23,7 @@ class ChatbotInstanceController extends Controller
 
         return view('ai-chatbot.instances.edit', [
             'instance' => $instance,
+            'greenapiWebhookUrl' => $this->greenApiService->webhookUrl($instance),
         ]);
     }
 
@@ -46,40 +33,28 @@ class ChatbotInstanceController extends Controller
 
         $validated = $request->validated();
 
+        $settings = is_array($instance->integration_settings) ? $instance->integration_settings : [];
+        $phonesRaw = trim((string) ($validated['allowed_reply_phones'] ?? ''));
+        $phones = $phonesRaw === ''
+            ? []
+            : array_values(array_unique(array_filter(array_map(
+                static fn (string $line): string => trim($line),
+                preg_split('/\R+/', $phonesRaw) ?: []
+            ))));
+
+        $settings['allowed_reply_phones'] = $phones;
+
         $instance->update([
             'name' => $validated['name'],
             'system_prompt' => $validated['system_prompt'],
+            'greenapi_url' => isset($validated['greenapi_url']) && trim((string) $validated['greenapi_url']) !== ''
+                ? trim((string) $validated['greenapi_url'])
+                : null,
+            'integration_settings' => $settings,
         ]);
 
         return redirect()
             ->route('ai-chatbot.instances.show', $instance)
             ->with('status', 'Instance updated.');
-    }
-
-    public function destroy(Request $request, ChatbotInstance $instance): RedirectResponse
-    {
-        $user = $request->user();
-        $this->instanceService->authorizeForUser($instance, $user);
-
-        $remaining = ChatbotInstance::query()
-            ->where('user_id', $user->id)
-            ->where('id', '!=', $instance->id)
-            ->exists();
-
-        if (!$remaining) {
-            return back()->withErrors([
-                'instance' => 'You must keep at least one chatbot instance.',
-            ]);
-        }
-
-        $fallback = ChatbotInstance::query()
-            ->where('user_id', $user->id)
-            ->where('id', '!=', $instance->id)
-            ->oldest('id')
-            ->first();
-
-        $instance->delete();
-
-        return redirect()->route('ai-chatbot.instances.show', $fallback);
     }
 }

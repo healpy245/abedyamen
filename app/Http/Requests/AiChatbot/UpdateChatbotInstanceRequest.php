@@ -19,6 +19,8 @@ class UpdateChatbotInstanceRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:120'],
             'system_prompt' => ['required', 'string'],
+            'greenapi_url' => ['nullable', 'string', 'max:512', 'url'],
+            'allowed_reply_phones' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

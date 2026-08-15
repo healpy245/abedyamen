@@ -55,27 +55,50 @@
                               class="kaman-input kaman-scroll w-full font-mono leading-relaxed">{{ old('system_prompt', $instance->system_prompt) }}</textarea>
                 </div>
 
+                <div class="border-t border-[#eadfce] pt-4 space-y-4">
+                    <div>
+                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('chatbot.greenapi_title') }}</h2>
+                        <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_desc') }}</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="greenapi_url" class="kaman-label block">{{ __('chatbot.greenapi_send_url') }}</label>
+                        <input id="greenapi_url" name="greenapi_url" type="url" maxlength="512"
+                               value="{{ old('greenapi_url', $instance->greenapi_url) }}"
+                               placeholder="{{ __('chatbot.greenapi_send_url_placeholder') }}"
+                               class="kaman-input w-full font-mono text-xs">
+                        <p class="text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_send_url_help') }}</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="greenapi_webhook_url" class="kaman-label block">{{ __('chatbot.greenapi_webhook_url') }}</label>
+                        <div class="flex flex-wrap gap-2">
+                            <input id="greenapi_webhook_url" type="text" readonly
+                                   value="{{ $greenapiWebhookUrl }}"
+                                   class="kaman-input min-w-0 flex-1 font-mono text-xs bg-[#faf6f0]">
+                            <button type="button" class="kaman-button-ghost kaman-button--sm"
+                                    onclick="navigator.clipboard.writeText(document.getElementById('greenapi_webhook_url').value)">
+                                {{ __('chatbot.copy') }}
+                            </button>
+                        </div>
+                        <p class="text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_webhook_url_help') }}</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="allowed_reply_phones" class="kaman-label block">{{ __('chatbot.allowed_reply_phones') }}</label>
+                        <textarea id="allowed_reply_phones" name="allowed_reply_phones" rows="4"
+                                  placeholder="{{ __('chatbot.allowed_reply_phones_placeholder') }}"
+                                  class="kaman-input kaman-scroll w-full font-mono text-xs leading-relaxed">{{ old('allowed_reply_phones', implode("\n", $instance->allowedReplyPhones())) }}</textarea>
+                        <p class="text-xs text-[#a78a6c]">{{ __('chatbot.allowed_reply_phones_help') }}</p>
+                    </div>
+                </div>
+
                 <div class="pt-2">
                     <button type="submit" class="kaman-button">
                         {{ __('chatbot.save_instance') }}
                     </button>
                 </div>
             </form>
-
-            <div class="kaman-card kaman-card--pad mt-5 border-red-200/60">
-                <h2 class="text-sm font-semibold text-[#2b1e11] mb-1">{{ __('chatbot.danger_zone') }}</h2>
-                <p class="text-xs text-[#a78a6c] mb-4">
-                    {{ __('chatbot.danger_zone_desc') }}
-                </p>
-                <form action="{{ route('ai-chatbot.instances.destroy', $instance) }}" method="post"
-                      onsubmit="return confirm(@json(__('chatbot.delete_instance_confirm')))">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="kaman-button-danger kaman-button--sm">
-                        {{ __('chatbot.delete_instance') }}
-                    </button>
-                </form>
-            </div>
         </div>
     </div>
 @endsection

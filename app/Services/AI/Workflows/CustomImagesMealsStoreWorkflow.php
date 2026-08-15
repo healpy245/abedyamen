@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -44,11 +45,7 @@ final class CustomImagesMealsStoreWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-<<<<<<< HEAD
         $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
-=======
-        $baseUrl = "https://{$subdomain}.kaman.rest";
->>>>>>> parent of cd712ea (First)
 
         set_time_limit(600);
 
@@ -60,20 +57,20 @@ final class CustomImagesMealsStoreWorkflow extends AbstractFormWorkflow
 
             $progress('categories', 'Fetching categories...', []);
             $categories = $this->fetchCategories($baseUrl, $token);
-            $progress('categories', 'Fetched ' . count($categories) . ' categories', ['count' => count($categories)]);
+            $progress('categories', 'Fetched '.count($categories).' categories', ['count' => count($categories)]);
 
             $progress('ai', 'Parsing meals with AI...', []);
             $meals = $this->parseMealsWithAi($description, $categories);
-            $progress('ai', 'Parsed ' . count($meals) . ' meals', ['count' => count($meals)]);
+            $progress('ai', 'Parsed '.count($meals).' meals', ['count' => count($meals)]);
 
             $progress('ai', 'Matching images to meals with AI vision...', []);
             $mealsWithImages = $this->matchMealsToImagesWithAi($meals, $folderName, $imageNames, $progress);
-            $matchedCount = count(array_filter($mealsWithImages, fn ($m) => !empty($m['image_path'])));
-            $progress('ai', 'Matched ' . $matchedCount . ' meals with images', []);
+            $matchedCount = count(array_filter($mealsWithImages, fn ($m) => ! empty($m['image_path'])));
+            $progress('ai', 'Matched '.$matchedCount.' meals with images', []);
 
             $progress('items', 'Creating items via Kaman API...', []);
             $itemsResult = $this->createItems($baseUrl, $token, $mealsWithImages, $progress);
-            $progress('items', 'Created ' . count($itemsResult['created']) . ' items, ' . count($itemsResult['failed']) . ' failed', $itemsResult);
+            $progress('items', 'Created '.count($itemsResult['created']).' items, '.count($itemsResult['failed']).' failed', $itemsResult);
 
             Log::info('CustomImagesMealsStoreWorkflow completed', [
                 'restaurant' => $restaurantName,
@@ -104,48 +101,46 @@ final class CustomImagesMealsStoreWorkflow extends AbstractFormWorkflow
     private function http(int $timeout = 90): \Illuminate\Http\Client\PendingRequest
     {
         $http = Http::timeout($timeout)->acceptJson();
-        if (!config('services.kaman.ssl_verify', false)) {
+        if (! config('services.kaman.ssl_verify', false)) {
             $http = $http->withoutVerifying();
         }
+
         return $http;
     }
 
     private function login(string $baseUrl, string $email, string $password): string
     {
-<<<<<<< HEAD
         $response = $this->http(30)->post("{$baseUrl}/login", [
             'email' => $email,
-=======
-        $response = $this->http(30)->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
->>>>>>> parent of cd712ea (First)
             'password' => $password,
         ]);
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $body = $response->json();
             $message = $body['message'] ?? $body['error'] ?? $response->body();
-            throw new \RuntimeException('Login failed: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Login failed: '.(is_string($message) ? $message : json_encode($message)));
         }
         $data = $response->json();
         $token = $data['token'] ?? $data['access_token'] ?? $data['data']['token'] ?? null;
         if ($token === null) {
             throw new \RuntimeException('Login response did not contain a token.');
         }
+
         return $token;
     }
 
     private function fetchCategories(string $baseUrl, string $token): array
     {
-        $response = $this->http(30)->withToken($token)->get("{$baseUrl}/api/manager/categories");
-        if (!$response->successful()) {
+        $response = $this->http(30)->withToken($token)->get("{$baseUrl}/categories");
+        if (! $response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
-            throw new \RuntimeException('Failed to fetch categories: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Failed to fetch categories: '.(is_string($message) ? $message : json_encode($message)));
         }
         $data = $response->json();
         $list = $data['data'] ?? $data['categories'] ?? $data;
-        if (!is_array($list)) {
+        if (! is_array($list)) {
             throw new \RuntimeException('Categories response format is invalid.');
         }
+
         return $list;
     }
 
@@ -156,7 +151,7 @@ final class CustomImagesMealsStoreWorkflow extends AbstractFormWorkflow
     private function parseMealsWithAi(string $description, array $categories): array
     {
         $categoryList = $this->formatCategoriesForPrompt($categories);
-        $systemPrompt = <<<PROMPT
+        $systemPrompt = <<<'PROMPT'
 You are a restaurant menu parser. You receive a meal list in the format:
 
 category name : {
@@ -199,7 +194,7 @@ PROMPT;
         $meals = $this->extractMealsFromAiResponse($aiResponse);
 
         if (empty($meals)) {
-            throw new \RuntimeException('AI did not return valid meals. Response: ' . substr($aiResponse, 0, 500));
+            throw new \RuntimeException('AI did not return valid meals. Response: '.substr($aiResponse, 0, 500));
         }
 
         return $meals;
@@ -216,6 +211,7 @@ PROMPT;
             $name = $cat['name'] ?? $cat['name_en'] ?? $cat['name_ar'] ?? (string) $id;
             $lines[] = "- id: {$id}, name: {$name}";
         }
+
         return implode("\n", $lines);
     }
 
@@ -229,18 +225,18 @@ PROMPT;
             $response = trim($m[1]);
         }
         $decoded = json_decode($response, true);
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             if (preg_match('/\{[\s\S]*"meals"[\s\S]*\}/', $response, $m)) {
                 $decoded = json_decode($m[0], true);
             }
         }
-        if (!is_array($decoded) || !isset($decoded['meals']) || !is_array($decoded['meals'])) {
+        if (! is_array($decoded) || ! isset($decoded['meals']) || ! is_array($decoded['meals'])) {
             return [];
         }
         $meals = [];
         $required = ['name_ar', 'name_en', 'name_he', 'price', 'category_id', 'description_ar', 'description_en', 'description_he'];
         foreach ($decoded['meals'] as $key => $meal) {
-            if (!is_array($meal)) {
+            if (! is_array($meal)) {
                 continue;
             }
             $normalized = [];
@@ -249,6 +245,7 @@ PROMPT;
             }
             $meals[$key] = $normalized;
         }
+
         return $meals;
     }
 
@@ -266,7 +263,7 @@ PROMPT;
         $basePath = public_path($folderName);
         $imagePaths = [];
         foreach ($imageNames as $name) {
-            $fullPath = $basePath . DIRECTORY_SEPARATOR . $name;
+            $fullPath = $basePath.DIRECTORY_SEPARATOR.$name;
             if (File::exists($fullPath)) {
                 $imagePaths[] = $fullPath;
             }
@@ -278,7 +275,7 @@ PROMPT;
 
         $mealList = [];
         foreach ($meals as $key => $meal) {
-            $mealList[] = "{$key}: " . ($meal['name_en'] ?? $key);
+            $mealList[] = "{$key}: ".($meal['name_en'] ?? $key);
         }
         $mealListStr = implode("\n", $mealList);
 
@@ -300,6 +297,7 @@ PROMPT;
             $aiResponse = $this->analyzeImages($imagePaths, $prompt, ['max_tokens' => 1024]);
         } catch (\Throwable $e) {
             Log::warning('CustomImagesMealsStoreWorkflow AI image matching failed', ['error' => $e->getMessage()]);
+
             return array_map(fn ($m) => array_merge($m, ['image_path' => null]), $meals);
         }
 
@@ -310,7 +308,7 @@ PROMPT;
         foreach ($meals as $mealKey => $meal) {
             $mealCopy = array_merge($meal, ['image_path' => null]);
             foreach ($mapping as $imageIndex => $mappedMealKey) {
-                if ($mappedMealKey === $mealKey && !isset($usedImages[$imageIndex])) {
+                if ($mappedMealKey === $mealKey && ! isset($usedImages[$imageIndex])) {
                     $idx = (int) $imageIndex - 1;
                     if (isset($imagePaths[$idx])) {
                         $mealCopy['image_path'] = $imagePaths[$idx];
@@ -335,12 +333,12 @@ PROMPT;
             $response = trim($m[1]);
         }
         $decoded = json_decode($response, true);
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             if (preg_match('/\{[\s\S]*\}/', $response, $m)) {
                 $decoded = json_decode($m[0], true);
             }
         }
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             return [];
         }
         $mapping = [];
@@ -351,6 +349,7 @@ PROMPT;
                 $mapping[$key] = (string) $val;
             }
         }
+
         return $mapping;
     }
 
@@ -369,7 +368,7 @@ PROMPT;
 
         foreach ($meals as $key => $meal) {
             $i++;
-            $progress && $progress('item', 'Creating item ' . $i . '/' . $total . ': ' . ($meal['name_en'] ?? $key), ['key' => $key]);
+            $progress && $progress('item', 'Creating item '.$i.'/'.$total.': '.($meal['name_en'] ?? $key), ['key' => $key]);
 
             $body = [
                 'name_ar' => $meal['name_ar'],
@@ -384,13 +383,14 @@ PROMPT;
 
             try {
                 $http = $this->http($timeout)->withToken($token);
-                if (!empty($meal['image_path']) && File::exists($meal['image_path'])) {
+                if (! empty($meal['image_path']) && File::exists($meal['image_path'])) {
                     $http = $http->attach('image', File::get($meal['image_path']), File::basename($meal['image_path']));
                 }
-                $response = $http->post("{$baseUrl}/api/manager/items", $body);
+                $response = $http->post("{$baseUrl}/items", $body);
             } catch (\Throwable $e) {
                 $failed[] = ['key' => $key, 'error' => $e->getMessage()];
                 Log::warning('CustomImagesMealsStoreWorkflow item request failed', ['key' => $key, 'error' => $e->getMessage()]);
+
                 continue;
             }
 
@@ -413,6 +413,7 @@ PROMPT;
         $subdomain = preg_replace('/[^a-z0-9\-]/', '-', $subdomain);
         $subdomain = trim($subdomain, '-');
         $subdomain = preg_replace('/-+/', '-', $subdomain);
+
         return $subdomain ?: 'default';
     }
 }

@@ -3,15 +3,20 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function (): void {
+            Route::middleware('web')
+                ->group(base_path('routes/ai-chatbot.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware) {
-<<<<<<< HEAD
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
         ]);
@@ -23,11 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->redirectGuestsTo('/login');
 
-=======
->>>>>>> parent of cd712ea (First)
         $middleware->validateCsrfTokens(except: [
-            'whatsapp-bot/webhook',
-            'whatsapp-bot/webhook/*',
+            'api/voice/telnyx/webhook',
+            'ai-chatbot/webhook/greenapi/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

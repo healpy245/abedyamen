@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AiChatbot\ChatbotInstance;
 use App\Models\User;
+use Database\Seeders\KamanWhatsappChatbotInstanceSeeder;
+use Database\Seeders\SallyMalanChatbotInstanceSeeder;
 use Database\Seeders\WorkspaceUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -30,7 +32,11 @@ class KamanDesignTest extends TestCase
         Http::preventStrayRequests();
         Http::fake();
 
-        $this->seed(WorkspaceUserSeeder::class);
+        $this->seed([
+            WorkspaceUserSeeder::class,
+            SallyMalanChatbotInstanceSeeder::class,
+            KamanWhatsappChatbotInstanceSeeder::class,
+        ]);
     }
 
     private function admin(): User
@@ -40,10 +46,10 @@ class KamanDesignTest extends TestCase
 
     private function chatbotInstance(): ChatbotInstance
     {
-        // Provisioned on first visit to the studio.
-        $this->actingAs($this->admin())->get(route('ai-chatbot.index'));
-
-        return ChatbotInstance::query()->firstOrFail();
+        return ChatbotInstance::query()
+            ->where('user_id', $this->admin()->id)
+            ->oldest('id')
+            ->firstOrFail();
     }
 
     public function test_login_page_renders_in_kaman_design(): void
@@ -51,7 +57,7 @@ class KamanDesignTest extends TestCase
         $this->get('/login')
             ->assertOk()
             ->assertSee(self::KAMAN_STYLESHEET)
-            ->assertSee('Sign in')
+            ->assertSee(__('auth.sign_in'))
             ->assertDontSee(self::DARK_THEME_MARKER);
     }
 
@@ -63,7 +69,6 @@ class KamanDesignTest extends TestCase
         return [
             'welcome' => ['home'],
             'form' => ['form.index'],
-            'whatsapp bot' => ['whatsapp.bot.index'],
             'chatbot settings' => ['ai-chatbot.admin.settings.edit'],
         ];
     }
@@ -82,8 +87,6 @@ class KamanDesignTest extends TestCase
     {
         $instance = $this->chatbotInstance();
 
-        // The members page is only reachable when the instance opts into
-        // storing members; otherwise it legitimately 404s.
         $instance->forceFill(['stores_members' => true])->save();
 
         $pages = [
@@ -105,27 +108,45 @@ class KamanDesignTest extends TestCase
     {
         $ahmad = User::where('email', 'ahmad@kaman.rest')->firstOrFail();
 
-        // Ahmad has a single project, so no switcher is rendered at all.
         $this->actingAs($ahmad)->get(route('form.index'))
             ->assertOk()
-            ->assertDontSee('WhatsApp Bot')
-            ->assertDontSee('AI Chatbot Studio');
+            ->assertDontSee(__('projects.ai-chatbot.label'));
 
         $mohamed = User::where('email', 'mohamed@kaman.rest')->firstOrFail();
 
-        $this->actingAs($mohamed)->get(route('whatsapp.bot.index'))
+        $this->actingAs($mohamed)->get(route('ai-chatbot.index'))
+            ->assertRedirect();
+        $this->actingAs($mohamed)->get(route('home'))
             ->assertOk()
-            ->assertSee('Restaurant Form')
-            ->assertDontSee('AI Chatbot Studio');
+            ->assertSee(__('projects.form.label'))
+            ->assertSee(__('projects.ai-chatbot.label'));
     }
 
     public function test_every_page_offers_a_way_to_sign_out(): void
     {
-        foreach (['home', 'form.index', 'whatsapp.bot.index'] as $routeName) {
+        $pages = [
+            route('home'),
+            route('form.index'),
+            route('ai-chatbot.instances.show', $this->chatbotInstance()),
+        ];
+
+        foreach ($pages as $url) {
             $this->actingAs($this->admin())
-                ->get(route($routeName))
-                ->assertOk()
-                ->assertSee(route('logout'));
+                ->get($url)
+                ->assertSuccessful()
+                ->assertSee(route('logout'), false);
         }
+    }
+
+    public function test_studio_does_not_offer_manual_instance_creation(): void
+    {
+        $instance = $this->chatbotInstance();
+
+        $this->actingAs($this->admin())
+            ->get(route('ai-chatbot.instances.show', $instance))
+            ->assertOk()
+            ->assertDontSee(__('chatbot.new_instance'))
+            ->assertSee(SallyMalanChatbotInstanceSeeder::INSTANCE_NAME)
+            ->assertSee(KamanWhatsappChatbotInstanceSeeder::INSTANCE_NAME);
     }
 }

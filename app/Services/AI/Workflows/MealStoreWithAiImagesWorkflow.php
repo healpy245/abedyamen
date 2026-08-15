@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -39,11 +40,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-<<<<<<< HEAD
         $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
-=======
-        $baseUrl = "https://{$subdomain}.kaman.rest";
->>>>>>> parent of cd712ea (First)
 
         try {
             $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
@@ -53,20 +50,20 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
 
             $progress('categories', 'Fetching categories...', []);
             $categories = $this->fetchCategories($baseUrl, $token);
-            $progress('categories', 'Fetched ' . count($categories) . ' categories', ['count' => count($categories)]);
+            $progress('categories', 'Fetched '.count($categories).' categories', ['count' => count($categories)]);
 
             $progress('ai', 'Parsing meals with AI...', []);
             $meals = $this->parseMealsWithAi($description, $categories);
-            $progress('ai', 'Parsed ' . count($meals) . ' meals', ['count' => count($meals)]);
+            $progress('ai', 'Parsed '.count($meals).' meals', ['count' => count($meals)]);
 
             $progress('images', 'Generating AI images for meals...', []);
             $mealsWithImages = $this->generateImagesForMeals($meals, $restaurantName, $styleImagePath);
-            $withImageCount = count(array_filter($mealsWithImages, fn ($m) => !empty($m['image_path'] ?? null)));
-            $progress('images', 'Generated images for ' . $withImageCount . ' meals', ['with_images' => $withImageCount]);
+            $withImageCount = count(array_filter($mealsWithImages, fn ($m) => ! empty($m['image_path'] ?? null)));
+            $progress('images', 'Generated images for '.$withImageCount.' meals', ['with_images' => $withImageCount]);
 
             $progress('items', 'Creating items (with images) via Kaman API...', []);
             $itemsResult = $this->createItems($baseUrl, $token, $mealsWithImages, $progress);
-            $progress('items', 'Created ' . count($itemsResult['created']) . ' items, ' . count($itemsResult['failed']) . ' failed', $itemsResult);
+            $progress('items', 'Created '.count($itemsResult['created']).' items, '.count($itemsResult['failed']).' failed', $itemsResult);
 
             Log::info('MealStoreWithAiImagesWorkflow completed', [
                 'restaurant' => $restaurantName,
@@ -99,7 +96,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
     {
         $http = Http::timeout($timeout)->acceptJson();
 
-        if (!config('services.kaman.ssl_verify', false)) {
+        if (! config('services.kaman.ssl_verify', false)) {
             $http = $http->withoutVerifying();
         }
 
@@ -108,17 +105,12 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
 
     private function login(string $baseUrl, string $email, string $password): string
     {
-<<<<<<< HEAD
         $response = $this->http()->post("{$baseUrl}/login", [
             'email' => $email,
-=======
-        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
->>>>>>> parent of cd712ea (First)
             'password' => $password,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $body = $response->json();
             $message = $body['message'] ?? $body['error'] ?? $response->body();
 
@@ -127,7 +119,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
                 'response' => $message,
             ]);
 
-            throw new \RuntimeException('Login failed: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Login failed: '.(is_string($message) ? $message : json_encode($message)));
         }
 
         $data = $response->json();
@@ -147,18 +139,18 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
     {
         $response = $this->http()
             ->withToken($token)
-            ->get("{$baseUrl}/api/manager/categories");
+            ->get("{$baseUrl}/categories");
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
 
-            throw new \RuntimeException('Failed to fetch categories: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Failed to fetch categories: '.(is_string($message) ? $message : json_encode($message)));
         }
 
         $data = $response->json();
         $list = $data['data'] ?? $data['categories'] ?? $data;
 
-        if (!is_array($list)) {
+        if (! is_array($list)) {
             throw new \RuntimeException('Categories response format is invalid.');
         }
 
@@ -182,7 +174,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
 
         foreach ($meals as $key => $meal) {
             $i++;
-            $progress && $progress('item', 'Creating item ' . $i . '/' . $total . ': ' . ($meal['name_en'] ?? $key), ['key' => $key]);
+            $progress && $progress('item', 'Creating item '.$i.'/'.$total.': '.($meal['name_en'] ?? $key), ['key' => $key]);
 
             $body = [
                 'name_ar' => $meal['name_ar'],
@@ -197,13 +189,14 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
 
             try {
                 $http = $this->http($timeout)->withToken($token);
-                if (!empty($meal['image_path']) && File::exists($meal['image_path'])) {
+                if (! empty($meal['image_path']) && File::exists($meal['image_path'])) {
                     $http = $http->attach('image', File::get($meal['image_path']), File::basename($meal['image_path']));
                 }
-                $response = $http->post("{$baseUrl}/api/manager/items", $body);
+                $response = $http->post("{$baseUrl}/items", $body);
             } catch (\Throwable $e) {
                 $failed[] = ['key' => $key, 'error' => $e->getMessage()];
                 Log::warning('MealStoreWithAiImagesWorkflow item request failed', ['key' => $key, 'error' => $e->getMessage()]);
+
                 continue;
             }
 
@@ -239,7 +232,7 @@ final class MealStoreWithAiImagesWorkflow extends AbstractFormWorkflow
     {
         $categoryList = $this->formatCategoriesForPrompt($categories);
 
-        $systemPrompt = <<<PROMPT
+        $systemPrompt = <<<'PROMPT'
 You are a restaurant menu parser. You receive a meal list in the format:
 
 category name : {
@@ -283,7 +276,7 @@ PROMPT;
         $meals = $this->extractMealsFromAiResponse($aiResponse);
 
         if (empty($meals)) {
-            throw new \RuntimeException('AI did not return valid meals. Response: ' . substr($aiResponse, 0, 500));
+            throw new \RuntimeException('AI did not return valid meals. Response: '.substr($aiResponse, 0, 500));
         }
 
         return $meals;
@@ -318,13 +311,13 @@ PROMPT;
 
         $decoded = json_decode($response, true);
 
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             if (preg_match('/\{[\s\S]*"meals"[\s\S]*\}/', $response, $m)) {
                 $decoded = json_decode($m[0], true);
             }
         }
 
-        if (!is_array($decoded) || !isset($decoded['meals']) || !is_array($decoded['meals'])) {
+        if (! is_array($decoded) || ! isset($decoded['meals']) || ! is_array($decoded['meals'])) {
             return [];
         }
 
@@ -332,7 +325,7 @@ PROMPT;
         $required = ['name_ar', 'name_en', 'name_he', 'price', 'category_id', 'description_ar', 'description_en', 'description_he'];
 
         foreach ($decoded['meals'] as $key => $meal) {
-            if (!is_array($meal)) {
+            if (! is_array($meal)) {
                 continue;
             }
 
@@ -357,7 +350,7 @@ PROMPT;
     {
         $result = [];
         $subdomain = $this->toSubdomain($restaurantName);
-        $baseDir = storage_path('app/meal-ai-images/' . $subdomain);
+        $baseDir = storage_path('app/meal-ai-images/'.$subdomain);
 
         $styleDescription = null;
         if ($styleImagePath && is_string($styleImagePath) && file_exists($styleImagePath)) {
@@ -381,15 +374,16 @@ PROMPT;
 
             if ($count >= $maxImages) {
                 $result[$key] = $mealCopy;
+
                 continue;
             }
 
             $nameEn = $meal['name_en'] ?? ($meal['name_ar'] ?? $key);
-            $slug = Str::slug($nameEn) ?: ('meal-' . $key);
-            $savePath = $baseDir . '/' . $slug . '.png';
+            $slug = Str::slug($nameEn) ?: ('meal-'.$key);
+            $savePath = $baseDir.'/'.$slug.'.png';
 
             $prompt = "High-quality, realistic photograph of the restaurant dish \"{$nameEn}\" on a simple neutral background. "
-                . "Well-lit, appetizing, professional food photography, no text, no watermark, no logo.";
+                .'Well-lit, appetizing, professional food photography, no text, no watermark, no logo.';
 
             if ($styleDescription) {
                 $prompt .= " Match this style: {$styleDescription}.";
@@ -428,7 +422,7 @@ PROMPT;
         if (config('openai.organization')) {
             $http = $http->withHeaders(['OpenAI-Organization' => config('openai.organization')]);
         }
-        if (!$sslVerify) {
+        if (! $sslVerify) {
             $http = $http->withOptions(['verify' => false]);
         }
 
@@ -446,12 +440,13 @@ PROMPT;
                 'response_format' => 'b64_json',
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::warning('MealStoreWithAiImagesWorkflow image generation failed', [
                     'model' => $model,
                     'status' => $response->status(),
                     'body' => $response->json(),
                 ]);
+
                 continue;
             }
 
@@ -467,7 +462,7 @@ PROMPT;
             }
 
             $dir = dirname($savePath);
-            if (!is_dir($dir)) {
+            if (! is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
 
@@ -487,4 +482,3 @@ PROMPT;
         return $subdomain ?: 'default';
     }
 }
-

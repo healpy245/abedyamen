@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -38,7 +39,7 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
             ];
         }
 
-        if ($logoPath === null || !file_exists($logoPath)) {
+        if ($logoPath === null || ! file_exists($logoPath)) {
             return [
                 'success' => false,
                 'error' => 'A valid logo image is required.',
@@ -46,11 +47,7 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-<<<<<<< HEAD
         $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
-=======
-        $baseUrl = "https://{$subdomain}.kaman.rest";
->>>>>>> parent of cd712ea (First)
 
         try {
             $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
@@ -60,7 +57,7 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
 
             $progress('ai', 'Parsing categories with AI...', []);
             $categories = $this->parseCategoriesWithAi($description);
-            $progress('ai', 'Parsed ' . count($categories) . ' categories', ['count' => count($categories)]);
+            $progress('ai', 'Parsed '.count($categories).' categories', ['count' => count($categories)]);
 
             $progress('style', 'Analyzing logo style for category images...', []);
             $styleDescription = $this->describeLogoStyle($logoPath);
@@ -68,12 +65,12 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
             $progress('images', 'Generating images for categories...', []);
             $categoriesWithImages = $this->generateImagesForCategories($categories, $restaurantName, $styleDescription);
 
-            $withImageCount = count(array_filter($categoriesWithImages, fn ($c) => !empty($c['image_path'] ?? null)));
-            $progress('images', 'Generated images for ' . $withImageCount . ' categories', ['with_images' => $withImageCount]);
+            $withImageCount = count(array_filter($categoriesWithImages, fn ($c) => ! empty($c['image_path'] ?? null)));
+            $progress('images', 'Generated images for '.$withImageCount.' categories', ['with_images' => $withImageCount]);
 
             $progress('categories', 'Creating categories via Kaman API...', []);
             $createResult = $this->createCategories($baseUrl, $token, $categoriesWithImages, $progress);
-            $progress('categories', 'Created ' . count($createResult['created']) . ' categories, ' . count($createResult['failed']) . ' failed', $createResult);
+            $progress('categories', 'Created '.count($createResult['created']).' categories, '.count($createResult['failed']).' failed', $createResult);
 
             Log::info('CategoryStoreWithAiImageWorkflow completed', [
                 'restaurant' => $restaurantName,
@@ -106,7 +103,7 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
     {
         $http = Http::timeout($timeout)->acceptJson();
 
-        if (!config('services.kaman.ssl_verify', false)) {
+        if (! config('services.kaman.ssl_verify', false)) {
             $http = $http->withoutVerifying();
         }
 
@@ -115,17 +112,12 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
 
     private function login(string $baseUrl, string $email, string $password): string
     {
-<<<<<<< HEAD
         $response = $this->http()->post("{$baseUrl}/login", [
             'email' => $email,
-=======
-        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
->>>>>>> parent of cd712ea (First)
             'password' => $password,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $body = $response->json();
             $message = $body['message'] ?? $body['error'] ?? $response->body();
 
@@ -134,7 +126,7 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
                 'response' => $message,
             ]);
 
-            throw new \RuntimeException('Login failed: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Login failed: '.(is_string($message) ? $message : json_encode($message)));
         }
 
         $data = $response->json();
@@ -154,7 +146,7 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
      */
     private function parseCategoriesWithAi(string $description): array
     {
-        $systemPrompt = <<<PROMPT
+        $systemPrompt = <<<'PROMPT'
 You are a restaurant category parser. You receive a list of category names (in any language or format).
 
 You must output a JSON object with this EXACT structure. Use ONLY valid JSON, no markdown or extra text:
@@ -188,7 +180,7 @@ PROMPT;
         $categories = $this->extractCategoriesFromAiResponse($aiResponse);
 
         if (empty($categories)) {
-            throw new \RuntimeException('AI did not return valid categories. Response: ' . substr($aiResponse, 0, 500));
+            throw new \RuntimeException('AI did not return valid categories. Response: '.substr($aiResponse, 0, 500));
         }
 
         return $categories;
@@ -207,13 +199,13 @@ PROMPT;
 
         $decoded = json_decode($response, true);
 
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             if (preg_match('/\{[\s\S]*"categories"[\s\S]*\}/', $response, $m)) {
                 $decoded = json_decode($m[0], true);
             }
         }
 
-        if (!is_array($decoded) || !isset($decoded['categories']) || !is_array($decoded['categories'])) {
+        if (! is_array($decoded) || ! isset($decoded['categories']) || ! is_array($decoded['categories'])) {
             return [];
         }
 
@@ -221,7 +213,7 @@ PROMPT;
         $required = ['name_ar', 'name_en', 'name_he'];
 
         foreach ($decoded['categories'] as $key => $cat) {
-            if (!is_array($cat)) {
+            if (! is_array($cat)) {
                 continue;
             }
 
@@ -250,11 +242,13 @@ PROMPT;
                 'Here is the logo.',
                 ['max_tokens' => 200],
             ));
+
             return $style !== '' ? $style : null;
         } catch (\Throwable $e) {
             Log::warning('CategoryStoreWithAiImageWorkflow logo style analysis failed', [
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -267,7 +261,7 @@ PROMPT;
     {
         $result = [];
         $subdomain = $this->toSubdomain($restaurantName);
-        $baseDir = storage_path('app/category-ai-images/' . $subdomain);
+        $baseDir = storage_path('app/category-ai-images/'.$subdomain);
 
         $count = 0;
         $maxImages = 40;
@@ -278,12 +272,13 @@ PROMPT;
 
             if ($count >= $maxImages) {
                 $result[$key] = $copy;
+
                 continue;
             }
 
             $nameEn = $cat['name_en'] ?? ($cat['name_ar'] ?? $key);
-            $slug = Str::slug($nameEn) ?: ('category-' . $key);
-            $savePath = $baseDir . '/' . $slug . '.png';
+            $slug = Str::slug($nameEn) ?: ('category-'.$key);
+            $savePath = $baseDir.'/'.$slug.'.png';
 
             $prompt = "Menu category image for \"{$nameEn}\". No text or letters in the image.";
             if ($styleDescription) {
@@ -325,7 +320,7 @@ PROMPT;
 
         foreach ($categories as $key => $category) {
             $i++;
-            $progress && $progress('category', 'Creating category ' . $i . '/' . $total . ': ' . ($category['name_en'] ?? $key), ['key' => $key]);
+            $progress && $progress('category', 'Creating category '.$i.'/'.$total.': '.($category['name_en'] ?? $key), ['key' => $key]);
 
             $body = [
                 'name_ar' => $category['name_ar'],
@@ -335,13 +330,14 @@ PROMPT;
 
             try {
                 $http = $this->http($timeout)->withToken($token);
-                if (!empty($category['image_path']) && File::exists($category['image_path'])) {
+                if (! empty($category['image_path']) && File::exists($category['image_path'])) {
                     $http = $http->attach('image', File::get($category['image_path']), File::basename($category['image_path']));
                 }
-                $response = $http->post("{$baseUrl}/api/manager/categories", $body);
+                $response = $http->post("{$baseUrl}/categories", $body);
             } catch (\Throwable $e) {
                 $failed[] = ['key' => $key, 'error' => $e->getMessage()];
                 Log::warning('CategoryStoreWithAiImageWorkflow category request failed', ['key' => $key, 'error' => $e->getMessage()]);
+
                 continue;
             }
 
@@ -384,7 +380,7 @@ PROMPT;
         if (config('openai.organization')) {
             $http = $http->withHeaders(['OpenAI-Organization' => config('openai.organization')]);
         }
-        if (!$sslVerify) {
+        if (! $sslVerify) {
             $http = $http->withOptions(['verify' => false]);
         }
 
@@ -395,7 +391,7 @@ PROMPT;
             'size' => '1024x1024',
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::warning('CategoryStoreWithAiImageWorkflow image generation failed', [
                 'model' => 'gpt-5.3-chat-latest',
                 'status' => $response->status(),
@@ -417,7 +413,7 @@ PROMPT;
         }
 
         $dir = dirname($savePath);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
@@ -428,11 +424,10 @@ PROMPT;
     {
         $subdomain = strtolower(trim($name));
         $subdomain = preg_replace('/[^a-z0-9\-]/', '-', $subdomain);
-        
+
         $subdomain = trim($subdomain, '-');
         $subdomain = preg_replace('/-+/', '-', $subdomain);
 
         return $subdomain ?: 'default';
     }
 }
-

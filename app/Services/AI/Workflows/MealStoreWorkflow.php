@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -34,11 +35,7 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-<<<<<<< HEAD
         $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
-=======
-        $baseUrl = "https://{$subdomain}.kaman.rest";
->>>>>>> parent of cd712ea (First)
 
         try {
             $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
@@ -48,15 +45,15 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
 
             $progress('categories', 'Fetching categories...', []);
             $categories = $this->fetchCategories($baseUrl, $token);
-            $progress('categories', 'Fetched ' . count($categories) . ' categories', ['count' => count($categories)]);
+            $progress('categories', 'Fetched '.count($categories).' categories', ['count' => count($categories)]);
 
             $progress('ai', 'Parsing meals with AI...', []);
             $meals = $this->parseMealsWithAi($description, $categories);
-            $progress('ai', 'Parsed ' . count($meals) . ' meals', ['count' => count($meals)]);
+            $progress('ai', 'Parsed '.count($meals).' meals', ['count' => count($meals)]);
 
             $progress('items', 'Creating items via Kaman API...', []);
             $itemsResult = $this->createItems($baseUrl, $token, $meals, $progress);
-            $progress('items', 'Created ' . count($itemsResult['created']) . ' items, ' . count($itemsResult['failed']) . ' failed', $itemsResult);
+            $progress('items', 'Created '.count($itemsResult['created']).' items, '.count($itemsResult['failed']).' failed', $itemsResult);
 
             Log::info('MealStoreWorkflow completed', [
                 'restaurant' => $restaurantName,
@@ -89,7 +86,7 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
     {
         $http = Http::timeout(30)->acceptJson();
 
-        if (!config('services.kaman.ssl_verify', false)) {
+        if (! config('services.kaman.ssl_verify', false)) {
             $http = $http->withoutVerifying();
         }
 
@@ -98,17 +95,12 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
 
     private function login(string $baseUrl, string $email, string $password): string
     {
-<<<<<<< HEAD
         $response = $this->http()->post("{$baseUrl}/login", [
             'email' => $email,
-=======
-        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
->>>>>>> parent of cd712ea (First)
             'password' => $password,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $body = $response->json();
             $message = $body['message'] ?? $body['error'] ?? $response->body();
 
@@ -117,7 +109,7 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
                 'response' => $message,
             ]);
 
-            throw new \RuntimeException('Login failed: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Login failed: '.(is_string($message) ? $message : json_encode($message)));
         }
 
         $data = $response->json();
@@ -137,18 +129,18 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
     {
         $response = $this->http()
             ->withToken($token)
-            ->get("{$baseUrl}/api/manager/categories");
+            ->get("{$baseUrl}/categories");
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
 
-            throw new \RuntimeException('Failed to fetch categories: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Failed to fetch categories: '.(is_string($message) ? $message : json_encode($message)));
         }
 
         $data = $response->json();
         $list = $data['data'] ?? $data['categories'] ?? $data;
 
-        if (!is_array($list)) {
+        if (! is_array($list)) {
             throw new \RuntimeException('Categories response format is invalid.');
         }
 
@@ -171,11 +163,11 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
 
         foreach ($meals as $key => $meal) {
             $i++;
-            $progress && $progress('item', 'Creating item ' . $i . '/' . $total . ': ' . ($meal['name_en'] ?? $key), ['key' => $key]);
+            $progress && $progress('item', 'Creating item '.$i.'/'.$total.': '.($meal['name_en'] ?? $key), ['key' => $key]);
 
             $response = $this->http()
                 ->withToken($token)
-                ->post("{$baseUrl}/api/manager/items", $meal);
+                ->post("{$baseUrl}/items", $meal);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -209,7 +201,7 @@ final class MealStoreWorkflow extends AbstractFormWorkflow
     {
         $categoryList = $this->formatCategoriesForPrompt($categories);
 
-        $systemPrompt = <<<PROMPT
+        $systemPrompt = <<<'PROMPT'
 You are a restaurant menu parser. You receive a meal list in the format:
 
 category name : {
@@ -253,7 +245,7 @@ PROMPT;
         $meals = $this->extractMealsFromAiResponse($aiResponse);
 
         if (empty($meals)) {
-            throw new \RuntimeException('AI did not return valid meals. Response: ' . substr($aiResponse, 0, 500));
+            throw new \RuntimeException('AI did not return valid meals. Response: '.substr($aiResponse, 0, 500));
         }
 
         return $meals;
@@ -288,13 +280,13 @@ PROMPT;
 
         $decoded = json_decode($response, true);
 
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             if (preg_match('/\{[\s\S]*"meals"[\s\S]*\}/', $response, $m)) {
                 $decoded = json_decode($m[0], true);
             }
         }
 
-        if (!is_array($decoded) || !isset($decoded['meals']) || !is_array($decoded['meals'])) {
+        if (! is_array($decoded) || ! isset($decoded['meals']) || ! is_array($decoded['meals'])) {
             return [];
         }
 
@@ -302,7 +294,7 @@ PROMPT;
         $required = ['name_ar', 'name_en', 'name_he', 'price', 'category_id', 'description_ar', 'description_en', 'description_he'];
 
         foreach ($decoded['meals'] as $key => $meal) {
-            if (!is_array($meal)) {
+            if (! is_array($meal)) {
                 continue;
             }
 

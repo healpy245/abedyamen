@@ -15,7 +15,6 @@ namespace App\Enums;
 enum Project: string
 {
     case Form = 'form';
-    case WhatsAppBot = 'whatsapp-bot';
     case AiChatbot = 'ai-chatbot';
 
     /**
@@ -38,7 +37,6 @@ enum Project: string
     {
         return match ($this) {
             self::Form => 'form.index',
-            self::WhatsAppBot => 'whatsapp.bot.index',
             self::AiChatbot => 'ai-chatbot.index',
         };
     }
@@ -55,7 +53,6 @@ enum Project: string
     {
         return match ($this) {
             self::Form => 'clipboard-document-list',
-            self::WhatsAppBot => 'whatsapp',
             self::AiChatbot => 'sparkles',
         };
     }
@@ -79,14 +76,6 @@ enum Project: string
                 'icon_bg' => 'bg-orange-50',
                 'icon_text' => 'text-orange-600',
                 'border_hover' => 'hover:border-orange-200',
-                'status_bg' => 'bg-emerald-50',
-                'status_text' => 'text-emerald-700',
-                'status_border' => 'border-emerald-200',
-            ],
-            self::WhatsAppBot => [
-                'icon_bg' => 'bg-emerald-50',
-                'icon_text' => 'text-emerald-600',
-                'border_hover' => 'hover:border-emerald-200',
                 'status_bg' => 'bg-emerald-50',
                 'status_text' => 'text-emerald-700',
                 'status_border' => 'border-emerald-200',

@@ -28,6 +28,7 @@
                     <p class="mt-0.5 text-xs text-[#a78a6c]">
                         {{ __('chatbot.members_desc') }}
                     </p>
+                    @include('ai-chatbot.partials.instance-actions', ['instance' => $instance])
                 </div>
 
                 <div class="kaman-scroll flex-1 overflow-y-auto px-5 py-5 space-y-6">

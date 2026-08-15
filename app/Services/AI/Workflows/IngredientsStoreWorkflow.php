@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Workflows;
 
+use App\Support\KamanUrl;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -34,11 +35,7 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
         }
 
         $subdomain = $this->toSubdomain($restaurantName);
-<<<<<<< HEAD
         $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
-=======
-        $baseUrl = "https://{$subdomain}.kaman.rest";
->>>>>>> parent of cd712ea (First)
 
         try {
             $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
@@ -48,15 +45,15 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
 
             $progress('categories', 'Fetching ingredients categories...', []);
             $categories = $this->fetchIngredientsCategories($baseUrl, $token);
-            $progress('categories', 'Fetched ' . count($categories) . ' categories', ['count' => count($categories)]);
+            $progress('categories', 'Fetched '.count($categories).' categories', ['count' => count($categories)]);
 
             $progress('ai', 'Parsing ingredients with AI...', []);
             $ingredients = $this->parseIngredientsWithAi($description, $categories);
-            $progress('ai', 'Parsed ' . count($ingredients) . ' ingredients', ['count' => count($ingredients)]);
+            $progress('ai', 'Parsed '.count($ingredients).' ingredients', ['count' => count($ingredients)]);
 
             $progress('ingredients', 'Creating ingredients via Kaman API...', []);
             $createResult = $this->createIngredients($baseUrl, $token, $ingredients, $progress);
-            $progress('ingredients', 'Created ' . count($createResult['created']) . ' ingredients, ' . count($createResult['failed']) . ' failed', $createResult);
+            $progress('ingredients', 'Created '.count($createResult['created']).' ingredients, '.count($createResult['failed']).' failed', $createResult);
 
             Log::info('IngredientsStoreWorkflow completed', [
                 'restaurant' => $restaurantName,
@@ -89,7 +86,7 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
     {
         $http = Http::timeout(30)->acceptJson();
 
-        if (!config('services.kaman.ssl_verify', false)) {
+        if (! config('services.kaman.ssl_verify', false)) {
             $http = $http->withoutVerifying();
         }
 
@@ -98,17 +95,12 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
 
     private function login(string $baseUrl, string $email, string $password): string
     {
-<<<<<<< HEAD
         $response = $this->http()->post("{$baseUrl}/login", [
             'email' => $email,
-=======
-        $response = $this->http()->post("{$baseUrl}/api/manager/login", [
-            'email' => "{$subdomain}@kaman.rest",
->>>>>>> parent of cd712ea (First)
             'password' => $password,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $body = $response->json();
             $message = $body['message'] ?? $body['error'] ?? $response->body();
 
@@ -117,7 +109,7 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
                 'response' => $message,
             ]);
 
-            throw new \RuntimeException('Login failed: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Login failed: '.(is_string($message) ? $message : json_encode($message)));
         }
 
         $data = $response->json();
@@ -137,18 +129,18 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
     {
         $response = $this->http()
             ->withToken($token)
-            ->get("{$baseUrl}/api/manager/ingredients-categories");
+            ->get("{$baseUrl}/ingredients-categories");
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $message = $response->json('message') ?? $response->json('error') ?? $response->body();
 
-            throw new \RuntimeException('Failed to fetch ingredients categories: ' . (is_string($message) ? $message : json_encode($message)));
+            throw new \RuntimeException('Failed to fetch ingredients categories: '.(is_string($message) ? $message : json_encode($message)));
         }
 
         $data = $response->json();
         $list = $data['data'] ?? $data['categories'] ?? $data['ingredients_categories'] ?? $data;
 
-        if (!is_array($list)) {
+        if (! is_array($list)) {
             throw new \RuntimeException('Ingredients categories response format is invalid.');
         }
 
@@ -165,7 +157,7 @@ final class IngredientsStoreWorkflow extends AbstractFormWorkflow
     {
         $categoryList = $this->formatCategoriesForPrompt($categories);
 
-        $systemPrompt = <<<PROMPT
+        $systemPrompt = <<<'PROMPT'
 You are a restaurant ingredients parser. You receive an ingredients list in the format:
 
 category name : {
@@ -207,7 +199,7 @@ PROMPT;
         $ingredients = $this->extractIngredientsFromAiResponse($aiResponse);
 
         if (empty($ingredients)) {
-            throw new \RuntimeException('AI did not return valid ingredients. Response: ' . substr($aiResponse, 0, 500));
+            throw new \RuntimeException('AI did not return valid ingredients. Response: '.substr($aiResponse, 0, 500));
         }
 
         return $ingredients;
@@ -242,13 +234,13 @@ PROMPT;
 
         $decoded = json_decode($response, true);
 
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             if (preg_match('/\{[\s\S]*"ingredients"[\s\S]*\}/', $response, $m)) {
                 $decoded = json_decode($m[0], true);
             }
         }
 
-        if (!is_array($decoded) || !isset($decoded['ingredients']) || !is_array($decoded['ingredients'])) {
+        if (! is_array($decoded) || ! isset($decoded['ingredients']) || ! is_array($decoded['ingredients'])) {
             return [];
         }
 
@@ -256,7 +248,7 @@ PROMPT;
         $required = ['name_ar', 'name_en', 'name_he', 'price', 'category_id'];
 
         foreach ($decoded['ingredients'] as $key => $ing) {
-            if (!is_array($ing)) {
+            if (! is_array($ing)) {
                 continue;
             }
 
@@ -287,11 +279,11 @@ PROMPT;
 
         foreach ($ingredients as $key => $ingredient) {
             $i++;
-            $progress && $progress('ingredient', 'Creating ingredient ' . $i . '/' . $total . ': ' . ($ingredient['name_en'] ?? $key), ['key' => $key]);
+            $progress && $progress('ingredient', 'Creating ingredient '.$i.'/'.$total.': '.($ingredient['name_en'] ?? $key), ['key' => $key]);
 
             $response = $this->http()
                 ->withToken($token)
-                ->post("{$baseUrl}/api/manager/ingredients", $ingredient);
+                ->post("{$baseUrl}/ingredients", $ingredient);
 
             if ($response->successful()) {
                 $data = $response->json();
