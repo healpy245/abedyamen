@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\AppDevelopment\AppDevelopmentRelease;
+use App\Models\AppDevelopment\AppDevelopmentTicket;
+use App\Policies\AppDevelopmentReleasePolicy;
+use App\Policies\AppDevelopmentTicketPolicy;
 use App\Services\Malan\Contracts\BankTransferProofVerifier;
 use App\Services\Malan\Contracts\ChargeSavedPaymentMethod;
 use App\Services\Malan\Contracts\CheckPaymentStatus;
@@ -12,7 +16,9 @@ use App\Services\Malan\Payment\PendingCheckPaymentStatus;
 use App\Services\Malan\Payment\PendingCreateOneTimePaymentLink;
 use App\Services\Malan\Payment\PendingRequestServiceReactivation;
 use App\Services\Malan\Proof\OpenAiVisionBankTransferProofVerifier;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -28,6 +34,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(AppDevelopmentTicket::class, AppDevelopmentTicketPolicy::class);
+        Gate::policy(AppDevelopmentRelease::class, AppDevelopmentReleasePolicy::class);
+
+        View::composer('app-development.partials.nav', \App\View\Composers\AppDevelopmentNavComposer::class);
+
         if ($this->app->environment(['local', 'testing'])) {
             Http::globalOptions([
                 'verify' => false,

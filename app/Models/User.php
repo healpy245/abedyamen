@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\AppDevelopmentRole;
 use App\Enums\Project;
+use App\Models\AppDevelopment\AppDevelopmentMember;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -101,5 +104,25 @@ class User extends Authenticatable
         }
 
         return array_values(array_filter($projects, 'is_string'));
+    }
+
+    public function appDevelopmentMembership(): HasOne
+    {
+        return $this->hasOne(AppDevelopmentMember::class);
+    }
+
+    public function appDevelopmentRole(): ?AppDevelopmentRole
+    {
+        return $this->appDevelopmentMembership?->role;
+    }
+
+    public function isQa(): bool
+    {
+        return $this->appDevelopmentRole() === AppDevelopmentRole::Qa;
+    }
+
+    public function isDeveloper(): bool
+    {
+        return $this->appDevelopmentRole() === AppDevelopmentRole::Developer;
     }
 }

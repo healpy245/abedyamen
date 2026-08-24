@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             WorkspaceUserSeeder::class,
+            AppDevelopmentMemberSeeder::class,
             SallyMalanChatbotInstanceSeeder::class,
             KamanWhatsappChatbotInstanceSeeder::class,
             MalanCompanyMemberSeeder::class,

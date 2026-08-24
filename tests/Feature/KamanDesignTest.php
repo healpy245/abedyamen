@@ -70,6 +70,7 @@ class KamanDesignTest extends TestCase
             'welcome' => ['home'],
             'form' => ['form.index'],
             'chatbot settings' => ['ai-chatbot.admin.settings.edit'],
+            'app development' => ['app-development.index'],
         ];
     }
 
@@ -128,6 +129,7 @@ class KamanDesignTest extends TestCase
             route('home'),
             route('form.index'),
             route('ai-chatbot.instances.show', $this->chatbotInstance()),
+            route('app-development.index'),
         ];
 
         foreach ($pages as $url) {

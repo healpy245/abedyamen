@@ -22,7 +22,7 @@ class ProjectAccessTest extends TestCase
      * @var array<string, list<string>>
      */
     private const MATRIX = [
-        'yamen@kaman.rest' => ['form', 'ai-chatbot'],
+        'yamen@kaman.rest' => ['form', 'ai-chatbot', 'app-development'],
         'ahmad@kaman.rest' => ['form'],
         'mohamed@kaman.rest' => ['form', 'ai-chatbot'],
     ];
@@ -92,14 +92,14 @@ class ProjectAccessTest extends TestCase
         $cases = [
             'ahmad@kaman.rest' => [
                 'visible' => [__('projects.form.label')],
-                'hidden' => [__('projects.ai-chatbot.label')],
+                'hidden' => [__('projects.ai-chatbot.label'), __('projects.app-development.label')],
             ],
             'mohamed@kaman.rest' => [
                 'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label')],
-                'hidden' => [],
+                'hidden' => [__('projects.app-development.label')],
             ],
             'yamen@kaman.rest' => [
-                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label')],
+                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label')],
                 'hidden' => [],
             ],
         ];

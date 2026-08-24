@@ -16,6 +16,7 @@ enum Project: string
 {
     case Form = 'form';
     case AiChatbot = 'ai-chatbot';
+    case AppDevelopment = 'app-development';
 
     /**
      * Human readable name, shown on the welcome page and in 403 messages.
@@ -38,6 +39,7 @@ enum Project: string
         return match ($this) {
             self::Form => 'form.index',
             self::AiChatbot => 'ai-chatbot.index',
+            self::AppDevelopment => 'app-development.index',
         };
     }
 
@@ -54,6 +56,7 @@ enum Project: string
         return match ($this) {
             self::Form => 'clipboard-document-list',
             self::AiChatbot => 'sparkles',
+            self::AppDevelopment => 'beaker',
         };
     }
 
@@ -84,6 +87,14 @@ enum Project: string
                 'icon_bg' => 'bg-violet-50',
                 'icon_text' => 'text-violet-600',
                 'border_hover' => 'hover:border-violet-200',
+                'status_bg' => 'bg-emerald-50',
+                'status_text' => 'text-emerald-700',
+                'status_border' => 'border-emerald-200',
+            ],
+            self::AppDevelopment => [
+                'icon_bg' => 'bg-sky-50',
+                'icon_text' => 'text-sky-600',
+                'border_hover' => 'hover:border-sky-200',
                 'status_bg' => 'bg-emerald-50',
                 'status_text' => 'text-emerald-700',
                 'status_border' => 'border-emerald-200',

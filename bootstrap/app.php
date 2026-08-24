@@ -14,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function (): void {
             Route::middleware('web')
                 ->group(base_path('routes/ai-chatbot.php'));
+            Route::middleware('web')
+                ->group(base_path('routes/app-development.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
