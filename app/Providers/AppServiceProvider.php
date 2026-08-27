@@ -3,9 +3,13 @@
 namespace App\Providers;
 
 use App\Models\AppDevelopment\AppDevelopmentRelease;
+use App\Models\AppDevelopment\AppDevelopmentTask;
 use App\Models\AppDevelopment\AppDevelopmentTicket;
+use App\Models\AppDevelopment\AppDevelopmentTimeEntry;
 use App\Policies\AppDevelopmentReleasePolicy;
+use App\Policies\AppDevelopmentTaskPolicy;
 use App\Policies\AppDevelopmentTicketPolicy;
+use App\Policies\AppDevelopmentTimeEntryPolicy;
 use App\Services\Malan\Contracts\BankTransferProofVerifier;
 use App\Services\Malan\Contracts\ChargeSavedPaymentMethod;
 use App\Services\Malan\Contracts\CheckPaymentStatus;
@@ -36,8 +40,12 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(AppDevelopmentTicket::class, AppDevelopmentTicketPolicy::class);
         Gate::policy(AppDevelopmentRelease::class, AppDevelopmentReleasePolicy::class);
+        Gate::policy(AppDevelopmentTask::class, AppDevelopmentTaskPolicy::class);
+        Gate::policy(AppDevelopmentTimeEntry::class, AppDevelopmentTimeEntryPolicy::class);
 
         View::composer('app-development.partials.nav', \App\View\Composers\AppDevelopmentNavComposer::class);
+        View::composer('app-development.layouts.project', \App\View\Composers\AppDevelopmentTimerComposer::class);
+        View::composer('partials.topbar', \App\View\Composers\NotificationComposer::class);
 
         if ($this->app->environment(['local', 'testing'])) {
             Http::globalOptions([

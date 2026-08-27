@@ -101,6 +101,42 @@
 
     <p class="whitespace-pre-wrap text-sm leading-relaxed text-[#2b1e11]">{{ $ticket->description }}</p>
 
+    @if(!empty($suggestCompleteTicket))
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {{ __('app-development.flash.suggest_complete_ticket', ['ticket' => $ticket->ticket_number]) }}
+        </div>
+    @endif
+
+    <section class="rounded-xl border border-[#f1dfc5] bg-[#fffaf3] p-3">
+        <div class="mb-2 flex items-center justify-between gap-2">
+            <h4 class="text-sm font-bold text-[#2b1e11]">{{ __('app-development.tasks.section') }}</h4>
+            @can('create', \App\Models\AppDevelopment\AppDevelopmentTask::class)
+                <a href="{{ route('app-development.tickets.tasks.create', $ticket) }}" class="kaman-button-ghost kaman-button--sm" data-app-dev-modal>
+                    @include('app-development.partials.icon', ['name' => 'plus'])
+                    {{ __('app-development.tasks.create') }}
+                </a>
+            @endcan
+        </div>
+        <div class="space-y-1.5">
+            @forelse($ticket->tasks as $task)
+                <a href="{{ route('app-development.tasks.show', $task) }}"
+                   data-app-dev-modal
+                   class="flex items-center justify-between gap-2 rounded-lg border border-[#eadfce] bg-white px-2.5 py-2 text-sm hover:border-[#c45c26]">
+                    <div class="min-w-0">
+                        <span class="block truncate font-semibold text-[#2b1e11]">{{ $task->title }}</span>
+                        <span class="text-[11px] text-[#a78a6c]">{{ $task->assignee?->name ?? __('app-development.tickets.unassigned') }}</span>
+                    </div>
+                    <div class="flex shrink-0 flex-col items-end gap-1">
+                        @include('app-development.partials.task-status-badge', ['status' => $task->status])
+                        @include('app-development.partials.priority-badge', ['priority' => $task->priority])
+                    </div>
+                </a>
+            @empty
+                <p class="text-xs text-[#a78a6c]">{{ __('app-development.tasks.empty_column') }}</p>
+            @endforelse
+        </div>
+    </section>
+
     @php
         $commentAttachmentIds = $ticket->comments
             ->pluck('attachment_id')

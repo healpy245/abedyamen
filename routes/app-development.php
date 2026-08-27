@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\AppDevelopment\NotificationController;
 use App\Http\Controllers\AppDevelopment\ReleaseController;
+use App\Http\Controllers\AppDevelopment\ReportController;
+use App\Http\Controllers\AppDevelopment\TaskController;
+use App\Http\Controllers\AppDevelopment\TaskTimerController;
 use App\Http\Controllers\AppDevelopment\TeamController;
 use App\Http\Controllers\AppDevelopment\TicketAttachmentController;
 use App\Http\Controllers\AppDevelopment\TicketCommentController;
@@ -50,6 +53,20 @@ Route::middleware(['auth', 'project:app-development'])
         Route::post('/tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
         Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'download'])->name('tickets.attachments.download');
 
+        Route::get('/tickets/{ticket}/tasks/create', [TaskController::class, 'createForTicket'])->name('tickets.tasks.create');
+        Route::post('/tickets/{ticket}/tasks', [TaskController::class, 'storeForTicket'])->name('tickets.tasks.store');
+
+        Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+        Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
+        Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+        Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+        Route::post('/tasks/{task}/timer/start', [TaskTimerController::class, 'start'])->name('tasks.timer.start');
+        Route::post('/tasks/{task}/timer/pause', [TaskTimerController::class, 'pause'])->name('tasks.timer.pause');
+        Route::post('/tasks/{task}/timer/complete', [TaskTimerController::class, 'complete'])->name('tasks.timer.complete');
+        Route::put('/time-entries/{timeEntry}', [TaskTimerController::class, 'updateEntry'])->name('time-entries.update');
+        Route::delete('/time-entries/{timeEntry}', [TaskTimerController::class, 'destroyEntry'])->name('time-entries.destroy');
+
         Route::get('/qa', function () {
             return redirect()->route('app-development.index', ['tab' => 'qa']);
         })->name('qa.index');
@@ -64,4 +81,9 @@ Route::middleware(['auth', 'project:app-development'])
         Route::post('/releases', [ReleaseController::class, 'store'])->name('releases.store');
         Route::get('/releases/{release}', [ReleaseController::class, 'show'])->name('releases.show');
         Route::get('/releases/{release}/download', [ReleaseController::class, 'download'])->name('releases.download');
+
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export/tickets', [ReportController::class, 'exportTickets'])->name('reports.export.tickets');
+        Route::get('/reports/export/tasks', [ReportController::class, 'exportTasks'])->name('reports.export.tasks');
+        Route::get('/reports/export/time', [ReportController::class, 'exportTime'])->name('reports.export.time');
     });
