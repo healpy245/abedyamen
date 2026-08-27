@@ -23,11 +23,15 @@ class AppDevelopmentNavComposer
         }
 
         if ($user?->isDeveloper()) {
-            $returnedFromQa = AppDevelopmentTicket::query()
-                ->where('assigned_to', $user->id)
+            $returnedQuery = AppDevelopmentTicket::query()
                 ->where('status', AppDevelopmentTicketStatus::Working)
-                ->where('qa_rejection_count', '>', 0)
-                ->count();
+                ->where('qa_rejection_count', '>', 0);
+
+            if (! $user->isAppDevelopmentAdmin()) {
+                $returnedQuery->where('assigned_to', $user->id);
+            }
+
+            $returnedFromQa = $returnedQuery->count();
         }
 
         $view->with([
