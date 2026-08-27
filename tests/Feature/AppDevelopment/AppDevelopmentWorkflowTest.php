@@ -72,6 +72,7 @@ class AppDevelopmentWorkflowTest extends TestCase
             'title' => 'Orders page freezes after changing branch',
             'type' => AppDevelopmentTicketType::Bug->value,
             'priority' => AppDevelopmentTicketPriority::High->value,
+            'app_types' => ['web'],
             'description' => 'When changing from branch 1 to branch 3, the loader remains forever.',
         ]);
 
@@ -95,10 +96,37 @@ class AppDevelopmentWorkflowTest extends TestCase
             'title' => 'Should not work',
             'type' => AppDevelopmentTicketType::Bug->value,
             'priority' => AppDevelopmentTicketPriority::Normal->value,
+            'app_types' => ['web'],
             'description' => 'Nope',
         ])->assertForbidden();
 
         $this->assertSame(0, AppDevelopmentTicket::query()->count());
+    }
+
+    public function test_qa_can_delete_ticket(): void
+    {
+        $qa = $this->makeQa();
+        $ticket = $this->makeTicket($qa);
+
+        $this->actingAs($qa)
+            ->delete(route('app-development.tickets.destroy', $ticket))
+            ->assertRedirect(route('app-development.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame(0, AppDevelopmentTicket::query()->count());
+    }
+
+    public function test_developer_cannot_delete_ticket(): void
+    {
+        $qa = $this->makeQa();
+        $dev = $this->makeDeveloper();
+        $ticket = $this->makeTicket($qa);
+
+        $this->actingAs($dev)
+            ->delete(route('app-development.tickets.destroy', $ticket))
+            ->assertForbidden();
+
+        $this->assertTrue(AppDevelopmentTicket::query()->whereKey($ticket->id)->exists());
     }
 
     public function test_developer_can_claim_open_ticket(): void
@@ -223,7 +251,6 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->actingAs($dev)
             ->get(route('app-development.tickets.show', $ticket))
             ->assertOk()
-            ->assertSee(__('app-development.tickets.returned_title'))
             ->assertSee($note, false);
     }
 
@@ -374,7 +401,13 @@ class AppDevelopmentWorkflowTest extends TestCase
 
         $this->actingAs($qa)
             ->get(route('app-development.tickets.attachments.download', [$ticket, $attachment]))
-            ->assertOk();
+            ->assertOk()
+            ->assertHeader('Accept-Ranges', 'bytes');
+
+        $this->actingAs($qa)
+            ->withHeaders(['Range' => 'bytes=0-1'])
+            ->get(route('app-development.tickets.attachments.download', [$ticket, $attachment]))
+            ->assertStatus(206);
 
         $this->actingAs($outsider)
             ->get(route('app-development.tickets.attachments.download', [$ticket, $attachment]))
@@ -383,6 +416,23 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->post('/logout');
         $this->get(route('app-development.tickets.attachments.download', [$ticket, $attachment]))
             ->assertRedirect('/login');
+    }
+
+    public function test_comment_can_include_voice_note(): void
+    {
+        $qa = $this->makeQa();
+        $ticket = $this->makeTicket($qa);
+
+        $voice = UploadedFile::fake()->create('note.webm', 120, 'audio/webm');
+
+        $this->actingAs($qa)->post(route('app-development.tickets.comments.store', $ticket), [
+            'voices' => [$voice],
+        ])->assertRedirect(route('app-development.tickets.show', $ticket));
+
+        $comment = $ticket->comments()->latest('id')->first();
+        $this->assertNotNull($comment);
+        $this->assertNotNull($comment->attachment_id);
+        $this->assertTrue($comment->attachment?->isAudio());
     }
 
     public function test_seeder_reuses_yamen_and_does_not_strip_existing_projects(): void
@@ -398,6 +448,9 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->assertTrue($yamen->canAccessProject(Project::AiChatbot));
         $this->assertTrue($yamen->canAccessProject(Project::AppDevelopment));
         $this->assertTrue($yamen->isQa());
+        $this->assertTrue($yamen->isDeveloper());
+        $this->assertTrue($yamen->isAppDevelopmentAdmin());
+        $this->assertSame(AppDevelopmentRole::Admin, $yamen->appDevelopmentRole());
 
         $this->assertSame(1, User::query()->where('email', 'yamen@kaman.rest')->count());
         $this->assertSame(0, User::query()->where('email', 'yamen@kaman')->count());
@@ -413,13 +466,200 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->assertTrue(User::query()->where('email', 'amro@kaman.rest')->firstOrFail()->isDeveloper());
     }
 
-    public function test_qa_queue_is_qa_only(): void
+    public function test_qa_queue_redirects_to_tickets_qa_tab(): void
     {
         $qa = $this->makeQa();
         $dev = $this->makeDeveloper();
 
-        $this->actingAs($qa)->get(route('app-development.qa.index'))->assertOk();
-        $this->actingAs($dev)->get(route('app-development.qa.index'))->assertForbidden();
+        $this->actingAs($qa)
+            ->get(route('app-development.qa.index'))
+            ->assertRedirect(route('app-development.index', ['tab' => 'qa']));
+        $this->actingAs($dev)
+            ->get(route('app-development.qa.index'))
+            ->assertRedirect(route('app-development.index', ['tab' => 'qa']));
+    }
+
+    public function test_admin_has_qa_and_developer_actions(): void
+    {
+        $admin = $this->makeMember(AppDevelopmentRole::Admin, [
+            'name' => 'Yamen',
+            'is_admin' => true,
+        ]);
+
+        $this->assertTrue($admin->isQa());
+        $this->assertTrue($admin->isDeveloper());
+        $this->assertTrue($admin->isAppDevelopmentAdmin());
+
+        $this->actingAs($admin)->get(route('app-development.index'))->assertOk()
+            ->assertSee(__('app-development.nav.new_ticket'))
+            ->assertSee(__('app-development.nav.upload_apk'))
+            ->assertDontSee('kaman-filter-chip--mine', false)
+            ->assertDontSee('kaman-filter-chip--returned', false)
+            ->assertSee(__('app-development.tabs.qa'));
+
+        $this->actingAs($admin)->get(route('app-development.tickets.create'))->assertOk();
+        $this->actingAs($admin)->get(route('app-development.releases.create'))->assertOk();
+
+        $this->actingAs($admin)->post(route('app-development.tickets.store'), [
+            'title' => 'Admin can open tickets',
+            'type' => AppDevelopmentTicketType::Bug->value,
+            'priority' => AppDevelopmentTicketPriority::High->value,
+            'app_types' => ['printing', 'web'],
+            'description' => 'Superadmin should be able to create tickets.',
+        ])->assertRedirect();
+
+        $ticket = AppDevelopmentTicket::query()->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('app-development.tickets.start-work', $ticket))
+            ->assertRedirect(route('app-development.tickets.show', $ticket->fresh()));
+
+        $this->actingAs($admin)
+            ->post(route('app-development.tickets.send-to-qa', $ticket->fresh()), ['note' => 'Ready'])
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->post(route('app-development.tickets.complete', $ticket->fresh()), ['note' => 'OK'])
+            ->assertRedirect();
+
+        $this->assertSame(AppDevelopmentTicketStatus::Completed, $ticket->fresh()->status);
+    }
+
+    public function test_ticket_and_release_forms_open_as_modals(): void
+    {
+        $qa = $this->makeQa();
+        $dev = $this->makeDeveloper();
+        $ticket = $this->makeTicket($qa);
+
+        $this->actingAs($qa)
+            ->get(route('app-development.tickets.create'))
+            ->assertOk()
+            ->assertSee('app-dev-modal', false)
+            ->assertSee(__('app-development.tickets.create'));
+
+        $this->actingAs($qa)
+            ->withHeaders(['X-App-Dev-Modal' => '1'])
+            ->get(route('app-development.tickets.create'))
+            ->assertOk()
+            ->assertSee('name="title"', false)
+            ->assertDontSee('id="app-dev-modal"', false);
+
+        $this->actingAs($qa)
+            ->get(route('app-development.tickets.show', $ticket))
+            ->assertOk()
+            ->assertSee('app-dev-modal', false)
+            ->assertSee($ticket->title)
+            ->assertSee($ticket->description)
+            ->assertDontSee(__('app-development.modal.overview'));
+
+        $this->actingAs($qa)
+            ->get(route('app-development.tickets.edit', $ticket))
+            ->assertOk()
+            ->assertSee(__('app-development.tickets.edit'));
+
+        $this->actingAs($dev)
+            ->get(route('app-development.releases.create'))
+            ->assertOk()
+            ->assertSee('app-dev-modal', false)
+            ->assertSee(__('app-development.releases.upload'));
+    }
+
+    public function test_tickets_index_offers_inline_priority_and_status_pickers(): void
+    {
+        $qa = $this->makeQa();
+        $this->makeTicket($qa);
+
+        $this->actingAs($qa)
+            ->get(route('app-development.index'))
+            ->assertOk()
+            ->assertSee('data-kaman-inline', false)
+            ->assertSee('data-field="priority"', false)
+            ->assertSee('data-field="status"', false)
+            ->assertSee('app-development-inline.js', false);
+    }
+
+    public function test_qa_can_change_priority_inline_from_table(): void
+    {
+        $qa = $this->makeQa();
+        $ticket = $this->makeTicket($qa, [
+            'priority' => AppDevelopmentTicketPriority::High,
+        ]);
+
+        $this->actingAs($qa)
+            ->patchJson(route('app-development.tickets.priority', $ticket), [
+                'priority' => AppDevelopmentTicketPriority::Critical->value,
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('value', 'critical')
+            ->assertJsonPath('critical', true)
+            ->assertJsonStructure(['badge_html', 'message']);
+
+        $this->assertSame(AppDevelopmentTicketPriority::Critical, $ticket->fresh()->priority);
+
+        $this->assertDatabaseHas('app_development_ticket_activities', [
+            'ticket_id' => $ticket->id,
+            'event_type' => AppDevelopmentTicketActivityType::Updated->value,
+        ]);
+    }
+
+    public function test_developer_can_change_status_inline_from_table(): void
+    {
+        $qa = $this->makeQa();
+        $dev = $this->makeDeveloper();
+        $ticket = $this->makeTicket($qa);
+
+        $this->actingAs($dev)
+            ->patchJson(route('app-development.tickets.status', $ticket), [
+                'status' => AppDevelopmentTicketStatus::Working->value,
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('value', 'working')
+            ->assertJsonStructure(['status_counts' => ['open', 'working', 'qa', 'completed']]);
+
+        $this->assertSame(AppDevelopmentTicketStatus::Working, $ticket->fresh()->status);
+    }
+
+    public function test_setting_status_to_completed_records_completion_fields(): void
+    {
+        $qa = $this->makeQa();
+        $ticket = $this->makeTicket($qa, [
+            'status' => AppDevelopmentTicketStatus::Working,
+        ]);
+
+        $this->actingAs($qa)
+            ->patchJson(route('app-development.tickets.status', $ticket), [
+                'status' => AppDevelopmentTicketStatus::Completed->value,
+            ])
+            ->assertOk();
+
+        $ticket->refresh();
+        $this->assertSame(AppDevelopmentTicketStatus::Completed, $ticket->status);
+        $this->assertNotNull($ticket->completed_at);
+        $this->assertSame($qa->id, (int) $ticket->completed_by);
+    }
+
+    public function test_outsider_cannot_change_priority_or_status(): void
+    {
+        $qa = $this->makeQa();
+        $ticket = $this->makeTicket($qa);
+        $outsider = User::factory()->create([
+            'is_admin' => false,
+            'projects' => [Project::Form->value],
+        ]);
+
+        $this->actingAs($outsider)
+            ->patchJson(route('app-development.tickets.priority', $ticket), [
+                'priority' => AppDevelopmentTicketPriority::Low->value,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($outsider)
+            ->patchJson(route('app-development.tickets.status', $ticket), [
+                'status' => AppDevelopmentTicketStatus::Completed->value,
+            ])
+            ->assertForbidden();
     }
 
     /**
@@ -472,6 +712,7 @@ class AppDevelopmentWorkflowTest extends TestCase
         ], $overrides));
 
         app(TicketNumberService::class)->assign($ticket);
+        $ticket->syncAppTypes(['web']);
 
         return $ticket->refresh();
     }

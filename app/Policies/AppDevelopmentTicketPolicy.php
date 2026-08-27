@@ -25,11 +25,31 @@ class AppDevelopmentTicketPolicy
         return $this->viewAny($user) && $user->isQa();
     }
 
+    public function delete(User $user, AppDevelopmentTicket $ticket): bool
+    {
+        return $this->create($user);
+    }
+
     public function update(User $user, AppDevelopmentTicket $ticket): bool
     {
         return $this->create($user)
             && (int) $ticket->created_by === (int) $user->id
             && $ticket->isOpen();
+    }
+
+    public function changePriority(User $user, AppDevelopmentTicket $ticket): bool
+    {
+        return $this->viewAny($user) && ($user->isQa() || $user->isDeveloper());
+    }
+
+    public function changeStatus(User $user, AppDevelopmentTicket $ticket): bool
+    {
+        return $this->changePriority($user, $ticket);
+    }
+
+    public function changeAppTypes(User $user, AppDevelopmentTicket $ticket): bool
+    {
+        return $this->changePriority($user, $ticket);
     }
 
     public function startWork(User $user, AppDevelopmentTicket $ticket): bool

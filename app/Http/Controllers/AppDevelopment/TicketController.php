@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\AppDevelopment;
 
-use App\Enums\AppDevelopmentRole;
+use App\Enums\AppDevelopmentAppType;
 use App\Enums\AppDevelopmentTicketActivityType;
 use App\Enums\AppDevelopmentTicketPriority;
 use App\Enums\AppDevelopmentTicketStatus;
@@ -26,10 +26,13 @@ use Illuminate\Support\Str;
 
 class TicketController extends Controller
 {
+    use RendersAppDevelopmentModal;
+
     public function __construct(
         private readonly TicketNumberService $ticketNumbers,
         private readonly TicketWorkflowService $workflow,
         private readonly TicketAttachmentService $attachments,
+        private readonly \App\Services\AppDevelopment\TicketStagingUploadService $staging,
     ) {}
 
     public function index(Request $request): View
@@ -40,7 +43,13 @@ class TicketController extends Controller
         $tab = (string) $request->query('tab', 'all');
 
         $query = AppDevelopmentTicket::query()
-            ->with(['creator:id,name', 'assignedDeveloper:id,name']);
+            ->with([
+                'creator:id,name',
+                'priorityChangedBy:id,name',
+                'statusChangedBy:id,name',
+                'appTypeRows',
+            ])
+            ->withCount('comments');
 
         match ($tab) {
             'open' => $query->where('status', AppDevelopmentTicketStatus::Open),
@@ -52,6 +61,21 @@ class TicketController extends Controller
             'returned' => $query->where('status', AppDevelopmentTicketStatus::Working)->where('qa_rejection_count', '>', 0),
             default => null,
         };
+
+        $selectedAppTypes = collect((array) $request->query('app_type', []))
+            ->map(static fn ($value): ?AppDevelopmentAppType => AppDevelopmentAppType::tryFrom((string) $value))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($selectedAppTypes->isNotEmpty()) {
+            $query->whereHas('appTypeRows', function ($inner) use ($selectedAppTypes): void {
+                $inner->whereIn(
+                    'app_type',
+                    $selectedAppTypes->map(static fn (AppDevelopmentAppType $type): string => $type->value)->all(),
+                );
+            });
+        }
 
         if ($request->filled('status')) {
             $status = AppDevelopmentTicketStatus::tryFrom((string) $request->query('status'));
@@ -94,30 +118,38 @@ class TicketController extends Controller
 
         $tickets = $query->latest('updated_at')->paginate(20)->withQueryString();
 
-        $creators = User::query()
-            ->select('id', 'name')
-            ->whereIn('id', AppDevelopmentTicket::query()->select('created_by')->distinct())
-            ->orderBy('name')
-            ->get();
-
-        $developers = $this->developers();
+        $notifyDevelopers = AppDevelopmentMember::selectableDevelopers()
+            ->get()
+            ->sortBy(fn (AppDevelopmentMember $m): string => mb_strtolower((string) $m->user?->name))
+            ->values();
+        $notifyTesters = AppDevelopmentMember::selectableTesters()
+            ->get()
+            ->sortBy(fn (AppDevelopmentMember $m): string => mb_strtolower((string) $m->user?->name))
+            ->values();
 
         return view('app-development.tickets.index', [
             'tickets' => $tickets,
             'tab' => $tab,
             'search' => $search,
-            'creators' => $creators,
-            'developers' => $developers,
+            'statusCounts' => AppDevelopmentTicket::statusCountsMap(),
+            'appTypeCounts' => AppDevelopmentTicket::appTypeCountsMap(),
+            'selectedAppTypes' => $selectedAppTypes->map(static fn (AppDevelopmentAppType $type): string => $type->value)->all(),
+            'notifyDevelopers' => $notifyDevelopers,
+            'notifyTesters' => $notifyTesters,
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $this->authorize('create', AppDevelopmentTicket::class);
 
-        return view('app-development.tickets.create', [
-            'developers' => $this->developers(),
-        ]);
+        return $this->appDevelopmentModal(
+            $request,
+            'app-development.tickets.form-create',
+            [],
+            __('app-development.tickets.create'),
+            'form',
+        );
     }
 
     public function store(StoreTicketRequest $request): RedirectResponse
@@ -125,18 +157,27 @@ class TicketController extends Controller
         $user = $request->user();
 
         $ticket = DB::transaction(function () use ($request, $user) {
+            $description = trim((string) ($request->validated('description') ?? ''));
+            if ($description === '') {
+                $description = __('app-development.tickets.voice_note');
+            }
+
             $ticket = AppDevelopmentTicket::query()->create([
                 'ticket_number' => 'TMP-'.Str::ulid(),
                 'title' => $request->validated('title'),
-                'description' => $request->validated('description'),
-                'type' => $request->validated('type'),
+                'description' => $description,
+                'type' => $request->validated('type') ?? \App\Enums\AppDevelopmentTicketType::Bug,
                 'priority' => $request->validated('priority'),
                 'status' => AppDevelopmentTicketStatus::Open,
                 'created_by' => $user->id,
-                'assigned_to' => $request->validated('assigned_to'),
+                'assigned_to' => null,
+                'priority_changed_by' => $user->id,
+                'status_changed_by' => $user->id,
             ]);
 
             $this->ticketNumbers->assign($ticket);
+
+            $ticket->syncAppTypes((array) $request->validated('app_types'));
 
             $this->workflow->record(
                 $ticket,
@@ -146,24 +187,32 @@ class TicketController extends Controller
                 AppDevelopmentTicketStatus::Open,
             );
 
-            if ($ticket->assigned_to) {
-                $this->workflow->record(
-                    $ticket,
-                    $user,
-                    AppDevelopmentTicketActivityType::Assigned,
-                    AppDevelopmentTicketStatus::Open,
-                    AppDevelopmentTicketStatus::Open,
-                    [
-                        'assigned_from' => null,
-                        'assigned_to' => $ticket->assigned_to,
-                    ],
-                );
+            $voiceFiles = array_values(array_filter(
+                $request->file('voices', []) ?: [],
+                static fn ($file): bool => $file !== null,
+            ));
+
+            foreach ($voiceFiles as $file) {
+                $this->attachments->store($ticket, $user, $file);
             }
 
             foreach ($request->file('attachments', []) ?: [] as $file) {
                 if ($file !== null) {
                     $this->attachments->store($ticket, $user, $file);
                 }
+            }
+
+            $stagedAttachments = array_values(array_filter(
+                (array) ($request->validated('staged_attachments') ?? []),
+                static fn ($uuid): bool => is_string($uuid) && $uuid !== '',
+            ));
+            $stagedVoices = array_values(array_filter(
+                (array) ($request->validated('staged_voices') ?? []),
+                static fn ($uuid): bool => is_string($uuid) && $uuid !== '',
+            ));
+
+            if ($stagedAttachments !== [] || $stagedVoices !== []) {
+                $this->staging->claimMany($ticket, $user, array_merge($stagedVoices, $stagedAttachments));
             }
 
             return $ticket;
@@ -174,7 +223,7 @@ class TicketController extends Controller
             ->with('success', __('app-development.flash.ticket_created'));
     }
 
-    public function show(AppDevelopmentTicket $ticket): View
+    public function show(Request $request, AppDevelopmentTicket $ticket): View
     {
         $this->authorize('view', $ticket);
 
@@ -183,32 +232,61 @@ class TicketController extends Controller
             'assignedDeveloper:id,name',
             'completedBy:id,name',
             'comments.user.appDevelopmentMembership',
+            'comments.attachment',
             'attachments.uploader:id,name',
             'activities.user:id,name',
             'releases' => fn ($q) => $q->latest(),
             'latestQaRejection.user:id,name',
+            'appTypeRows',
         ]);
 
-        return view('app-development.tickets.show', [
-            'ticket' => $ticket,
-            'developers' => $this->developers(),
-        ]);
+        return $this->appDevelopmentModal(
+            $request,
+            'app-development.tickets.panel',
+            [
+                'ticket' => $ticket,
+                'developers' => $this->developers(),
+                'notifyMembers' => $this->teamMembers($request->user()),
+            ],
+            $ticket->ticket_number.' — '.$ticket->title,
+            'view',
+        );
     }
 
-    public function edit(AppDevelopmentTicket $ticket): View
+    public function edit(Request $request, AppDevelopmentTicket $ticket): View
     {
         $this->authorize('update', $ticket);
 
-        return view('app-development.tickets.edit', [
-            'ticket' => $ticket,
-        ]);
+        return $this->appDevelopmentModal(
+            $request,
+            'app-development.tickets.form-edit',
+            ['ticket' => $ticket->loadMissing('appTypeRows')],
+            __('app-development.tickets.edit').' · '.$ticket->ticket_number,
+            'form',
+        );
     }
 
     public function update(UpdateTicketRequest $request, AppDevelopmentTicket $ticket): RedirectResponse
     {
         $original = $ticket->only(['title', 'description', 'type', 'priority']);
+        $priorityChanged = (string) $request->validated('priority') !== (
+            $original['priority'] instanceof AppDevelopmentTicketPriority
+                ? $original['priority']->value
+                : (string) $original['priority']
+        );
 
         $ticket->forceFill($request->safe()->only(['title', 'description', 'type', 'priority']))->save();
+        if ($priorityChanged) {
+            $ticket->forceFill(['priority_changed_by' => $request->user()->id])->save();
+        }
+
+        $ticket->syncAppTypes((array) $request->validated('app_types'));
+
+        foreach ($request->file('attachments', []) ?: [] as $file) {
+            if ($file !== null) {
+                $this->attachments->store($ticket, $request->user(), $file);
+            }
+        }
 
         $this->workflow->record(
             $ticket,
@@ -232,15 +310,42 @@ class TicketController extends Controller
             ->with('success', __('app-development.flash.ticket_updated'));
     }
 
+    public function destroy(Request $request, AppDevelopmentTicket $ticket): RedirectResponse
+    {
+        $this->authorize('delete', $ticket);
+
+        DB::transaction(function () use ($ticket): void {
+            $this->attachments->deleteForTicket($ticket);
+            $ticket->releases()->detach();
+            $ticket->delete();
+        });
+
+        return redirect()
+            ->route('app-development.index')
+            ->with('success', __('app-development.flash.ticket_deleted'));
+    }
+
     /**
      * @return \Illuminate\Database\Eloquent\Collection<int, User>
      */
     private function developers()
     {
-        $ids = AppDevelopmentMember::query()
-            ->where('role', AppDevelopmentRole::Developer)
-            ->pluck('user_id');
+        $ids = AppDevelopmentMember::assignableDeveloperUserIds();
 
         return User::query()->select('id', 'name')->whereIn('id', $ids)->orderBy('name')->get();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     */
+    private function teamMembers(?User $except = null)
+    {
+        $ids = AppDevelopmentMember::query()->pluck('user_id')->map(fn ($id): int => (int) $id)->all();
+        $query = User::query()->select('id', 'name')->whereIn('id', $ids)->orderBy('name');
+        if ($except !== null) {
+            $query->where('id', '!=', $except->id);
+        }
+
+        return $query->get();
     }
 }

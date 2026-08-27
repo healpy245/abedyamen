@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\AppDevelopment;
 
+use App\Enums\AppDevelopmentAppType;
 use App\Enums\AppDevelopmentTicketActivityType;
 use App\Enums\AppDevelopmentTicketPriority;
 use App\Enums\AppDevelopmentTicketStatus;
@@ -30,6 +31,8 @@ class AppDevelopmentTicket extends Model
         'status',
         'created_by',
         'assigned_to',
+        'priority_changed_by',
+        'status_changed_by',
         'submitted_for_qa_at',
         'completed_at',
         'completed_by',
@@ -59,6 +62,16 @@ class AppDevelopmentTicket extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function priorityChangedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'priority_changed_by');
+    }
+
+    public function statusChangedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'status_changed_by');
     }
 
     public function assignedDeveloper(): BelongsTo
@@ -96,6 +109,69 @@ class AppDevelopmentTicket extends Model
         )->withTimestamps();
     }
 
+    public function appTypeRows(): HasMany
+    {
+        return $this->hasMany(AppDevelopmentTicketAppType::class, 'ticket_id');
+    }
+
+    /**
+     * @return list<AppDevelopmentAppType>
+     */
+    public function appTypes(): array
+    {
+        return $this->appTypeRows
+            ->map(static fn (AppDevelopmentTicketAppType $row): AppDevelopmentAppType => $row->app_type)
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<string|AppDevelopmentAppType>  $types
+     */
+    public function syncAppTypes(array $types): void
+    {
+        $values = collect($types)
+            ->map(static function (string|AppDevelopmentAppType $type): ?string {
+                if ($type instanceof AppDevelopmentAppType) {
+                    return $type->value;
+                }
+
+                return AppDevelopmentAppType::tryFrom($type)?->value;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->appTypeRows()->delete();
+
+        foreach ($values as $value) {
+            $this->appTypeRows()->create(['app_type' => $value]);
+        }
+
+        $this->unsetRelation('appTypeRows');
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public static function appTypeCountsMap(): array
+    {
+        $raw = AppDevelopmentTicketAppType::query()
+            ->toBase()
+            ->selectRaw('app_type, count(*) as aggregate')
+            ->groupBy('app_type')
+            ->pluck('aggregate', 'app_type');
+
+        $counts = [];
+        foreach (AppDevelopmentAppType::cases() as $type) {
+            $counts[$type->value] = (int) ($raw[$type->value] ?? 0);
+        }
+
+        return $counts;
+    }
+
     public function latestQaRejection(): HasOne
     {
         return $this->hasOne(AppDevelopmentTicketActivity::class, 'ticket_id')
@@ -127,6 +203,25 @@ class AppDevelopmentTicket extends Model
     public function isReturnedFromQa(): bool
     {
         return $this->isWorking() && $this->qa_rejection_count > 0;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public static function statusCountsMap(): array
+    {
+        $raw = static::query()
+            ->toBase()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $counts = [];
+        foreach (AppDevelopmentTicketStatus::cases() as $status) {
+            $counts[$status->value] = (int) ($raw[$status->value] ?? 0);
+        }
+
+        return $counts;
     }
 
     public function elapsedLabel(): string

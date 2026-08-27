@@ -1,0 +1,810 @@
+/* App Development workspace modals — scoped, does not change Kaman globally. */
+body.app-dev-modal-lock {
+    overflow: hidden;
+}
+
+.app-dev-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+}
+
+.app-dev-modal.is-open {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.app-dev-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--kaman-overlay, rgba(43, 30, 17, 0.38));
+}
+
+.app-dev-modal__panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: min(42rem, calc(100vw - 2.5rem));
+    max-height: min(86vh, 48rem);
+    overflow: hidden;
+    border-radius: 1.1rem;
+    border: 1px solid var(--kaman-line, #eadfce);
+    background: var(--kaman-surface-sunk, #fffaf3);
+    box-shadow: var(--kaman-shadow-panel, 0 24px 56px rgba(43, 30, 17, 0.18));
+    transform: translateY(12px) scale(0.98);
+    opacity: 0.86;
+    transition: transform 200ms ease, opacity 200ms ease, min-height 220ms ease;
+}
+
+.app-dev-modal--view .app-dev-modal__panel {
+    max-width: min(64rem, calc(100vw - 2.5rem));
+    max-height: min(90vh, 56rem);
+}
+
+.app-dev-modal.is-open .app-dev-modal__panel {
+    transform: none;
+    opacity: 1;
+}
+
+/* Hold a card-sized panel while the body is still empty so the modal does not
+   open as a thin strip and then jump to full height. */
+.app-dev-modal.is-loading .app-dev-modal__panel {
+    min-height: min(60vh, 26rem);
+}
+
+.app-dev-modal--view.is-loading .app-dev-modal__panel {
+    min-height: min(72vh, 38rem);
+}
+
+.app-dev-modal__header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding: 0.85rem 1.15rem;
+    border-bottom: 1px solid var(--kaman-line, #eadfce);
+    background: var(--kaman-surface, #fff7ee);
+}
+
+.app-dev-modal__title {
+    margin: 0;
+    min-width: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--kaman-ink, #2b1e11);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-dev-modal__body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 1.1rem 1.2rem 1.25rem;
+    transition: opacity 140ms ease;
+}
+
+.app-dev-modal.is-loading .app-dev-modal__body,
+.app-dev-modal.is-fading .app-dev-modal__body {
+    opacity: 0.35;
+}
+
+.app-dev-modal.is-submitting .app-dev-modal__panel {
+    pointer-events: none;
+}
+
+.app-dev-modal__loader {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    padding-top: 3.4rem;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    font-size: 0.8rem;
+    color: var(--kaman-ink-soft, #7c6a56);
+    background: color-mix(in srgb, var(--kaman-surface-sunk, #fffaf3) 86%, transparent);
+}
+
+.app-dev-modal.is-loading .app-dev-modal__loader,
+.app-dev-modal.is-submitting .app-dev-modal__loader {
+    display: flex;
+}
+
+.app-dev-upload-progress {
+    width: min(18rem, calc(100% - 2rem));
+    margin-top: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    text-align: center;
+}
+
+.app-dev-upload-progress__track {
+    position: relative;
+    height: 0.55rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--kaman-line, #eadfce) 70%, transparent);
+}
+
+.app-dev-upload-progress__fill {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #f47a2e, #f16229);
+    transition: width 160ms ease;
+}
+
+.app-dev-upload-progress__meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    font-size: 0.78rem;
+    color: var(--kaman-ink, #2b1e11);
+}
+
+.app-dev-upload-progress__meta strong {
+    font-variant-numeric: tabular-nums;
+    color: #f16229;
+}
+
+.app-dev-upload-progress__hint {
+    margin: 0;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: var(--kaman-ink-soft, #7c6a56);
+}
+
+.app-dev-modal-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.app-dev-modal-tabs button {
+    border-radius: 8px;
+    border: 1px solid var(--kaman-line, #f1dfc5);
+    background: var(--kaman-surface, #fff);
+    color: var(--kaman-ink-soft, #7c6a56);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.28rem 0.7rem;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.app-dev-modal-tabs button.is-active {
+    background: color-mix(in srgb, var(--kaman-accent, #f47a2e) 12%, var(--kaman-surface, #fff));
+    border-color: #f47a2e55;
+    color: #f16229;
+}
+
+.app-dev-modal-panel[hidden] {
+    display: none;
+}
+
+/* -------------------------------------------------------------- media lightbox */
+
+body.app-dev-media-lock {
+    overflow: hidden;
+}
+
+.app-dev-media {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.app-dev-media.is-open,
+.app-dev-media:not([hidden]).is-open {
+    display: flex !important;
+}
+
+.app-dev-media__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 8, 6, 0.78);
+}
+
+.app-dev-media__panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: min(72rem, calc(100vw - 1.5rem));
+    max-height: min(92vh, 56rem);
+    overflow: hidden;
+    border-radius: 1.1rem;
+    border: 1px solid var(--kaman-line, #eadfce);
+    background: var(--kaman-surface-sunk, #14110e);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.app-dev-media__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--kaman-line, #eadfce) 55%, transparent);
+    background: color-mix(in srgb, var(--kaman-surface, #1a1511) 92%, transparent);
+}
+
+.app-dev-media__title {
+    margin: 0;
+    min-width: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--kaman-ink, #f3e7d8);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.app-dev-media__body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    flex: 1 1 auto;
+    padding: 0.75rem;
+    background: #0b0907;
+    position: relative;
+}
+
+.app-dev-media__status {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 3rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+}
+
+.app-dev-media__video,
+.app-dev-media__image {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: min(78vh, 48rem);
+    object-fit: contain;
+    border-radius: 0.6rem;
+    background: #000;
+}
+
+.app-dev-media__video {
+    aspect-ratio: 16 / 9;
+    height: auto;
+}
+
+@keyframes app-dev-spin {
+    to { transform: rotate(360deg); }
+}
+
+.app-dev-confirm {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease;
+}
+
+.app-dev-confirm.is-open {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.app-dev-confirm__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(43, 30, 17, 0.52);
+}
+
+.app-dev-confirm__panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 22rem;
+    padding: 1.25rem 1.25rem 1rem;
+    border-radius: 1.1rem;
+    border: 1px solid #eadfce;
+    background: #fffaf3;
+    box-shadow: 0 18px 48px rgba(43, 30, 17, 0.22);
+    text-align: center;
+    transform: translateY(8px) scale(0.98);
+    transition: transform 160ms ease;
+}
+
+.app-dev-confirm.is-open .app-dev-confirm__panel {
+    transform: none;
+}
+
+.app-dev-confirm__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.75rem;
+    border-radius: 999px;
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.app-dev-confirm__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #2b1e11;
+}
+
+.app-dev-confirm__message {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: #7c6a56;
+}
+
+.app-dev-confirm__actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+}
+
+.app-dev-confirm__ok {
+    background: #b91c1c !important;
+    border-color: #b91c1c !important;
+    color: #fff !important;
+}
+
+.app-dev-confirm__ok:hover {
+    background: #991b1b !important;
+    border-color: #991b1b !important;
+}
+
+.app-dev-comment-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.35rem;
+}
+
+.app-dev-comment-bar .kaman-input {
+    resize: none;
+    min-height: 2.5rem;
+}
+
+.app-dev-voice--compact {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    flex-shrink: 0;
+}
+
+.app-dev-voice__mic[hidden] {
+    display: none !important;
+}
+
+.app-dev-voice__mic {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    width: 2.35rem;
+    height: 2.35rem;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #7c6a56;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, width 0.15s ease;
+}
+
+.app-dev-voice__mic:hover {
+    background: color-mix(in srgb, #f47a2e 12%, transparent);
+    color: #f16229;
+}
+
+.app-dev-voice__mic .kaman-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.app-dev-voice__timer {
+    font-size: 0.65rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.app-dev-voice__timer[hidden] {
+    display: none !important;
+}
+
+.app-dev-voice.is-recording .app-dev-voice__mic {
+    width: auto;
+    min-width: 2.35rem;
+    padding: 0 0.45rem 0 0.35rem;
+    background: #b91c1c;
+    color: #fff;
+    animation: app-dev-voice-pulse 1.1s ease-in-out infinite;
+}
+
+.app-dev-voice.is-recording .app-dev-voice__mic:hover {
+    background: #991b1b;
+    color: #fff;
+}
+
+@keyframes app-dev-voice-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, #b91c1c 45%, transparent); }
+    50% { box-shadow: 0 0 0 0.35rem color-mix(in srgb, #b91c1c 0%, transparent); }
+}
+
+.app-dev-voice__list {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.35rem);
+    left: auto;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 14rem;
+    max-width: min(18rem, 70vw);
+}
+
+[dir="rtl"] .app-dev-voice__list {
+    right: auto;
+    left: 0;
+}
+
+.wa-voice {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 999px;
+    background: #dcf8c6;
+    border: 1px solid color-mix(in srgb, #25d366 18%, #eadfce);
+    max-width: 100%;
+}
+
+.wa-voice--card {
+    max-width: 18rem;
+}
+
+.wa-voice__play {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #25d366;
+    color: #fff;
+    cursor: pointer;
+}
+
+.wa-voice.is-playing .wa-voice__play {
+    background: #128c7e;
+}
+
+.wa-voice__play .kaman-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+.wa-voice__wave {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+.wa-voice__seek {
+    width: 100%;
+    height: 0.35rem;
+    accent-color: #25d366;
+    cursor: pointer;
+}
+
+.wa-voice__time {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    font-variant-numeric: tabular-nums;
+    color: #54656f;
+    white-space: nowrap;
+}
+
+.wa-voice__remove {
+    flex-shrink: 0;
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #667781;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.wa-voice audio {
+    display: none;
+}
+
+.kaman-inline-wrap {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.45rem;
+    max-width: 100%;
+}
+
+.kaman-inline-actor {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--kaman-ink-muted, #7c6a56);
+    line-height: 1.2;
+    max-width: 7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-dev-notify {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+}
+
+.app-dev-notify.is-open {
+    display: flex;
+}
+
+.app-dev-notify__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(43, 30, 17, 0.5);
+}
+
+.app-dev-notify__panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 22rem;
+    padding: 1rem 1.1rem 0.95rem;
+    border-radius: 1.05rem;
+    border: 1px solid #eadfce;
+    background: #fffaf3;
+    box-shadow: 0 18px 48px rgba(43, 30, 17, 0.22);
+}
+
+.app-dev-notify__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2b1e11;
+}
+
+.app-dev-notify__hint,
+.app-dev-notify__empty {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    color: #7c6a56;
+}
+
+.app-dev-notify__list {
+    margin-top: 0.75rem;
+    max-height: 14rem;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.app-dev-notify__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.45rem 0.5rem;
+    border-radius: 0.65rem;
+    cursor: pointer;
+}
+
+.app-dev-notify__row:hover {
+    background: #fff;
+}
+
+.app-dev-notify__row strong {
+    display: block;
+    font-size: 0.85rem;
+    color: #2b1e11;
+}
+
+.app-dev-notify__row small {
+    display: block;
+    font-size: 0.7rem;
+    color: #a78a6c;
+}
+
+.app-dev-notify__toolbar {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+}
+
+.app-dev-notify__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    margin-top: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-dev-modal,
+    .app-dev-modal__panel,
+    .app-dev-modal__body,
+    .app-dev-modal-tabs button,
+    .app-dev-modal .kaman-ai-loader__ring,
+    .app-dev-modal .kaman-ai-loader__orbit,
+    .app-dev-modal .kaman-ai-loader__logo,
+    .app-dev-modal .kaman-ai-loader__pulse,
+    .app-dev-confirm,
+    .app-dev-confirm__panel {
+        transition: none;
+        animation: none;
+    }
+}
+
+.kaman-app-type-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.kaman-app-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid #e8d4b8;
+    background: #fffaf3;
+    color: #2b1e11;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.kaman-app-type-chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.kaman-app-type-chip.is-selected,
+.kaman-filter-chip--app-type.is-active {
+    border-color: #c45c26;
+    background: rgba(196, 92, 38, 0.12);
+    color: #c45c26;
+}
+
+.kaman-app-types {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.kaman-app-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: #fff4e8;
+    color: #8a4a1c;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.kaman-app-type-badge .kaman-icon {
+    width: 0.85rem;
+    height: 0.85rem;
+}
+
+.kaman-app-types--compact .kaman-app-type-badge__short {
+    max-width: 4.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kaman-app-type-badge--more {
+    background: #efe4d4;
+    color: #7c6a56;
+}
+
+.kaman-inline-field__menu--multi {
+    min-width: 12rem;
+    padding: 0.45rem;
+}
+
+.kaman-inline-field__check {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.3rem 0.35rem;
+    border-radius: 0.45rem;
+    cursor: pointer;
+}
+
+.kaman-inline-field__check.is-selected {
+    background: rgba(196, 92, 38, 0.08);
+}
+
+html.dark .kaman-app-type-chip {
+    background: #1a140f;
+    border-color: #3a2c20;
+    color: #f3e7d7;
+}
+
+html.dark .kaman-app-type-badge {
+    background: rgba(196, 92, 38, 0.18);
+    color: #ffb38a;
+}
