@@ -535,7 +535,7 @@
                 if ((!message && !pendingFile) || busy) return;
                 busy = true;
                 setError('');
-                sendBtn.disabled = true;
+                if (sendBtn) sendBtn.disabled = true;
                 if (attachBtn) attachBtn.disabled = true;
                 if (voiceMode || speakReply) {
                     setStatus(t.processing || 'لحظة من فضلك…');
@@ -580,9 +580,9 @@
                     else setStatus('');
                 } finally {
                     busy = false;
-                    sendBtn.disabled = false;
+                    if (sendBtn) sendBtn.disabled = false;
                     if (attachBtn) attachBtn.disabled = false;
-                    input.focus();
+                    input?.focus();
                 }
             };
 
@@ -643,8 +643,8 @@
                 }
                 stopRecognition(recognition);
                 recognition = null;
-                callBtn.setAttribute('aria-pressed', 'false');
-                callBtn.classList.remove('ring-2', 'ring-emerald-500');
+                callBtn?.setAttribute('aria-pressed', 'false');
+                callBtn?.classList.remove('ring-2', 'ring-emerald-500');
                 setStatus('');
             };
 
@@ -816,8 +816,8 @@
                     return;
                 }
                 callActive = true;
-                callBtn.setAttribute('aria-pressed', 'true');
-                callBtn.classList.add('ring-2', 'ring-emerald-500');
+                callBtn?.setAttribute('aria-pressed', 'true');
+                callBtn?.classList.add('ring-2', 'ring-emerald-500');
                 stopRecognition(dictation);
                 listenInCall();
             };
@@ -827,10 +827,21 @@
                 sendMessage(input.value);
             });
 
+            sendBtn?.addEventListener('click', (e) => {
+                // Campaign test (and any layout without a wrapping form) still needs a click path.
+                if (form) return;
+                e.preventDefault();
+                sendMessage(input.value);
+            });
+
             input?.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    form.requestSubmit();
+                    if (form) {
+                        form.requestSubmit();
+                    } else {
+                        sendMessage(input.value);
+                    }
                 }
             });
 
@@ -889,4 +900,17 @@
             });
         },
     };
+
+    const mountReadyPanel = () => {
+        const panel = document.getElementById('test-panel');
+        if (panel) {
+            window.WorkspaceTestChat.mount(panel);
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountReadyPanel);
+    } else {
+        mountReadyPanel();
+    }
 })();
