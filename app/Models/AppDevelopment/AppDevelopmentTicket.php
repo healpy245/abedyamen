@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\AppDevelopment;
 
 use App\Enums\AppDevelopmentAppType;
+use App\Enums\AppDevelopmentTaskStatus;
 use App\Enums\AppDevelopmentTicketActivityType;
 use App\Enums\AppDevelopmentTicketPriority;
 use App\Enums\AppDevelopmentTicketStatus;
@@ -109,9 +110,26 @@ class AppDevelopmentTicket extends Model
         )->withTimestamps();
     }
 
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(AppDevelopmentTask::class, 'ticket_id')->orderBy('created_at');
+    }
+
     public function appTypeRows(): HasMany
     {
         return $this->hasMany(AppDevelopmentTicketAppType::class, 'ticket_id');
+    }
+
+    public function allTasksCompleted(): bool
+    {
+        $total = $this->tasks()->count();
+        if ($total === 0) {
+            return false;
+        }
+
+        return $this->tasks()
+            ->where('status', '!=', AppDevelopmentTaskStatus::Completed->value)
+            ->doesntExist();
     }
 
     /**

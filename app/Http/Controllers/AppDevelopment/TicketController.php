@@ -238,6 +238,8 @@ class TicketController extends Controller
             'releases' => fn ($q) => $q->latest(),
             'latestQaRejection.user:id,name',
             'appTypeRows',
+            'tasks.assignee:id,name',
+            'tasks.timeEntries',
         ]);
 
         return $this->appDevelopmentModal(
@@ -247,6 +249,7 @@ class TicketController extends Controller
                 'ticket' => $ticket,
                 'developers' => $this->developers(),
                 'notifyMembers' => $this->teamMembers($request->user()),
+                'suggestCompleteTicket' => $ticket->allTasksCompleted() && ! $ticket->isCompleted(),
             ],
             $ticket->ticket_number.' — '.$ticket->title,
             'view',

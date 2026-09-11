@@ -66,10 +66,7 @@ class AppDevelopmentTaskPolicy
             return false;
         }
 
-        if ($user->isAppDevelopmentAdmin()) {
-            return true;
-        }
-
+        // Only the assigned worker can start/pause/complete their own timer.
         return (int) $task->assignee_id === (int) $user->id;
     }
 }

@@ -116,13 +116,21 @@ class User extends Authenticatable
         return $this->appDevelopmentMembership?->role;
     }
 
+    public function isAppDevelopmentAdmin(): bool
+    {
+        return $this->is_admin
+            || $this->appDevelopmentRole() === AppDevelopmentRole::Admin;
+    }
+
     public function isQa(): bool
     {
-        return $this->appDevelopmentRole() === AppDevelopmentRole::Qa;
+        return $this->isAppDevelopmentAdmin()
+            || $this->appDevelopmentRole() === AppDevelopmentRole::Qa;
     }
 
     public function isDeveloper(): bool
     {
-        return $this->appDevelopmentRole() === AppDevelopmentRole::Developer;
+        return $this->isAppDevelopmentAdmin()
+            || $this->appDevelopmentRole() === AppDevelopmentRole::Developer;
     }
 }

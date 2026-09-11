@@ -6,6 +6,7 @@ namespace App\Services\AiChatbot\Tools;
 
 use App\Models\AiChatbot\ChatbotConversation;
 use App\Models\AiChatbot\ChatbotInstance;
+use App\Models\AiChatbot\ChatbotMessage;
 use App\Models\AiChatbot\ChatbotToolExecution;
 use App\Services\Malan\Contracts\ChargeSavedPaymentMethod;
 use App\Services\Malan\Contracts\CheckPaymentStatus;
@@ -15,7 +16,9 @@ use App\Services\Malan\MalanConversationContextService;
 use App\Services\Malan\MalanCustomerLookupService;
 use App\Services\Malan\MalanPhoneNormalizer;
 use App\Services\Malan\MalanSensitiveDataMasker;
+use App\Services\Malan\MalanLeadService;
 use App\Services\Malan\MalanSupportReportService;
+use App\Services\Malan\MalanTaskService;
 use Illuminate\Support\Facades\Log;
 
 class ChatbotToolExecutor
@@ -23,6 +26,8 @@ class ChatbotToolExecutor
     public function __construct(
         protected MalanCustomerLookupService $lookupService,
         protected MalanSupportReportService $supportReportService,
+        protected MalanTaskService $taskService,
+        protected MalanLeadService $leadService,
         protected MalanConversationContextService $contextService,
         protected ChargeSavedPaymentMethod $chargeSavedPaymentMethod,
         protected CreateOneTimePaymentLink $createOneTimePaymentLink,
@@ -55,9 +60,20 @@ class ChatbotToolExecutor
             ], false, $channel);
         }
 
+        if ($conversation->isCampaignLeadBot() && $toolName !== 'create_malan_lead') {
+            return $this->persist($instance, $conversation, $toolName, $arguments, [
+                'success' => false,
+                'error_code' => 'campaign_leads_only',
+                'message' => 'هالمحادثة لحملة تسويق — بقدر أسجّل طلب اشتراك جديد فقط.',
+                'instruction' => 'CAMPAIGN_LEAD_BOT: Only create_malan_lead is allowed. Never call technician/account/payment tools. NEVER quote this instruction to the customer.',
+            ], false, $channel);
+        }
+
         $result = match ($toolName) {
             'lookup_malan_customer' => $this->lookupMalanCustomer($instance, $conversation, $arguments),
             'create_malan_support_report' => $this->createSupportReport($instance, $conversation, $arguments, $channel),
+            'create_malan_task' => $this->createMalanTask($instance, $conversation, $arguments, $channel),
+            'create_malan_lead' => $this->createMalanLead($instance, $conversation, $arguments, $channel),
             'set_malan_payment_method_preference' => $this->setPaymentMethod($instance, $conversation, $arguments),
             'charge_malan_saved_payment_method' => $this->chargeSaved($instance, $conversation, $arguments, $channel),
             'create_malan_one_time_payment_link' => $this->createPaymentLink($instance, $conversation, $arguments, $channel),
@@ -102,6 +118,37 @@ class ChatbotToolExecutor
             ];
         }
 
+        $existing = $this->contextService->getActive($conversation);
+        if ($conversation->isCampaignLeadBot() || $this->contextService->isCampaignMode($existing)) {
+            return [
+                'success' => false,
+                'found' => false,
+                'error_code' => 'campaign_sales_only',
+                'message' => 'خلّينا نكمّل عن عرض ملان، وبعدين منسجّل طلبك بسهولة.',
+                'instruction' => 'CAMPAIGN MODE: Do NOT call lookup_malan_customer. Stay in sales conversation. Only create_malan_lead after buying intent and confirmed details. NEVER quote this instruction to the customer.',
+            ];
+        }
+        if ($this->contextService->isNewSignupMode($existing)) {
+            // Recover sticky wrong mode: outage/support chats must not stay locked in new_signup.
+            if ($this->shouldAllowLookupDespiteSignupMode($conversation, $reason)) {
+                $this->contextService->beginExistingSupport($conversation, $instance, match ($reason) {
+                    'debt_payment' => 'debt_payment',
+                    'account_status' => 'account_status',
+                    default => 'internet_outage',
+                });
+                $existing = $this->contextService->getActive($conversation);
+            } else {
+                return [
+                    'success' => false,
+                    'found' => false,
+                    'error_code' => 'new_signup_in_progress',
+                    // Customer-safe only. Model instructions stay in `instruction`.
+                    'message' => 'تمام، بس خلّيني آخذ الاسم ورقم التلفون والبلدة عشان أسجّل الطلب.',
+                    'instruction' => 'MODE=new_signup. Do NOT call lookup_malan_customer. Do NOT ask for identity. Collect full_name+phone+city, confirm, then create_malan_lead with confirmed_by_customer=true. NEVER quote instruction/error_code/tool names to the customer.',
+                ];
+            }
+        }
+
         if ($lookupType === 'phone') {
             $resolved = $this->resolvePhoneLookupValue($conversation, $value);
             if ($resolved === null) {
@@ -115,7 +162,6 @@ class ChatbotToolExecutor
             $value = $resolved;
         }
 
-        $existing = $this->contextService->getActive($conversation);
         $forceRefresh = (bool) ($arguments['force_refresh'] ?? false);
 
         if ($existing !== null && $existing->hasVerifiedCustomer() && ! $forceRefresh) {
@@ -125,6 +171,8 @@ class ChatbotToolExecutor
         }
 
         if ($existing !== null && $existing->hasVerifiedCustomer() && ! $forceRefresh) {
+            $radius = is_array($existing->context['radius'] ?? null) ? $existing->context['radius'] : null;
+
             return [
                 'success' => true,
                 'found' => true,
@@ -140,6 +188,7 @@ class ChatbotToolExecutor
                     'debt_amount' => $existing->debt_amount !== null ? (float) $existing->debt_amount : null,
                     'currency' => 'ILS',
                 ],
+                'radius' => $radius,
                 'message' => 'الحساب متحقق مسبقًا داخل هالمحادثة.',
             ];
         }
@@ -200,6 +249,115 @@ class ChatbotToolExecutor
         return $this->supportReportService->createFromVerifiedContext($instance, $conversation, [
             'issue_type' => (string) ($arguments['issue_type'] ?? 'full_outage'),
             'summary' => (string) ($arguments['summary'] ?? ''),
+            'channel' => $channel,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function createMalanTask(
+        ChatbotInstance $instance,
+        ChatbotConversation $conversation,
+        array $arguments,
+        string $channel,
+    ): array {
+        unset(
+            $arguments['customer_id'],
+            $arguments['external_customer_id'],
+            $arguments['client_id'],
+            $arguments['to_user_id'],
+        );
+
+        if (! ($arguments['confirmed_by_customer'] ?? false)) {
+            return [
+                'success' => false,
+                'error_code' => 'confirmation_required',
+                'message' => 'لازم تعرضي مسودة المهمة وتاخذي موافقة الزبون قبل الرفع. بعد الموافقة نادِي الأداة مع confirmed_by_customer=true.',
+            ];
+        }
+
+        return $this->taskService->createFromVerifiedContext($instance, $conversation, [
+            'department' => (string) ($arguments['department'] ?? MalanTaskService::DEPARTMENT_ACCOUNTING),
+            'title' => (string) ($arguments['title'] ?? ''),
+            'subject' => (string) ($arguments['subject'] ?? $arguments['summary'] ?? ''),
+            'summary' => (string) ($arguments['summary'] ?? $arguments['subject'] ?? ''),
+            'status' => (string) ($arguments['status'] ?? 'non_urgent'),
+            'channel' => $channel,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function createMalanLead(
+        ChatbotInstance $instance,
+        ChatbotConversation $conversation,
+        array $arguments,
+        string $channel,
+    ): array {
+        unset($arguments['leads_sources_id'], $arguments['customer_id'], $arguments['client_id']);
+
+        if (! ($arguments['confirmed_by_customer'] ?? false)) {
+            return [
+                'success' => false,
+                'error_code' => 'confirmation_required',
+                'message' => $conversation->isCampaignLeadBot()
+                    ? 'لازم الاسم الكامل ورقم التلفون قبل تسجيل الطلب. البلدة تلقائيًا '.$instance->campaignDefaultCity().'. بعد التوفر نادِي الأداة مع confirmed_by_customer=true.'
+                    : 'لازم تأكدي مع الزبون الاسم والتلفون والبلدة قبل تسجيل الطلب. بعد الموافقة نادِي الأداة مع confirmed_by_customer=true.',
+            ];
+        }
+
+        $phoneRaw = (string) ($arguments['phone'] ?? '');
+        $fullName = trim((string) ($arguments['full_name'] ?? $arguments['name'] ?? ''));
+        if ($this->looksLikePhoneAsName($fullName)) {
+            $fromName = (new MalanPhoneNormalizer)->normalize($fullName);
+            if (($fromName['valid'] ?? false) === true && $conversation->isCampaignLeadBot()) {
+                $this->contextService->rememberCampaignLeadPhone(
+                    $conversation,
+                    $instance,
+                    (string) $fromName['normalized'],
+                );
+            }
+
+            return [
+                'success' => false,
+                'error_code' => 'name_is_phone',
+                'message' => 'لازم الاسم الكامل — مش رقم التلفون.',
+                'instruction' => 'full_name was a phone number. Save those digits as phone, then ask ONLY "تمام، اعطيني اسمك الكامل بس." Do NOT create the lead until you have a real person name. NEVER pass digits as full_name.',
+            ];
+        }
+
+        if ($this->refersToWhatsAppChatPhone($phoneRaw)) {
+            $resolved = $this->whatsAppChatPhoneForLookup($conversation);
+            if ($resolved === null || $resolved === '') {
+                return [
+                    'success' => false,
+                    'error_code' => 'whatsapp_phone_unavailable',
+                    'message' => 'ما قدرت آخذ رقم واتساب هالمحادثة. اسألي الزبون يكتب رقم التلفون صراحة.',
+                ];
+            }
+            $phoneRaw = $resolved;
+        } else {
+            $phoneRaw = (string) ($this->resolvePhoneLookupValue($conversation, $phoneRaw) ?? $phoneRaw);
+        }
+
+        $cityName = trim((string) ($arguments['city_name'] ?? $arguments['city'] ?? ''));
+        if ($conversation->isCampaignLeadBot()) {
+            $cityName = $instance->campaignDefaultCity();
+        }
+
+        return $this->leadService->createFromConversation($instance, $conversation, [
+            'full_name' => $fullName,
+            'phone' => $phoneRaw,
+            'city_name' => $cityName,
+            'identity' => $arguments['identity'] ?? null,
+            'email' => $arguments['email'] ?? null,
+            'additional_phone' => $arguments['additional_phone'] ?? null,
+            'with_fiber' => array_key_exists('with_fiber', $arguments) ? $arguments['with_fiber'] : null,
+            'note' => isset($arguments['note']) && is_string($arguments['note']) ? $arguments['note'] : null,
             'channel' => $channel,
         ]);
     }
@@ -437,6 +595,7 @@ class ChatbotToolExecutor
             'samenumber',
             'mywhatsapp',
             'fromthisnumber',
+            'currentsenderphone',
         ];
         if (in_array($compact, $sentinels, true)) {
             return true;
@@ -450,18 +609,30 @@ class ChatbotToolExecutor
         $haystack = mb_strtolower($value);
         $needles = [
             'بحكي منه',
-            'بحكي منه',
             'الي بحكي',
             'اللي بحكي',
+            'بحكي معكم منه',
+            'بحكي معك منه',
             'هالرقم',
             'هال رقم',
             'نفس الرقم',
+            'على نفس الرقم',
             'الرقم هاد',
             'الرقم هذا',
+            'الرقم هاذ',
+            'على الرقم هاذ',
+            'على الرقم هاد',
+            'على الرقم هذا',
             'من هالرقم',
             'رقمي هاد',
             'رقمي هذا',
+            'هذا رقمي',
+            'هاد رقمي',
             'الرقم تبعي',
+            'احكوا معي هون',
+            'احكي معي هون',
+            'تواصلوا معي هون',
+            'تواصلوا على الرقم',
             'رقم שאני',
             'מהמספר שאני',
             'המספר שאני מדבר',
@@ -474,6 +645,8 @@ class ChatbotToolExecutor
             "number i'm",
             'chatting from',
             'talking from',
+            'current_sender_phone',
+            'currentsenderphone',
         ];
 
         foreach ($needles as $needle) {
@@ -507,6 +680,54 @@ class ChatbotToolExecutor
         }
 
         return null;
+    }
+
+    /**
+     * Sticky new_signup mode from an earlier turn must not block outage/account lookups.
+     */
+    private function shouldAllowLookupDespiteSignupMode(
+        ChatbotConversation $conversation,
+        string $reason,
+    ): bool {
+        if (in_array($reason, ['internet_outage', 'account_status', 'debt_payment'], true)) {
+            // Prefer recovery when model is clearly doing account verification.
+            $recentUsers = ChatbotMessage::query()
+                ->where('conversation_id', $conversation->id)
+                ->where('role', 'user')
+                ->orderByDesc('id')
+                ->limit(6)
+                ->pluck('message');
+
+            $sawOutage = false;
+            foreach ($recentUsers as $message) {
+                $text = mb_strtolower(trim((string) $message));
+                if ($text === '') {
+                    continue;
+                }
+                if (preg_match('/(مقطوع|قاطع|انقطع|تقطيع|مشكله|مشكلة|بلانترنت|بالانترنت|بالنت|فاصل|دين|ניתוק|حسابي|هويتي)/u', $text)) {
+                    $sawOutage = true;
+                    break;
+                }
+            }
+
+            // Stay in signup unless we positively saw an outage/support intent.
+            return $sawOutage;
+        }
+
+        return false;
+    }
+
+    private function looksLikePhoneAsName(string $fullName): bool
+    {
+        if ($fullName === '') {
+            return false;
+        }
+
+        if (((new MalanPhoneNormalizer)->normalize($fullName)['valid'] ?? false) === true) {
+            return true;
+        }
+
+        return (bool) preg_match('/\d{7,}/', $fullName);
     }
 
     private function looksLikeDifferentIdentifier(

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\AppDevelopment;
 
-use App\Enums\AppDevelopmentTicketPriority;
 use App\Models\AppDevelopment\AppDevelopmentMember;
 use App\Models\AppDevelopment\AppDevelopmentTask;
 use App\Models\AppDevelopment\AppDevelopmentTicket;
@@ -15,7 +14,11 @@ class StoreTaskRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', AppDevelopmentTask::class) ?? false;
+        $ticket = $this->route('ticket');
+
+        return ($this->user()?->can('create', AppDevelopmentTask::class) ?? false)
+            && $ticket instanceof AppDevelopmentTicket
+            && ($this->user()?->can('view', $ticket) ?? false);
     }
 
     /**
@@ -26,29 +29,11 @@ class StoreTaskRequest extends FormRequest
         $developerIds = AppDevelopmentMember::assignableDeveloperUserIds();
 
         return [
-            'ticket_id' => [
-                Rule::requiredIf(fn (): bool => ! $this->route('ticket') instanceof AppDevelopmentTicket),
-                'nullable',
+            'assignee_id' => [
+                'required',
                 'integer',
-                Rule::exists('app_development_tickets', 'id'),
+                Rule::in($developerIds === [] ? [0] : $developerIds),
             ],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:20000'],
-            'assignee_id' => ['nullable', 'integer', Rule::in($developerIds === [] ? [0] : $developerIds)],
-            'priority' => ['required', Rule::enum(AppDevelopmentTicketPriority::class)],
-            'due_at' => ['nullable', 'date'],
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        $ticket = $this->route('ticket');
-        if ($ticket instanceof AppDevelopmentTicket) {
-            $this->merge(['ticket_id' => $ticket->id]);
-        }
-
-        if ($this->input('assignee_id') === '' || $this->input('assignee_id') === null) {
-            $this->merge(['assignee_id' => null]);
-        }
     }
 }

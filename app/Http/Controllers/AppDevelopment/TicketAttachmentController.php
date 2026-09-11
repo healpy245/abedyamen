@@ -10,7 +10,7 @@ use App\Models\AppDevelopment\AppDevelopmentTicket;
 use App\Models\AppDevelopment\AppDevelopmentTicketAttachment;
 use App\Services\AppDevelopment\TicketAttachmentService;
 use Illuminate\Http\RedirectResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TicketAttachmentController extends Controller
 {
@@ -20,14 +20,16 @@ class TicketAttachmentController extends Controller
 
     public function store(StoreAttachmentRequest $request, AppDevelopmentTicket $ticket): RedirectResponse
     {
-        $this->attachments->store($ticket, $request->user(), $request->file('attachment'));
+        foreach ($request->uploadedFiles() as $file) {
+            $this->attachments->store($ticket, $request->user(), $file);
+        }
 
         return redirect()
             ->route('app-development.tickets.show', $ticket)
             ->with('success', __('app-development.flash.attachment_added'));
     }
 
-    public function download(AppDevelopmentTicket $ticket, AppDevelopmentTicketAttachment $attachment): StreamedResponse
+    public function download(AppDevelopmentTicket $ticket, AppDevelopmentTicketAttachment $attachment): BinaryFileResponse
     {
         $this->authorize('downloadAttachment', $ticket);
 

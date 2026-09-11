@@ -2,6 +2,12 @@
     $user = auth()->user();
     $activeEntry = $user ? $task->activeEntryFor($user) : null;
     $canTimer = $user?->can('startTimer', $task);
+    $closedSeconds = $task->relationLoaded('timeEntries')
+        ? (int) $task->timeEntries->whereNotNull('ended_at')->sum('duration_seconds')
+        : (int) $task->timeEntries()->whereNotNull('ended_at')->sum('duration_seconds');
+    $liveSeconds = $activeEntry
+        ? $closedSeconds + $activeEntry->elapsedSeconds()
+        : $task->totalDurationSeconds();
 @endphp
 
 <div data-modal-title="{{ $task->title }}" data-modal-variant="view" class="space-y-3">
@@ -15,7 +21,12 @@
                     <span class="rounded-md border border-red-200 bg-red-50 px-1.5 text-[10px] font-semibold text-red-800">{{ __('app-development.tasks.overdue') }}</span>
                 @endif
             </div>
-            <p class="mt-1.5 text-xs text-[#7c6a56]">
+            <p class="mt-1.5 text-xs text-[#7c6a56] {{ $activeEntry ? 'app-dev-live-timer' : '' }}"
+               @if($activeEntry)
+                   data-app-dev-timer
+                   data-started-at="{{ $activeEntry->started_at?->toIso8601String() }}"
+                   data-base-seconds="{{ $closedSeconds }}"
+               @endif>
                 @if($task->ticket)
                     <a href="{{ route('app-development.tickets.show', $task->ticket) }}" class="font-medium text-[#f16229]" data-app-dev-modal>
                         {{ $task->ticket->ticket_number }}
@@ -24,7 +35,10 @@
                 @endif
                 {{ $task->assignee?->name ?? __('app-development.tickets.unassigned') }}
                 · {{ __('app-development.tasks.total_time') }}:
-                <bdi>{{ gmdate('H:i:s', $task->totalDurationSeconds()) }}</bdi>
+                <bdi class="app-dev-live-timer__clock" data-timer-clock>{{ gmdate('H:i:s', $liveSeconds) }}</bdi>
+                @if($activeEntry)
+                    <span class="app-dev-live-timer__badge">{{ __('app-development.tasks.running') }}</span>
+                @endif
             </p>
         </div>
     </div>
@@ -42,6 +56,13 @@
     @if($canTimer && ! $task->isCompleted())
         <div class="flex flex-wrap items-center gap-2 border-t border-[#f1dfc5] pt-3">
             @if($activeEntry)
+                <span class="app-dev-live-timer app-dev-live-timer--inline"
+                      data-app-dev-timer
+                      data-started-at="{{ $activeEntry->started_at?->toIso8601String() }}"
+                      data-base-seconds="0">
+                    <span class="app-dev-timer-widget__dot" aria-hidden="true"></span>
+                    <bdi class="app-dev-live-timer__clock" data-timer-clock>{{ gmdate('H:i:s', $activeEntry->elapsedSeconds()) }}</bdi>
+                </span>
                 <form method="post" action="{{ route('app-development.tasks.timer.pause', $task) }}">
                     @csrf
                     <button type="submit" class="kaman-button-ghost kaman-button--sm">

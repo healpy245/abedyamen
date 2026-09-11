@@ -26,6 +26,16 @@ class KamanWhatsappChatbotInstanceSeeder extends Seeder
 
         $prompt = $this->systemPrompt();
 
+        $existing = ChatbotInstance::query()
+            ->where('user_id', $owner->id)
+            ->where('name', self::INSTANCE_NAME)
+            ->first();
+
+        $settings = is_array($existing?->integration_settings) ? $existing->integration_settings : [];
+        $settings['enabled'] = true;
+        $settings['label'] = 'Kaman POS WhatsApp sales bot';
+        $settings['channel'] = 'whatsapp';
+
         $instance = ChatbotInstance::query()->updateOrCreate(
             [
                 'user_id' => $owner->id,
@@ -35,16 +45,15 @@ class KamanWhatsappChatbotInstanceSeeder extends Seeder
                 'system_prompt' => $prompt,
                 'stores_members' => false,
                 'integration_type' => 'kaman_whatsapp',
-                'integration_settings' => [
-                    'enabled' => true,
-                    'label' => 'Kaman POS WhatsApp sales bot',
-                    'channel' => 'whatsapp',
-                ],
+                'integration_settings' => $settings,
             ]
         );
 
         $this->removeDuplicateInstances($owner->id, $instance->id);
         $this->grantChatbotUsers($instance);
+
+        app(\App\Services\AppDevelopment\AppDevelopmentWhatsAppNotifyService::class)
+            ->syncWorkerPhonesOntoKamanBotIgnoreList();
 
         $this->command?->info(sprintf(
             '  Shared "%s" (id %d) owned by %s',

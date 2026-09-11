@@ -21,20 +21,23 @@
         if (!Number.isFinite(startMs)) {
             return;
         }
-        clock.textContent = format((Date.now() - startMs) / 1000);
+        const base = parseInt(root.getAttribute('data-base-seconds') || '0', 10) || 0;
+        clock.textContent = format(base + (Date.now() - startMs) / 1000);
+    }
+
+    function bind(root) {
+        if (root.dataset.timerBound) {
+            return;
+        }
+        root.dataset.timerBound = '1';
+        tick(root);
+        root._appDevTimerId = setInterval(function () {
+            tick(root);
+        }, 1000);
     }
 
     function boot() {
-        document.querySelectorAll('[data-app-dev-timer]').forEach(function (root) {
-            if (root.dataset.timerBound) {
-                return;
-            }
-            root.dataset.timerBound = '1';
-            tick(root);
-            setInterval(function () {
-                tick(root);
-            }, 1000);
-        });
+        document.querySelectorAll('[data-app-dev-timer]').forEach(bind);
     }
 
     document.addEventListener('DOMContentLoaded', boot);

@@ -24,6 +24,7 @@ class WorkspaceUserSeeder extends Seeder
      */
     public const CHATBOT_MEMBER_ONLY_EMAILS = [
         'malan@kaman.rest',
+        'kaman@kaman.rest',
     ];
 
     public function run(): void
@@ -66,6 +67,24 @@ class WorkspaceUserSeeder extends Seeder
                     Project::AiChatbot->value,
                 ],
             ],
+            [
+                // Kaman company staff: chatbot project only; Kaman POS bot via grant (not ownership).
+                'name' => 'Kaman Team',
+                'email' => 'kaman@kaman.rest',
+                'password' => 'Kaman123@',
+                'is_admin' => false,
+                'projects' => [
+                    Project::AiChatbot->value,
+                ],
+            ],
+            [
+                'name' => 'Burhan',
+                'email' => 'burhan@kaman.rest',
+                'password' => 'Burhan123@',
+                // Full workspace access: every project now and any added later.
+                'is_admin' => true,
+                'projects' => Project::keys(),
+            ],
         ];
 
         foreach ($users as $user) {
@@ -100,7 +119,10 @@ class WorkspaceUserSeeder extends Seeder
                 'email' => 'ahmadessa@kaman.rest',
                 'password' => 'AhmadEssa123@',
                 'is_admin' => false,
-                'projects' => $grant,
+                'projects' => [
+                    Project::AppDevelopment->value,
+                    Project::Form->value,
+                ],
             ],
             [
                 'name' => 'Minna',
@@ -110,11 +132,14 @@ class WorkspaceUserSeeder extends Seeder
                 'projects' => $grant,
             ],
             [
-                'name' => 'Abed',
+                'name' => 'Abed Salhab',
                 'email' => 'abed@kaman.rest',
                 'password' => 'Abed123@',
                 'is_admin' => false,
-                'projects' => $grant,
+                'projects' => [
+                    Project::AppDevelopment->value,
+                    Project::Form->value,
+                ],
             ],
             [
                 'name' => 'Amro',

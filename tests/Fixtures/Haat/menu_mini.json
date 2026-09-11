@@ -1,0 +1,177 @@
+{
+    "sections": [
+        {
+            "id": 0,
+            "type": "TopSelling",
+            "name": "الأكثر مبيعا",
+            "restaurantItems": []
+        },
+        {
+            "id": 89159,
+            "type": "Categories",
+            "name": "وجبات زاتشية وجديدة!",
+            "nameEnglish": "New ZACHI meals!",
+            "restaurantItems": [
+                {
+                    "id": 946663,
+                    "menuItemType": "Meal",
+                    "name": "سلطة زاتشي",
+                    "nameEnglish": "Zachi salad",
+                    "description": "",
+                    "price": {
+                        "finalPrice": 38
+                    },
+                    "image": {
+                        "serverImageUrl": "images\/Meals\/020230202143247.jpg"
+                    },
+                    "availability": {
+                        "isAvailable": true
+                    },
+                    "addonGroups": [
+                        {
+                            "id": 497804,
+                            "title": "مكونات السلطة",
+                            "min": 0,
+                            "max": 0,
+                            "isLimited": false,
+                            "showImages": true,
+                            "free": null,
+                            "mealContents": [
+                                {
+                                    "id": 2360318,
+                                    "name": "خس",
+                                    "price": 0,
+                                    "viewType": "Fixed",
+                                    "selectedByDefault": true,
+                                    "nonModifiable": true,
+                                    "maxCount": 0,
+                                    "image": {
+                                        "serverImageUrl": "images\/MealContents\/7389_20211121102108_small.jpg"
+                                    }
+                                },
+                                {
+                                    "id": 2360320,
+                                    "name": "بندورة شيري",
+                                    "price": 0,
+                                    "viewType": "Fixed",
+                                    "selectedByDefault": true,
+                                    "nonModifiable": true,
+                                    "maxCount": 0,
+                                    "image": {
+                                        "serverImageUrl": "images\/MealContents\/0_20230202143750_small.jpg"
+                                    }
+                                },
+                                {
+                                    "id": 2360319,
+                                    "name": "صلصة دبس الرمان",
+                                    "price": 0,
+                                    "viewType": "Fixed",
+                                    "selectedByDefault": true,
+                                    "nonModifiable": true,
+                                    "maxCount": 0,
+                                    "image": {
+                                        "serverImageUrl": "images\/MealContents\/0_20230202143819_small.jpg"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": 946664,
+                    "menuItemType": "Meal",
+                    "name": "بلجان",
+                    "nameEnglish": "Mess",
+                    "description": "كريسبي بريست، تشيبس، حلبينيو وصلصة تشيدر",
+                    "price": {
+                        "finalPrice": 40
+                    },
+                    "image": {
+                        "serverImageUrl": "images\/Meals\/020230202144418.jpg"
+                    },
+                    "availability": {
+                        "isAvailable": false
+                    },
+                    "addonGroups": [
+                        {
+                            "id": 497805,
+                            "title": "مكونات",
+                            "min": 0,
+                            "max": 0,
+                            "isLimited": false,
+                            "showImages": true,
+                            "free": null,
+                            "mealContents": [
+                                {
+                                    "id": 2360325,
+                                    "name": "تشيبس",
+                                    "price": 0,
+                                    "viewType": "Fixed",
+                                    "selectedByDefault": true,
+                                    "nonModifiable": true,
+                                    "maxCount": 0,
+                                    "image": {
+                                        "serverImageUrl": "images\/MealContents\/7418_20211121103018_small.jpg"
+                                    }
+                                },
+                                {
+                                    "id": 2360326,
+                                    "name": "حلبينيو",
+                                    "price": 0,
+                                    "viewType": "Fixed",
+                                    "selectedByDefault": true,
+                                    "nonModifiable": true,
+                                    "maxCount": 0,
+                                    "image": {
+                                        "serverImageUrl": "images\/MealContents\/0_20230202144517_small.jpg"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 497806,
+                            "title": "اختيار",
+                            "min": 1,
+                            "max": 1,
+                            "isLimited": true,
+                            "showImages": true,
+                            "free": null,
+                            "mealContents": [
+                                {
+                                    "id": 2360327,
+                                    "name": "صلصة جبنة شيدر على الوجبة",
+                                    "price": 0,
+                                    "viewType": "Radio",
+                                    "selectedByDefault": false,
+                                    "nonModifiable": false,
+                                    "maxCount": 0,
+                                    "image": {
+                                        "serverImageUrl": "images\/MealContents\/0_20230205090400_small.jpg"
+                                    }
+                                },
+                                {
+                                    "id": 2360328,
+                                    "name": "صلصة جبنة شيدر بجانب الوجبة",
+                                    "price": 0,
+                                    "viewType": "Radio",
+                                    "selectedByDefault": false,
+                                    "nonModifiable": false,
+                                    "maxCount": 0,
+                                    "image": {
+                                        "serverImageUrl": "images\/MealContents\/0_20230205090929_small.jpg"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 0,
+            "type": "Footer",
+            "name": "انا ابحث عن شيء آخر",
+            "restaurantItems": []
+        }
+    ]
+}

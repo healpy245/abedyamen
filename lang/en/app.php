@@ -25,5 +25,8 @@ return [
     'skipped' => 'Skipped',
     'you' => 'You',
     'language' => 'Language',
+    'theme_light' => 'Switch to light mode',
+    'theme_dark' => 'Switch to dark mode',
+    'loading' => 'Loading',
     'no_access' => 'You do not have access to :project.',
 ];

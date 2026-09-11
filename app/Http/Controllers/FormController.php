@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FormWorkflowRun;
 use App\Services\AI\FormWorkflowRunner;
 use App\Services\AI\FullAiAutomationService;
+use App\Services\Form\FormWorkflowRunService;
 use App\Support\KamanUrl;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -19,7 +21,7 @@ use Throwable;
 
 class FormController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $drinksGroups = [
             'tabozinah' => [
@@ -561,6 +563,8 @@ class FormController extends Controller
                 return ! empty($group['items']);
             }),
             'methodTypes' => FormWorkflowRunner::methodTypes(),
+            'haatMenuApiEnabled' => filled(config('services.haat.menu_api_url')),
+            'formWorkflowRuns' => $this->workflowRunsFor($request),
         ]);
     }
 
@@ -568,26 +572,45 @@ class FormController extends Controller
     {
         // For heavy AI flows, give PHP more time than the default 30s
         try {
-            if (in_array($request->input('method_type'), ['Meal Store With AI Images', 'Category Store With AI Image'], true)) {
-                @set_time_limit(300);
+            if (in_array($request->input('method_type'), ['Meal Store With AI Images', 'Category Store With AI Image', 'HAAT Menu Copy'], true)) {
+                @set_time_limit($request->input('method_type') === 'HAAT Menu Copy' ? 1800 : 300);
             }
         } catch (\Throwable $e) {
             // ignore if we cannot change time limit
         }
 
+        $haatApiEnabled = filled(config('services.haat.menu_api_url'));
+
         // Validate the form data
         $validated = $request->validate([
             'method_type' => ['required', Rule::in(FormWorkflowRunner::methodTypes())],
             'subdomain' => 'required|string|max:64',
-            'username' => 'required|string|max:255',
-            'password' => 'required|string',
+            'username' => [
+                Rule::requiredIf(fn () => $this->matchingKamanSession($request) === null),
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'password' => [
+                Rule::requiredIf(fn () => $this->matchingKamanSession($request) === null),
+                'nullable',
+                'string',
+            ],
             'environment' => 'nullable|string|in:dev,rest',
             'description' => 'nullable|string',
             'translate_names' => 'nullable|boolean',
+            'haat_menu_json' => [
+                Rule::requiredIf(fn () => $request->input('method_type') === 'HAAT Menu Copy' && (! $haatApiEnabled || ! $request->filled('haat_restaurant_id'))),
+                'nullable',
+                'file',
+                'max:20480',
+            ],
+            'haat_restaurant_id' => 'nullable|string|max:64',
+            'no_images' => 'nullable|boolean',
         ]);
 
         $subdomain = KamanUrl::normalizeSubdomain($validated['subdomain']);
-        $username = trim($validated['username']);
+        $username = trim((string) ($validated['username'] ?? ''));
         $environment = KamanUrl::tldFromEnvironment($validated['environment'] ?? null);
 
         $payload = [
@@ -596,12 +619,18 @@ class FormController extends Controller
             'restaurant_name' => $subdomain,
             'username' => $username,
             'environment' => $environment,
-            'password' => $validated['password'],
+            'password' => (string) ($validated['password'] ?? ''),
             'description' => trim((string) ($validated['description'] ?? '')),
             'translate_names' => $request->boolean('translate_names', true),
             'submitted_at' => now()->toIso8601String(),
             'ip_address' => $request->ip(),
         ];
+
+        $sessionAuth = $this->matchingKamanSession($request);
+        if ($sessionAuth !== null) {
+            $payload['kaman_token'] = $sessionAuth['token'];
+            $payload['kaman_base_url'] = $sessionAuth['base_url'];
+        }
 
         // Add category_name_en in the requested format if filled
         if (! empty($validated['category_name_en'])) {
@@ -635,6 +664,22 @@ class FormController extends Controller
             $payload['image_paths'] = $folderImageNames;
         }
 
+        if ($validated['method_type'] === 'HAAT Menu Copy') {
+            $payload['no_images'] = $request->boolean('no_images');
+            if ($haatApiEnabled && $request->filled('haat_restaurant_id')) {
+                $payload['haat_restaurant_id'] = trim((string) $request->input('haat_restaurant_id'));
+            }
+            if ($request->hasFile('haat_menu_json') && $request->file('haat_menu_json')->isValid()) {
+                $dir = storage_path('app/haat-uploads');
+                if (! File::exists($dir)) {
+                    File::makeDirectory($dir, 0755, true);
+                }
+                $filename = Str::uuid()->toString().'.json';
+                $request->file('haat_menu_json')->move($dir, $filename);
+                $payload['haat_json_path'] = $dir.DIRECTORY_SEPARATOR.$filename;
+            }
+        }
+
         // Add drinks selection and image directory for image-based workflows
         if (in_array($validated['method_type'] ?? '', ['Drinks Store', 'Natural Juices Store', 'Ingredients Images Store'], true)) {
             $payload['drinks_selection'] = json_decode($request->input('drinks_payload', '[]'), true) ?: [];
@@ -645,79 +690,33 @@ class FormController extends Controller
 
         // Run AI workflow for this form path
         $workflowRunner = app(FormWorkflowRunner::class);
+        $runService = app(FormWorkflowRunService::class);
+        $run = $runService->start($request->user(), $validated['method_type'], $payload);
+        $payload['run_id'] = $run->id;
 
-        // Live debug: stream progress as Server-Sent Events
         if (($request->ajax() || $request->wantsJson()) && $request->header('X-Live-Debug') === '1') {
-            return response()->stream(function () use ($workflowRunner, $validated, $payload) {
-                set_time_limit(600);
-                $emit = function (array $event) {
-                    echo 'data: '.json_encode($event)."\n\n";
-                    if (ob_get_level()) {
-                        ob_flush();
-                    }
-                    flush();
-                };
-
-                $onProgress = function (string $step, string $message, array $data = []) use ($emit) {
-                    $emit([
-                        'event' => 'step',
-                        'step' => $step,
-                        'message' => $message,
-                        'data' => $data,
-                        'timestamp' => now()->toIso8601String(),
-                    ]);
-                };
-
-                try {
-                    $result = $workflowRunner->run($validated['method_type'], $payload, $onProgress);
-                } catch (\Throwable $e) {
-                    $emit([
-                        'event' => 'done',
-                        'success' => false,
-                        'error' => $e->getMessage(),
-                        'method_type' => $validated['method_type'],
-                        'payload' => $payload,
-                        'result' => ['success' => false, 'error' => $e->getMessage()],
-                        'timestamp' => now()->toIso8601String(),
-                    ]);
-
-                    return;
-                }
-
-                $debugData = [
-                    'method_type' => $validated['method_type'],
-                    'payload' => $payload,
-                    'result' => $result,
+            if ($this->startDetachedWorker($run)) {
+                $runService->appendEvent($run, [
+                    'event' => 'step',
+                    'step' => 'start',
+                    'message' => 'Started in the background. Watch this submission — you can leave this page.',
+                    'data' => ['status' => 'run'],
                     'timestamp' => now()->toIso8601String(),
-                ];
-
-                $redirect = back();
-                if ($result['success'] ?? false) {
-                    session()->flash('success', $result['message'] ?? 'Form submitted successfully!');
-                    session()->flash('workflow_debug', $debugData);
-                } else {
-                    session()->flash('warning', $result['error'] ?? 'Workflow failed.');
-                    session()->flash('workflow_debug', $debugData);
-                }
-
-                $emit([
-                    'event' => 'done',
-                    'success' => $result['success'] ?? false,
-                    'method_type' => $validated['method_type'],
-                    'payload' => $payload,
-                    'result' => $result,
-                    'timestamp' => $debugData['timestamp'],
-                    'redirect' => $redirect->getTargetUrl(),
                 ]);
-            }, 200, [
-                'Content-Type' => 'text/event-stream',
-                'Cache-Control' => 'no-cache',
-                'X-Accel-Buffering' => 'no',
-                'Connection' => 'keep-alive',
-            ]);
+
+                return response()->json([
+                    'success' => true,
+                    'detached' => true,
+                    'run_id' => $run->id,
+                    'run' => $runService->toArray($run->refresh()),
+                ]);
+            }
+
+            return $this->streamWorkflow($run, $payload);
         }
 
         $result = $workflowRunner->run($validated['method_type'], $payload);
+        $this->finishWorkflowRun($runService, $run, $result);
 
         $debugData = [
             'method_type' => $validated['method_type'],
@@ -727,6 +726,24 @@ class FormController extends Controller
         ];
 
         $redirect = back();
+
+        if ($result['paused'] ?? false) {
+            $redirect->with('warning', $result['message'] ?? 'Workflow paused.')
+                ->with('workflow_debug', $debugData);
+            if ($request->ajax() || $request->wantsJson()) {
+                session()->flash('warning', $result['message'] ?? 'Workflow paused.');
+                session()->flash('workflow_debug', $debugData);
+
+                return response()->json([
+                    'success' => false,
+                    'paused' => true,
+                    'redirect' => $redirect->getTargetUrl(),
+                    'workflow_debug' => $debugData,
+                ]);
+            }
+
+            return $redirect;
+        }
 
         if ($result['success']) {
             $redirect->with('success', $result['message'] ?? 'Form submitted successfully! AI workflow completed.')
@@ -989,6 +1006,83 @@ class FormController extends Controller
         return [
             'token' => $token,
             'base_url' => $baseUrl,
+        ];
+    }
+
+    /**
+     * @return array{token: string, base_url: string}|null
+     */
+    private function matchingKamanSession(Request $request, ?string $subdomain = null, ?string $environment = null): ?array
+    {
+        $subdomain = KamanUrl::normalizeSubdomain($subdomain ?? (string) $request->input('subdomain', ''));
+        if ($subdomain === '') {
+            return null;
+        }
+
+        $auth = $this->resolveFullAiAuth($request);
+        if ($auth === null) {
+            return null;
+        }
+
+        $expected = rtrim(KamanUrl::managerApi(
+            $subdomain,
+            KamanUrl::tldFromEnvironment($environment ?? $request->input('environment'))
+        ), '/');
+
+        if (rtrim($auth['base_url'], '/') !== $expected) {
+            return null;
+        }
+
+        return $auth;
+    }
+
+    /**
+     * @return array{token: string, base_url: string}|null
+     */
+    private function loginKamanRestaurant(string $subdomain, string $username, string $password, ?string $environment): ?array
+    {
+        $subdomain = KamanUrl::normalizeSubdomain($subdomain);
+        $username = trim($username);
+        $password = (string) $password;
+        if ($subdomain === '' || $username === '' || $password === '') {
+            return null;
+        }
+
+        $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($environment));
+        try {
+            $response = $this->kamanHttpClient(45)->post(KamanUrl::join($baseUrl, '/login'), [
+                'email' => KamanUrl::loginEmail($subdomain, $username),
+                'password' => $password,
+            ]);
+        } catch (ConnectionException|RequestException $e) {
+            Log::warning('Continue-run Kaman login connection failed', [
+                'subdomain' => $subdomain,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $data = $response->json();
+        if (! is_array($data)) {
+            return null;
+        }
+
+        $token = $data['token']
+            ?? $data['access_token']
+            ?? $data['data']['token']
+            ?? (is_array($data['data'] ?? null) ? ($data['data']['access_token'] ?? null) : null);
+        if (! is_string($token) || $token === '') {
+            return null;
+        }
+
+        return [
+            'token' => $token,
+            'base_url' => rtrim($baseUrl, '/'),
         ];
     }
 
@@ -1614,5 +1708,317 @@ class FormController extends Controller
                 'error' => 'Failed to upload image: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    public function runs(Request $request)
+    {
+        return response()->json([
+            'runs' => $this->workflowRunsFor($request),
+        ]);
+    }
+
+    public function showRun(Request $request, FormWorkflowRun $run)
+    {
+        $this->assertRunAccess($request, $run);
+        $service = app(FormWorkflowRunService::class);
+        $run = $service->reclaimIfStale($run);
+        $run->loadMissing(['user:id,name,email']);
+
+        return response()->json([
+            'run' => $service->toArray($run, $request->user()),
+            'events' => $service->events($run),
+            'payload' => $service->safePayload(is_array($run->payload) ? $run->payload : []),
+            'result' => is_array($run->result) ? $run->result : null,
+            'conversation' => $service->conversation($run),
+        ]);
+    }
+
+    public function destroyRun(Request $request, FormWorkflowRun $run)
+    {
+        $this->assertRunAccess($request, $run);
+        $service = app(FormWorkflowRunService::class);
+        $service->destroy($run);
+
+        return response()->json([
+            'ok' => true,
+            'deleted_id' => $run->id,
+            'runs' => $this->workflowRunsFor($request),
+        ]);
+    }
+
+    public function pauseRun(Request $request, FormWorkflowRun $run)
+    {
+        $this->assertRunAccess($request, $run);
+        if (! $run->isRunning()) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'This submission is not running.',
+                'run' => app(FormWorkflowRunService::class)->toArray($run, $request->user()),
+            ], 422);
+        }
+
+        $service = app(FormWorkflowRunService::class);
+        $service->requestPause($run);
+        $staleAfter = $request->boolean('force') ? 8 : 25;
+        $run = $service->reclaimIfStale($run->refresh(), $staleAfter);
+        if ($request->boolean('force') && $run->isRunning()) {
+            $service->bumpGeneration($run);
+            $run = $service->markPaused(
+                $run,
+                is_array($run->result) ? $run->result : ['paused' => true],
+                'Paused. Click Continue to resume.',
+            );
+        }
+
+        $paused = $run->isPaused();
+
+        return response()->json([
+            'ok' => true,
+            'message' => $paused
+                ? 'Paused. Click Continue to resume.'
+                : 'Pause requested. The workflow will stop after the current request.',
+            'run' => $service->toArray($run, $request->user()),
+        ]);
+    }
+
+    public function continueRun(Request $request, FormWorkflowRun $run)
+    {
+        $this->assertRunAccess($request, $run);
+        if (! $run->canContinue()) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'This submission cannot be continued.',
+                'run' => app(FormWorkflowRunService::class)->toArray($run, $request->user()),
+            ], 422);
+        }
+
+        $runService = app(FormWorkflowRunService::class);
+        $payload = is_array($run->payload) ? $run->payload : [];
+        $subdomain = (string) ($run->subdomain ?: ($payload['subdomain'] ?? $request->input('subdomain', '')));
+        $environment = (string) ($run->environment ?: ($payload['environment'] ?? $request->input('environment', 'rest')));
+        $username = trim((string) $request->input('username', $payload['username'] ?? ''));
+        if ($username !== '') {
+            $payload['username'] = $username;
+        }
+
+        $token = null;
+        if ($request->filled('password')) {
+            $payload['password'] = (string) $request->input('password');
+            $loggedIn = $this->loginKamanRestaurant(
+                $subdomain,
+                $username,
+                $payload['password'],
+                $environment,
+            );
+            if ($loggedIn !== null) {
+                $token = $loggedIn['token'];
+                $payload['kaman_base_url'] = $loggedIn['base_url'];
+                $this->persistFullAiAuth($request, $loggedIn['token'], $loggedIn['base_url']);
+            }
+        }
+        if ($token === null || $token === '') {
+            $token = $runService->token($run);
+        }
+        if ($token === null || $token === '') {
+            $sessionAuth = $this->matchingKamanSession($request, $subdomain, $environment);
+            $token = is_array($sessionAuth) ? ($sessionAuth['token'] ?? null) : null;
+            if (is_array($sessionAuth) && ! empty($sessionAuth['base_url'])) {
+                $payload['kaman_base_url'] = $sessionAuth['base_url'];
+            }
+        }
+        if (is_string($token) && $token !== '') {
+            $payload['kaman_token'] = $token;
+            $runService->rememberToken($run, $token);
+        }
+        if (empty($payload['kaman_token']) && empty($payload['password'])) {
+            return response()->json([
+                'ok' => false,
+                'needs_login' => true,
+                'error' => 'Restaurant session expired. Sign in, then Continue.',
+                'run' => $runService->toArray($run, $request->user()),
+            ], 422);
+        }
+
+        $runService->markRunning($run);
+        $payload['run_id'] = $run->id;
+        $payload['worker_generation'] = $runService->bumpGeneration($run);
+
+        if ($this->startDetachedWorker($run)) {
+            $runService->appendEvent($run, [
+                'event' => 'step',
+                'step' => 'start',
+                'message' => 'Continuing in the background…',
+                'data' => ['status' => 'run'],
+                'timestamp' => now()->toIso8601String(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'detached' => true,
+                'run_id' => $run->id,
+                'run' => $runService->toArray($run->refresh(), $request->user()),
+            ]);
+        }
+
+        return $this->streamWorkflow($run->refresh(), $payload);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function workflowRunsFor(Request $request): array
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return [];
+        }
+
+        $service = app(FormWorkflowRunService::class);
+
+        return $service->forUser($user)->map(function (FormWorkflowRun $run) use ($service, $user) {
+            if ($run->isRunning()) {
+                $run = $service->reclaimIfStale($run);
+            }
+
+            return $service->toArray($run, $user);
+        })->values()->all();
+    }
+
+    private function assertRunAccess(Request $request, FormWorkflowRun $run): void
+    {
+        $user = $request->user();
+        abort_unless($user !== null && app(FormWorkflowRunService::class)->canAccess($user, $run), 403);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function streamWorkflow(FormWorkflowRun $run, array $payload)
+    {
+        $runService = app(FormWorkflowRunService::class);
+        $executor = app(\App\Services\Form\FormWorkflowExecutor::class);
+
+        return response()->stream(function () use ($executor, $runService, $run, $payload) {
+            @ignore_user_abort(true);
+            @set_time_limit($run->method_type === 'HAAT Menu Copy' ? 1800 : 600);
+            $safePayload = $runService->safePayload($payload);
+            $emit = function (array $event) {
+                if (connection_aborted()) {
+                    return;
+                }
+                echo 'data: '.json_encode($event)."\n\n";
+                if (ob_get_level()) {
+                    ob_flush();
+                }
+                flush();
+            };
+
+            $emit([
+                'event' => 'run',
+                'run_id' => $run->id,
+                'run' => $runService->toArray($run),
+                'timestamp' => now()->toIso8601String(),
+            ]);
+
+            $result = $executor->run($run, $payload, function (array $event) use ($emit) {
+                $emit($event);
+            });
+
+            $paused = (bool) ($result['paused'] ?? false);
+            $debugData = [
+                'method_type' => $run->method_type,
+                'payload' => $safePayload,
+                'result' => $result,
+                'timestamp' => now()->toIso8601String(),
+            ];
+            if ($paused) {
+                session()->flash('warning', $result['message'] ?? 'Workflow paused.');
+                session()->flash('workflow_debug', $debugData);
+            } elseif ($result['success'] ?? false) {
+                session()->flash('success', $result['message'] ?? 'Form submitted successfully!');
+                session()->flash('workflow_debug', $debugData);
+            } else {
+                session()->flash('warning', $result['error'] ?? 'Workflow failed.');
+                session()->flash('workflow_debug', $debugData);
+            }
+
+            $emit([
+                'event' => 'done',
+                'success' => $result['success'] ?? false,
+                'paused' => $paused,
+                'method_type' => $run->method_type,
+                'payload' => $safePayload,
+                'result' => $result,
+                'run_id' => $run->id,
+                'run' => $runService->toArray($run->refresh()),
+                'timestamp' => $debugData['timestamp'],
+                'redirect' => back()->getTargetUrl(),
+            ]);
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'X-Accel-Buffering' => 'no',
+            'Connection' => 'keep-alive',
+        ]);
+    }
+
+    private function startDetachedWorker(FormWorkflowRun $run): bool
+    {
+        if (app()->environment('testing') || \PHP_OS_FAMILY === 'Windows') {
+            return false;
+        }
+
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        if (in_array('exec', $disabled, true)) {
+            return false;
+        }
+
+        $php = $this->cliPhpBinary();
+        $artisan = base_path('artisan');
+        $log = storage_path('logs/form-workflow-'.$run->id.'.log');
+        $cmd = sprintf(
+            'nohup %s %s form:workflow-run %d >> %s 2>&1 &',
+            escapeshellarg($php),
+            escapeshellarg($artisan),
+            $run->id,
+            escapeshellarg($log)
+        );
+        exec($cmd);
+
+        Log::info('Detached form workflow worker', [
+            'run_id' => $run->id,
+            'php' => $php,
+        ]);
+
+        return true;
+    }
+
+    private function cliPhpBinary(): string
+    {
+        $candidates = array_filter([
+            '/usr/local/bin/php',
+            '/usr/bin/php',
+            PHP_BINARY,
+            'php',
+        ]);
+        foreach ($candidates as $bin) {
+            $bin = (string) $bin;
+            if (str_contains(strtolower($bin), 'cgi')) {
+                continue;
+            }
+            if ($bin === 'php' || is_executable($bin)) {
+                return $bin;
+            }
+        }
+
+        return 'php';
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function finishWorkflowRun(FormWorkflowRunService $runService, FormWorkflowRun $run, array $result): void
+    {
+        $runService->finishFromResult($run, $result);
     }
 }

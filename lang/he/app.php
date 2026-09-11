@@ -25,5 +25,8 @@ return [
     'skipped' => 'דולג',
     'you' => 'אתה',
     'language' => 'שפה',
+    'theme_light' => 'עבור למצב בהיר',
+    'theme_dark' => 'עבור למצב כהה',
+    'loading' => 'טוען',
     'no_access' => 'אין לך גישה ל-:project.',
 ];

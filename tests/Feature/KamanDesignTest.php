@@ -58,6 +58,8 @@ class KamanDesignTest extends TestCase
             ->assertOk()
             ->assertSee(self::KAMAN_STYLESHEET)
             ->assertSee(__('auth.sign_in'))
+            ->assertSee('data-kaman-theme-toggle', false)
+            ->assertSee('kaman-ai-loader', false)
             ->assertDontSee(self::DARK_THEME_MARKER);
     }
 
@@ -81,6 +83,18 @@ class KamanDesignTest extends TestCase
             ->get(route($routeName))
             ->assertOk()
             ->assertSee(self::KAMAN_STYLESHEET)
+            ->assertSee('data-kaman-theme-toggle', false)
+            ->assertDontSee(self::DARK_THEME_MARKER);
+    }
+
+    public function test_workspace_pages_offer_theme_toggle_and_boot_splash(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('app-development.index'))
+            ->assertOk()
+            ->assertSee('data-kaman-theme-toggle', false)
+            ->assertSee('kaman-ai-loader', false)
+            ->assertSee('kaman-theme', false)
             ->assertDontSee(self::DARK_THEME_MARKER);
     }
 
@@ -91,6 +105,7 @@ class KamanDesignTest extends TestCase
         $instance->forceFill(['stores_members' => true])->save();
 
         $pages = [
+            route('ai-chatbot.index'),
             route('ai-chatbot.instances.show', $instance),
             route('ai-chatbot.instances.edit', $instance),
             route('ai-chatbot.instances.members.index', $instance),
@@ -116,7 +131,8 @@ class KamanDesignTest extends TestCase
         $mohamed = User::where('email', 'mohamed@kaman.rest')->firstOrFail();
 
         $this->actingAs($mohamed)->get(route('ai-chatbot.index'))
-            ->assertRedirect();
+            ->assertOk()
+            ->assertSee(__('chatbot.choose.title'));
         $this->actingAs($mohamed)->get(route('home'))
             ->assertOk()
             ->assertSee(__('projects.form.label'))
@@ -128,6 +144,7 @@ class KamanDesignTest extends TestCase
         $pages = [
             route('home'),
             route('form.index'),
+            route('ai-chatbot.index'),
             route('ai-chatbot.instances.show', $this->chatbotInstance()),
             route('app-development.index'),
         ];

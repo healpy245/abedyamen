@@ -18,20 +18,23 @@ final class CategoryAndIngredientsStoreWorkflow extends AbstractFormWorkflow
 {
     public function run(array $payload, ?callable $onProgress = null): array
     {
-        $restaurantName = trim($payload['restaurant_name'] ?? '');
-        $password = $payload['password'] ?? '';
         $description = trim($payload['description'] ?? '');
 
         $progress = static function (string $step, string $message, array $data = []) use ($onProgress): void {
             $onProgress && $onProgress($step, $message, $data);
         };
 
-        if ($restaurantName === '' || $password === '') {
+        $auth = $this->resolveKamanAuth($payload, $progress);
+        if (! ($auth['ok'] ?? false)) {
             return [
                 'success' => false,
-                'error' => 'Restaurant name and password are required.',
+                'error' => $auth['error'] ?? 'Restaurant name and password are required. Click Login first.',
             ];
         }
+
+        $restaurantName = $auth['restaurant_name'];
+        $baseUrl = $auth['base_url'];
+        $token = $auth['token'];
 
         $parsed = StructuredCategoryBlocksParser::parseStrict($description);
         if (!$parsed['ok']) {
@@ -63,13 +66,8 @@ final class CategoryAndIngredientsStoreWorkflow extends AbstractFormWorkflow
             ];
         }
 
-        $subdomain = $this->toSubdomain($restaurantName);
-        $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
-
         try {
-            $progress('login', 'Checking existing ingredients categories...', ['subdomain' => $subdomain]);
-            $loginEmail = KamanUrl::loginEmail($subdomain, $payload['username'] ?? null);
-            $token = $this->kamanLogin($baseUrl, $loginEmail, $password);
+            $progress('login', 'Checking existing ingredients categories...', ['subdomain' => $auth['subdomain']]);
             $existingCategories = $this->kamanFetchIngredientsCategories($baseUrl, $token);
             $progress('categories', 'Loaded ' . count($existingCategories) . ' existing ingredients categories', ['count' => count($existingCategories)]);
         } catch (\Throwable $e) {
@@ -109,7 +107,11 @@ final class CategoryAndIngredientsStoreWorkflow extends AbstractFormWorkflow
 
             $categoryPayload = [
                 'restaurant_name' => $restaurantName,
-                'password' => $password,
+                'password' => $payload['password'] ?? '',
+                'username' => $payload['username'] ?? null,
+                'environment' => $payload['environment'] ?? null,
+                'kaman_token' => $token,
+                'kaman_base_url' => $baseUrl,
                 'description' => $categoryDescription,
                 'translate_names' => $payload['translate_names'] ?? true,
             ];
@@ -152,7 +154,11 @@ final class CategoryAndIngredientsStoreWorkflow extends AbstractFormWorkflow
 
         $ingredientsPayload = [
             'restaurant_name' => $restaurantName,
-            'password' => $password,
+            'password' => $payload['password'] ?? '',
+            'username' => $payload['username'] ?? null,
+            'environment' => $payload['environment'] ?? null,
+            'kaman_token' => $token,
+            'kaman_base_url' => $baseUrl,
             'description' => $ingredientsDescription,
             'translate_names' => $payload['translate_names'] ?? true,
         ];

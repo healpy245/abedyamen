@@ -12,10 +12,13 @@ use App\Models\AppDevelopment\AppDevelopmentTicket;
 use App\Services\AppDevelopment\ReleaseService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReleaseController extends Controller
 {
+    use RendersAppDevelopmentModal;
+
     public function __construct(
         private readonly ReleaseService $releases,
     ) {}
@@ -35,7 +38,7 @@ class ReleaseController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $this->authorize('uploadRelease', AppDevelopmentRelease::class);
 
@@ -49,9 +52,14 @@ class ReleaseController extends Controller
             ->limit(80)
             ->get(['id', 'ticket_number', 'title', 'status']);
 
-        return view('app-development.releases.create', [
-            'tickets' => $tickets,
-        ]);
+        return $this->appDevelopmentModal(
+            $request,
+            'app-development.releases.form-create',
+            ['tickets' => $tickets],
+            __('app-development.releases.upload'),
+            'form',
+            route('app-development.releases.index'),
+        );
     }
 
     public function store(StoreReleaseRequest $request): RedirectResponse
@@ -71,7 +79,7 @@ class ReleaseController extends Controller
             ->with('success', __('app-development.flash.release_uploaded'));
     }
 
-    public function show(AppDevelopmentRelease $release): View
+    public function show(Request $request, AppDevelopmentRelease $release): View
     {
         $this->authorize('view', $release);
 
@@ -92,11 +100,18 @@ class ReleaseController extends Controller
             ->unique('user_id')
             ->values();
 
-        return view('app-development.releases.show', [
-            'release' => $release,
-            'ticketStatusCounts' => $ticketStatusCounts,
-            'downloaders' => $downloaders,
-        ]);
+        return $this->appDevelopmentModal(
+            $request,
+            'app-development.releases.panel',
+            [
+                'release' => $release,
+                'ticketStatusCounts' => $ticketStatusCounts,
+                'downloaders' => $downloaders,
+            ],
+            'v'.$release->version_name,
+            'view',
+            route('app-development.releases.index'),
+        );
     }
 
     public function download(AppDevelopmentRelease $release): StreamedResponse

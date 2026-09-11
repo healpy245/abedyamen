@@ -13,9 +13,10 @@
     $locale = app()->getLocale();
     $isRtl = in_array($locale, ['ar', 'he'], true);
 @endphp
-        <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', $locale) }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', $locale) }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}" class="kaman-booting">
 <head>
+    @include('partials.theme-boot')
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', __('app.workspace'))</title>
@@ -27,13 +28,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&family=Heebo:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
 
     {{-- Loaded after Tailwind so component classes win over utilities. --}}
-    <link rel="stylesheet" href="{{ asset('css/kaman.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/kaman.css') }}?v={{ filemtime(public_path('css/kaman.css')) }}">
 
     @stack('head')
 </head>
 <body class="antialiased min-h-screen flex flex-col">
+@include('partials.boot-splash')
 
 @include('partials.topbar', [
     'tagText' => trim($__env->yieldContent('tag', __('app.partner_portal'))),

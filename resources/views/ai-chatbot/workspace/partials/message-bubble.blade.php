@@ -18,6 +18,11 @@
             <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener" class="block mb-2">
                 <img src="{{ $attachmentUrl }}" alt="" class="max-h-56 rounded-lg object-cover">
             </a>
+        @elseif($attachmentUrl && $message->isVideoAttachment())
+            <div class="mb-2 overflow-hidden rounded-lg">
+                <video controls playsinline preload="metadata" class="max-h-56 w-full bg-black"
+                       src="{{ $attachmentUrl }}"></video>
+            </div>
         @elseif($attachmentUrl && $message->isAudioAttachment())
             <div class="mb-2 w-full min-w-[16rem] sm:min-w-[18rem] max-w-md rounded-xl px-2.5 py-2 {{ $isCustomer ? 'bg-[#f7efe3]' : 'bg-white/15' }}">
                 <audio controls preload="metadata" controlslist="nodownload"

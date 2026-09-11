@@ -47,6 +47,12 @@ return [
         'api_tld' => env('KAMAN_API_TLD', 'dev'),
     ],
 
+    'haat' => [
+        'cdn_base_url' => rtrim((string) env('HAAT_CDN_BASE_URL', ''), '/'),
+        'menu_api_url' => env('HAAT_MENU_API_URL'),
+        'ssl_verify' => filter_var(env('HAAT_SSL_VERIFY', env('KAMAN_SSL_VERIFY', 'false')), FILTER_VALIDATE_BOOLEAN),
+    ],
+
     'kaman_agents' => [
         'base_url' => env('KAMAN_AGENTS_BASE_URL'),
         'username' => env('KAMAN_AGENTS_USERNAME'),

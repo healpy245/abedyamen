@@ -464,6 +464,11 @@ class AppDevelopmentWorkflowTest extends TestCase
 
         $this->assertNotNull(User::query()->where('email', 'abedjaber@kaman.rest')->first());
         $this->assertTrue(User::query()->where('email', 'amro@kaman.rest')->firstOrFail()->isDeveloper());
+
+        $ahmadEssa = User::query()->where('email', 'ahmadessa@kaman.rest')->firstOrFail();
+        $this->assertTrue($ahmadEssa->canAccessProject(Project::Form));
+        $this->assertTrue($ahmadEssa->canAccessProject(Project::AppDevelopment));
+        $this->assertFalse($ahmadEssa->canAccessProject(Project::AiChatbot));
     }
 
     public function test_qa_queue_redirects_to_tickets_qa_tab(): void

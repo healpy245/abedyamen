@@ -1,0 +1,21 @@
+---
+description: After local changes, SFTP them to production automatically. Never git push unless asked.
+alwaysApply: true
+---
+
+# Deploy via SFTP automatically
+
+Do not use git (commit, push, PR) unless the user explicitly asks.
+
+After finishing implementation, **SFTP the changed files to production** without waiting to be asked. Use Paramiko like `tools/upload_app_development.py` / previous deploys.
+
+- Host: `sg2plzcpnl505722.prod.sin2.secureserver.net`
+- User/password: `.vscode/sftp.json`
+- Laravel app: `/home/tut8x1radmrp/webtimize`
+- Public CSS/JS: also `/home/tut8x1radmrp/public_html/kaman-workspace`
+- Then `GET https://kaman-workspace.com/ops/clear/483275634`
+- Migrate only when new migrations exist: `GET .../ops/migrate/483275634`
+- Never hit `/ops/migrate-fresh-seed/` (wipes the database)
+- Upload **only files this task changed**. Do not full-sync `tools/sftp_sync.py` (unrelated uncommitted work must stay off production)
+- Delete remote files that were removed locally
+- If Auto-review blocks the SFTP command, retry immediately with `request_smart_mode_approval: true`

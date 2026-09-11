@@ -15,8 +15,10 @@ class DatabaseSeeder extends Seeder
             WorkspaceUserSeeder::class,
             AppDevelopmentMemberSeeder::class,
             SallyMalanChatbotInstanceSeeder::class,
+            SpeedcomChatbotInstanceSeeder::class,
             KamanWhatsappChatbotInstanceSeeder::class,
             MalanCompanyMemberSeeder::class,
+            KamanCompanyMemberSeeder::class,
         ]);
     }
 }

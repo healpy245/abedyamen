@@ -23,8 +23,12 @@ class ProjectAccessTest extends TestCase
      */
     private const MATRIX = [
         'yamen@kaman.rest' => ['form', 'ai-chatbot', 'app-development'],
+        'burhan@kaman.rest' => ['form', 'ai-chatbot', 'app-development'],
         'ahmad@kaman.rest' => ['form'],
         'mohamed@kaman.rest' => ['form', 'ai-chatbot'],
+        'malan@kaman.rest' => ['ai-chatbot'],
+        'kaman@kaman.rest' => ['ai-chatbot'],
+        'ahmadessa@kaman.rest' => ['form', 'app-development'],
     ];
 
     protected function setUp(): void
@@ -41,8 +45,11 @@ class ProjectAccessTest extends TestCase
     {
         $credentials = [
             'yamen@kaman.rest' => 'Yam123456@',
+            'burhan@kaman.rest' => 'Burhan123@',
             'ahmad@kaman.rest' => 'Ahmad123',
             'mohamed@kaman.rest' => 'mohamed123@',
+            'malan@kaman.rest' => 'Malan123@',
+            'kaman@kaman.rest' => 'Kaman123@',
         ];
 
         foreach ($credentials as $email => $password) {
@@ -101,6 +108,22 @@ class ProjectAccessTest extends TestCase
             'yamen@kaman.rest' => [
                 'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label')],
                 'hidden' => [],
+            ],
+            'burhan@kaman.rest' => [
+                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label')],
+                'hidden' => [],
+            ],
+            'malan@kaman.rest' => [
+                'visible' => [__('projects.ai-chatbot.label')],
+                'hidden' => [__('projects.form.label'), __('projects.app-development.label')],
+            ],
+            'kaman@kaman.rest' => [
+                'visible' => [__('projects.ai-chatbot.label')],
+                'hidden' => [__('projects.form.label'), __('projects.app-development.label')],
+            ],
+            'ahmadessa@kaman.rest' => [
+                'visible' => [__('projects.form.label'), __('projects.app-development.label')],
+                'hidden' => [__('projects.ai-chatbot.label')],
             ],
         ];
 

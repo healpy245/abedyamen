@@ -107,32 +107,83 @@
         </div>
     @endif
 
-    <section class="rounded-xl border border-[#f1dfc5] bg-[#fffaf3] p-3">
+    <section class="rounded-xl border border-[#f1dfc5] bg-[#fffaf3] p-3" id="ticket-tasks">
         <div class="mb-2 flex items-center justify-between gap-2">
             <h4 class="text-sm font-bold text-[#2b1e11]">{{ __('app-development.tasks.section') }}</h4>
             @can('create', \App\Models\AppDevelopment\AppDevelopmentTask::class)
-                <a href="{{ route('app-development.tickets.tasks.create', $ticket) }}" class="kaman-button-ghost kaman-button--sm" data-app-dev-modal>
-                    @include('app-development.partials.icon', ['name' => 'plus'])
-                    {{ __('app-development.tasks.create') }}
+                <a href="{{ route('app-development.tickets.tasks.create', $ticket) }}" class="kaman-button kaman-button--sm" data-app-dev-modal>
+                    @include('app-development.partials.icon', ['name' => 'send'])
+                    {{ __('app-development.tasks.escalate') }}
                 </a>
             @endcan
         </div>
-        <div class="space-y-1.5">
+        <div class="space-y-2">
             @forelse($ticket->tasks as $task)
-                <a href="{{ route('app-development.tasks.show', $task) }}"
-                   data-app-dev-modal
-                   class="flex items-center justify-between gap-2 rounded-lg border border-[#eadfce] bg-white px-2.5 py-2 text-sm hover:border-[#c45c26]">
-                    <div class="min-w-0">
-                        <span class="block truncate font-semibold text-[#2b1e11]">{{ $task->title }}</span>
-                        <span class="text-[11px] text-[#a78a6c]">{{ $task->assignee?->name ?? __('app-development.tickets.unassigned') }}</span>
+                @php
+                    $focused = (string) request('task') === (string) $task->id;
+                    $activeEntry = auth()->user() ? $task->activeEntryFor(auth()->user()) : null;
+                    $canTimer = auth()->user()?->can('startTimer', $task);
+                    $closedSeconds = $task->relationLoaded('timeEntries')
+                        ? (int) $task->timeEntries->whereNotNull('ended_at')->sum('duration_seconds')
+                        : (int) $task->timeEntries()->whereNotNull('ended_at')->sum('duration_seconds');
+                    $liveSeconds = $activeEntry
+                        ? $closedSeconds + $activeEntry->elapsedSeconds()
+                        : $task->totalDurationSeconds();
+                @endphp
+                <div id="task-{{ $task->id }}"
+                     class="rounded-lg border px-2.5 py-2 {{ $focused ? 'border-[#c45c26] bg-white ring-1 ring-[#c45c26]/40' : 'border-[#eadfce] bg-white' }}">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <span class="block truncate text-sm font-semibold text-[#2b1e11]">
+                                {{ $task->assignee?->name ?? __('app-development.tickets.unassigned') }}
+                            </span>
+                            <span class="text-[11px] text-[#a78a6c] {{ $activeEntry ? 'app-dev-live-timer' : '' }}"
+                                  @if($activeEntry)
+                                      data-app-dev-timer
+                                      data-started-at="{{ $activeEntry->started_at?->toIso8601String() }}"
+                                      data-base-seconds="{{ $closedSeconds }}"
+                                  @endif>
+                                {{ __('app-development.tasks.total_time') }}:
+                                <bdi class="app-dev-live-timer__clock" data-timer-clock>{{ gmdate('H:i:s', $liveSeconds) }}</bdi>
+                                @if($activeEntry)
+                                    <span class="app-dev-live-timer__badge">{{ __('app-development.tasks.running') }}</span>
+                                @endif
+                            </span>
+                        </div>
+                        <div class="flex shrink-0 flex-col items-end gap-1">
+                            @include('app-development.partials.task-status-badge', ['status' => $task->status])
+                        </div>
                     </div>
-                    <div class="flex shrink-0 flex-col items-end gap-1">
-                        @include('app-development.partials.task-status-badge', ['status' => $task->status])
-                        @include('app-development.partials.priority-badge', ['priority' => $task->priority])
-                    </div>
-                </a>
+                    @if($canTimer && ! $task->isCompleted())
+                        <div class="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[#f1dfc5] pt-2">
+                            @if($activeEntry)
+                                <span class="app-dev-live-timer app-dev-live-timer--inline"
+                                      data-app-dev-timer
+                                      data-started-at="{{ $activeEntry->started_at?->toIso8601String() }}"
+                                      data-base-seconds="0">
+                                    <span class="app-dev-timer-widget__dot" aria-hidden="true"></span>
+                                    <bdi class="app-dev-live-timer__clock" data-timer-clock>{{ gmdate('H:i:s', $activeEntry->elapsedSeconds()) }}</bdi>
+                                </span>
+                                <form method="post" action="{{ route('app-development.tasks.timer.pause', $task) }}">
+                                    @csrf
+                                    <button type="submit" class="kaman-button-ghost kaman-button--sm">{{ __('app-development.tasks.pause_timer') }}</button>
+                                </form>
+                            @else
+                                <form method="post" action="{{ route('app-development.tasks.timer.start', $task) }}">
+                                    @csrf
+                                    <button type="submit" class="kaman-button kaman-button--sm">{{ __('app-development.tasks.start_timer') }}</button>
+                                </form>
+                            @endif
+                            <form method="post" action="{{ route('app-development.tasks.timer.complete', $task) }}" class="flex flex-wrap items-center gap-1.5">
+                                @csrf
+                                <input type="text" name="completion_note" class="kaman-input kaman-input--sm w-36" placeholder="{{ __('app-development.tasks.completion_note') }}">
+                                <button type="submit" class="kaman-button-ghost kaman-button--sm">{{ __('app-development.tasks.complete') }}</button>
+                            </form>
+                        </div>
+                    @endif
+                </div>
             @empty
-                <p class="text-xs text-[#a78a6c]">{{ __('app-development.tasks.empty_column') }}</p>
+                <p class="text-xs text-[#a78a6c]">{{ __('app-development.tasks.empty_for_ticket') }}</p>
             @endforelse
         </div>
     </section>

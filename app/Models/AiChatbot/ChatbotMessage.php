@@ -79,6 +79,18 @@ class ChatbotMessage extends Model
             || str_ends_with(strtolower((string) ($this->attachment_path ?? '')), '.pdf');
     }
 
+    public function isVideoAttachment(): bool
+    {
+        $mime = strtolower((string) $this->attachment_mime);
+        if (str_starts_with($mime, 'video/')) {
+            return true;
+        }
+
+        $path = strtolower((string) ($this->attachment_path ?? ''));
+
+        return (bool) preg_match('/\.(mp4|mov|m4v|webm|3gp)$/', $path);
+    }
+
     public function isAudioAttachment(): bool
     {
         $mime = strtolower((string) $this->attachment_mime);

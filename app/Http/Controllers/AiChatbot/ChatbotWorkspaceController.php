@@ -6,6 +6,7 @@ namespace App\Http\Controllers\AiChatbot;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AiChatbot\StoreConversationInstructionRequest;
+use App\Http\Requests\AiChatbot\StoreKamanPosDemoRequest;
 use App\Http\Requests\AiChatbot\UpdateBotModeRequest;
 use App\Http\Requests\AiChatbot\UpdateConversationInstructionRequest;
 use App\Http\Requests\AiChatbot\UpdateWorkspaceSettingsRequest;
@@ -22,6 +23,7 @@ use App\Services\AiChatbot\ChatbotAuthorizationService;
 use App\Services\AiChatbot\ChatbotGreenApiService;
 use App\Services\AiChatbot\ChatbotInstructionService;
 use App\Services\AiChatbot\ChatbotTestService;
+use App\Services\AiChatbot\KamanPosDemoVideoService;
 use App\Services\AiChatbot\PromptCompiler;
 use App\Services\Malan\MalanConversationContextService;
 use Illuminate\Http\JsonResponse;
@@ -102,7 +104,7 @@ class ChatbotWorkspaceController extends Controller
         $context = $instance->hasMalanIntegration()
             ? $this->contextService->getActive($conversation)
             : null;
-        $contextSummary = $this->contextService->toPromptSummary($context);
+        $contextSummary = $this->contextService->toPromptSummary($context, $instance);
 
         return view('ai-chatbot.workspace.conversation', [
             'instance' => $instance,
@@ -332,9 +334,54 @@ class ChatbotWorkspaceController extends Controller
                 'webhook_configured' => filled($instance->greenapi_webhook_token),
                 'is_active' => $instance->isBotGloballyActive(),
             ],
+            'greenapiWebhookUrl' => $this->greenApiService->webhookUrl($instance),
             'showInstanceSwitcher' => $this->authz->instancesForUser($user)->count() > 1,
             'instances' => $this->authz->instancesForUser($user),
+            'posDemo' => app(KamanPosDemoVideoService::class)->settings($instance),
+            'posDemoReady' => app(KamanPosDemoVideoService::class)->isReady($instance),
         ]);
+    }
+
+    public function storePosDemo(
+        StoreKamanPosDemoRequest $request,
+        ChatbotInstance $instance,
+        KamanPosDemoVideoService $demo,
+    ): RedirectResponse {
+        $this->authz->authorize($request->user(), $instance, ChatbotAuthorizationService::ABILITY_MANAGE_SETTINGS);
+
+        if (! $instance->hasKamanWhatsappIntegration()) {
+            abort(404);
+        }
+
+        $demo->store($instance, $request->file('video'));
+
+        $this->auditService->log($instance, 'instance.pos_demo_uploaded', $request->user(), null, [
+            'original_name' => $request->file('video')?->getClientOriginalName(),
+        ]);
+
+        return redirect()
+            ->route('ai-chatbot.workspace.settings', $instance)
+            ->with('status', __('chatbot.workspace.pos_demo_saved'));
+    }
+
+    public function destroyPosDemo(
+        Request $request,
+        ChatbotInstance $instance,
+        KamanPosDemoVideoService $demo,
+    ): RedirectResponse {
+        $this->authz->authorize($request->user(), $instance, ChatbotAuthorizationService::ABILITY_MANAGE_SETTINGS);
+
+        if (! $instance->hasKamanWhatsappIntegration()) {
+            abort(404);
+        }
+
+        $demo->destroy($instance);
+
+        $this->auditService->log($instance, 'instance.pos_demo_deleted', $request->user());
+
+        return redirect()
+            ->route('ai-chatbot.workspace.settings', $instance)
+            ->with('status', __('chatbot.workspace.pos_demo_deleted'));
     }
 
     public function testPage(Request $request, ChatbotInstance $instance): View
@@ -360,16 +407,35 @@ class ChatbotWorkspaceController extends Controller
         $validated = $request->validated();
         $sections = $this->promptCompiler->normalize($validated['prompt_sections'] ?? []);
 
+        $settings = is_array($instance->integration_settings) ? $instance->integration_settings : [];
+        $settings['ignored_reply_phones'] = ChatbotInstance::parsePhoneList(
+            $validated['ignored_reply_phones'] ?? ''
+        );
+
         $instance->forceFill([
             'disabled_message' => $validated['disabled_message'] ?? $instance->disabled_message,
             'name' => $validated['name'] ?? $instance->name,
+            'greenapi_url' => array_key_exists('greenapi_url', $validated)
+                ? (trim((string) ($validated['greenapi_url'] ?? '')) !== ''
+                    ? trim((string) $validated['greenapi_url'])
+                    : null)
+                : $instance->greenapi_url,
+            'integration_settings' => $settings,
         ]);
         $instance->save();
+
+        // Ensure webhook token exists once Green API is wired from this page.
+        if (filled($instance->greenapi_url)) {
+            $this->greenApiService->ensureWebhookToken($instance);
+            $this->greenApiService->ensureOutgoingPhoneWebhook($instance);
+        }
 
         $this->promptCompiler->applyToInstance($instance, $sections);
 
         $this->auditService->log($instance, 'instance.settings_updated', $user, null, [
             'sections' => $this->promptCompiler->activeSectionNames($sections),
+            'ignored_reply_phones_count' => count($settings['ignored_reply_phones']),
+            'greenapi_configured' => filled($instance->greenapi_url),
         ]);
 
         return redirect()
@@ -385,7 +451,28 @@ class ChatbotWorkspaceController extends Controller
         $active = $request->boolean('is_active');
         $previous = $instance->isBotGloballyActive();
 
-        $instance->forceFill(['is_active' => $active])->save();
+        $instance->forceFill([
+            'is_active' => $active,
+            'bot_activated_at' => $active ? now() : $instance->bot_activated_at,
+        ])->save();
+
+        if ($active) {
+            $instanceId = (int) $instance->id;
+            dispatch(function () use ($instanceId): void {
+                try {
+                    $bot = ChatbotInstance::query()->find($instanceId);
+                    if ($bot === null) {
+                        return;
+                    }
+
+                    $greenApi = app(ChatbotGreenApiService::class);
+                    $greenApi->ensureOutgoingPhoneWebhook($bot);
+                    $greenApi->drainIncomingNotifications($bot, 40);
+                } catch (Throwable $e) {
+                    report($e);
+                }
+            })->afterResponse();
+        }
 
         $this->auditService->log($instance, 'instance.bot_active_changed', $user, null, [
             'from' => $previous,
@@ -399,6 +486,22 @@ class ChatbotWorkspaceController extends Controller
         return redirect()
             ->back()
             ->with('status', $message);
+    }
+
+    public function clearConversations(Request $request, ChatbotInstance $instance): RedirectResponse
+    {
+        $user = $request->user();
+        $this->authz->authorize($user, $instance, ChatbotAuthorizationService::ABILITY_MANAGE_SETTINGS);
+
+        $result = $instance->clearAllConversations();
+
+        $this->auditService->log($instance, 'instance.conversations_cleared', $user, null, $result);
+
+        return redirect()
+            ->route('ai-chatbot.workspace.conversations', $instance)
+            ->with('status', __('chatbot.workspace.conversations_cleared', [
+                'count' => $result['conversations'],
+            ]));
     }
 
     public function test(WorkspaceTestRequest $request, ChatbotInstance $instance): JsonResponse
@@ -603,6 +706,7 @@ class ChatbotWorkspaceController extends Controller
             'is_image' => $message->isImageAttachment(),
             'is_pdf' => $message->isPdfAttachment(),
             'is_audio' => $message->isAudioAttachment(),
+            'is_video' => $message->isVideoAttachment(),
             'attachment_url' => $attachmentUrl,
             'sent_by_user_id' => $message->sent_by_user_id,
         ];

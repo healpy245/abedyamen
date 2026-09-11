@@ -118,27 +118,13 @@ class TaskController extends Controller
         ]);
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): RedirectResponse
     {
         $this->authorize('create', AppDevelopmentTask::class);
 
-        $tickets = AppDevelopmentTicket::query()
-            ->orderByDesc('updated_at')
-            ->limit(80)
-            ->get(['id', 'ticket_number', 'title']);
-
-        return $this->appDevelopmentModal(
-            $request,
-            'app-development.tasks.form-create',
-            [
-                'ticket' => null,
-                'tickets' => $tickets,
-                'developers' => $this->developers(),
-            ],
-            __('app-development.tasks.create'),
-            'form',
-            route('app-development.tasks.index'),
-        );
+        return redirect()
+            ->route('app-development.tickets.index')
+            ->with('info', __('app-development.tasks.escalate_from_ticket_only'));
     }
 
     public function createForTicket(Request $request, AppDevelopmentTicket $ticket): View
@@ -151,55 +137,40 @@ class TaskController extends Controller
             'app-development.tasks.form-create',
             [
                 'ticket' => $ticket,
-                'tickets' => collect(),
                 'developers' => $this->developers(),
             ],
-            __('app-development.tasks.create').' · '.$ticket->ticket_number,
+            __('app-development.tasks.escalate').' · '.$ticket->ticket_number,
             'form',
             route('app-development.tickets.show', $ticket),
         );
     }
 
-    public function store(StoreTaskRequest $request): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        return $this->persistNewTask($request, null);
+        return redirect()
+            ->route('app-development.tickets.index')
+            ->with('info', __('app-development.tasks.escalate_from_ticket_only'));
     }
 
     public function storeForTicket(StoreTaskRequest $request, AppDevelopmentTicket $ticket): RedirectResponse
     {
-        $this->authorize('view', $ticket);
-
-        return $this->persistNewTask($request, $ticket);
+        return $this->escalateFromTicket($request, $ticket);
     }
 
-    public function show(Request $request, AppDevelopmentTask $task): View
+    public function show(Request $request, AppDevelopmentTask $task): RedirectResponse
     {
         $this->authorize('view', $task);
+        $task->loadMissing('ticket');
 
-        $task->load([
-            'ticket.appTypeRows',
-            'assignee:id,name',
-            'creator:id,name',
-            'timeEntries.user:id,name',
-            'timeEntries.editedBy:id,name',
-        ]);
+        if ($task->ticket === null) {
+            return redirect()->route('app-development.tasks.index');
+        }
 
-        $suggestCompleteTicket = $task->ticket !== null
-            && $task->ticket->allTasksCompleted()
-            && ! $task->ticket->isCompleted();
-
-        return $this->appDevelopmentModal(
-            $request,
-            'app-development.tasks.panel',
-            [
-                'task' => $task,
-                'developers' => $this->developers(),
-                'suggestCompleteTicket' => $suggestCompleteTicket,
-            ],
-            $task->title,
-            'view',
-            route('app-development.tasks.index'),
-        );
+        return redirect()
+            ->route('app-development.tickets.show', [
+                'ticket' => $task->ticket,
+                'task' => $task->id,
+            ]);
     }
 
     public function update(UpdateTaskRequest $request, AppDevelopmentTask $task): RedirectResponse
@@ -225,14 +196,18 @@ class TaskController extends Controller
         }
 
         $task->forceFill($data)->save();
+        $task->loadMissing('ticket');
 
         $newAssignee = (int) ($task->assignee_id ?? 0);
         if ($newAssignee > 0 && $newAssignee !== $previousAssignee) {
-            $this->notifications->notifyTaskAssigned($task->fresh(['ticket']) ?? $task, $request->user());
+            $this->notifications->notifyTaskAssigned($task, $request->user());
         }
 
         $redirect = redirect()
-            ->route('app-development.tasks.show', $task)
+            ->route('app-development.tickets.show', [
+                'ticket' => $task->ticket ?? $task->ticket_id,
+                'task' => $task->id,
+            ])
             ->with('success', __('app-development.flash.task_updated'));
 
         if ($task->ticket && $task->ticket->allTasksCompleted() && ! $task->ticket->isCompleted()) {
@@ -244,31 +219,27 @@ class TaskController extends Controller
         return $redirect;
     }
 
-    private function persistNewTask(StoreTaskRequest $request, ?AppDevelopmentTicket $ticket): RedirectResponse
+    private function escalateFromTicket(StoreTaskRequest $request, AppDevelopmentTicket $ticket): RedirectResponse
     {
-        $ticketId = $ticket?->id ?? (int) $request->validated('ticket_id');
-        $ticket ??= AppDevelopmentTicket::query()->findOrFail($ticketId);
-
         $task = AppDevelopmentTask::query()->create([
             'ticket_id' => $ticket->id,
-            'title' => $request->validated('title'),
-            'description' => $request->validated('description'),
-            'assignee_id' => $request->validated('assignee_id'),
-            'priority' => $request->validated('priority'),
+            'title' => $ticket->title,
+            'description' => $ticket->description,
+            'assignee_id' => (int) $request->validated('assignee_id'),
+            'priority' => $ticket->priority,
             'status' => AppDevelopmentTaskStatus::Todo,
-            'due_at' => $request->filled('due_at')
-                ? Carbon::parse((string) $request->validated('due_at'))
-                : null,
+            'due_at' => null,
             'created_by' => $request->user()->id,
         ]);
 
-        if ($task->assignee_id) {
-            $this->notifications->notifyTaskAssigned($task->load('ticket'), $request->user());
-        }
+        $this->notifications->notifyTaskAssigned($task->load('ticket'), $request->user());
 
         return redirect()
-            ->route('app-development.tasks.show', $task)
-            ->with('success', __('app-development.flash.task_created'));
+            ->route('app-development.tickets.show', [
+                'ticket' => $ticket,
+                'task' => $task->id,
+            ])
+            ->with('success', __('app-development.flash.task_escalated'));
     }
 
     /**

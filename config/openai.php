@@ -67,5 +67,6 @@ return [
     */
     'default_model' => env('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini'),
     'vision_model' => env('OPENAI_VISION_MODEL', 'gpt-4o'),
+    'menu_agent_model' => env('OPENAI_MENU_AGENT_MODEL', env('OPENAI_VISION_MODEL', 'gpt-4o')),
     'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-1'),
 ];

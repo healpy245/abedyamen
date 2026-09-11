@@ -39,6 +39,7 @@ class ChatbotConversation extends Model
     protected $fillable = [
         'user_id',
         'instance_id',
+        'campaign_id',
         'title',
         'channel',
         'external_chat_id',
@@ -97,6 +98,22 @@ class ChatbotConversation extends Model
     public function malanContext(): HasOne
     {
         return $this->hasOne(ChatbotConversationContext::class, 'conversation_id');
+    }
+
+    public function campaign(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Malan\MalanCampaign::class, 'campaign_id');
+    }
+
+    public function isCampaignLeadBot(): bool
+    {
+        if ($this->campaign_id !== null) {
+            return true;
+        }
+
+        $meta = is_array($this->metadata) ? $this->metadata : [];
+
+        return ! empty($meta['campaign_lead_bot']) || ! empty($meta['campaign_id']);
     }
 
     public function toolExecutions(): HasMany
@@ -192,7 +209,20 @@ class ChatbotConversation extends Model
      */
     public function scopeCustomerFacing(Builder $query): Builder
     {
-        return $query->where('channel', '!=', self::CHANNEL_TEST);
+        return $query
+            ->where('channel', '!=', self::CHANNEL_TEST)
+            ->whereNull('campaign_id');
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeForCampaign(Builder $query, int $campaignId): Builder
+    {
+        return $query
+            ->where('campaign_id', $campaignId)
+            ->where('channel', '!=', self::CHANNEL_TEST);
     }
 
     /**

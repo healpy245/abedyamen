@@ -10,6 +10,14 @@ final class MalanCustomerLookupResult
      * @param  array{id:?string,name:?string,phone_masked:?string,identity_masked:?string,status:?string,city:?string}|null  $customer
      * @param  array{balance_raw:?float,debt_amount:?float,currency:string}|null  $financial
      * @param  array{package_name:?string}|null  $service
+     * @param  array{
+     *     status_raw:?string,
+     *     state:?string,
+     *     is_online:?bool,
+     *     classification: 'connected'|'expired'|'other'|'unknown',
+     *     guidance: string,
+     *     request_succeeded:?bool
+     * }|null  $radius
      * @param  array<string, mixed>  $meta
      */
     public function __construct(
@@ -18,6 +26,7 @@ final class MalanCustomerLookupResult
         public readonly ?array $customer = null,
         public readonly ?array $financial = null,
         public readonly ?array $service = null,
+        public readonly ?array $radius = null,
         public readonly ?string $error_code = null,
         public readonly ?string $user_message = null,
         public readonly array $meta = [],
@@ -36,6 +45,7 @@ final class MalanCustomerLookupResult
             'customer' => $this->customer,
             'financial' => $this->financial,
             'service' => $this->service,
+            'radius' => $this->radius,
             'error_code' => $this->error_code,
             'message' => $this->user_message,
             'bank_transfer' => $this->meta['bank_transfer'] ?? null,
@@ -59,6 +69,8 @@ final class MalanCustomerLookupResult
             'debt_amount' => $this->financial['debt_amount'] ?? null,
             'phone_masked' => $this->customer['phone_masked'] ?? null,
             'identity_masked' => $this->customer['identity_masked'] ?? null,
+            'radius_classification' => $this->radius['classification'] ?? null,
+            'radius_state' => $this->radius['state'] ?? null,
         ];
     }
 }

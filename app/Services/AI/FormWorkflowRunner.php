@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Exceptions\FormWorkflowPausedException;
 use App\Services\AI\Contracts\FormWorkflowContract;
 use App\Services\AI\Workflows\CategoryAndIngredientsStoreWorkflow;
 use App\Services\AI\Workflows\CategoryAndMealStoreWorkflow;
@@ -11,6 +12,7 @@ use App\Services\AI\Workflows\CategoryIngredientsStoreWorkflow;
 use App\Services\AI\Workflows\CategoryStoreWithAiImageWorkflow;
 use App\Services\AI\Workflows\CategoryStoreWorkflow;
 use App\Services\AI\Workflows\DrinksStoreWorkflow;
+use App\Services\AI\Workflows\HaatMenuCopyWorkflow;
 use App\Services\AI\Workflows\IngredientsStoreWorkflow;
 use App\Services\AI\Workflows\MealStoreWithAiImagesWorkflow;
 use App\Services\AI\Workflows\MealStoreWorkflow;
@@ -30,6 +32,7 @@ final class FormWorkflowRunner
         'Ingredients Store' => IngredientsStoreWorkflow::class,
         'Category and Ingredients Store' => CategoryAndIngredientsStoreWorkflow::class,
         'Drinks Store' => DrinksStoreWorkflow::class,
+        'HAAT Menu Copy' => HaatMenuCopyWorkflow::class,
     ];
 
     /**
@@ -71,6 +74,14 @@ final class FormWorkflowRunner
 
         try {
             return $workflow->run($payload, $onProgress);
+        } catch (FormWorkflowPausedException $e) {
+            return [
+                'success' => false,
+                'paused' => true,
+                'message' => 'Workflow paused. You can continue it from the submissions list.',
+                'error' => null,
+                'data' => $e->report,
+            ];
         } catch (\Throwable $e) {
             Log::error('Form workflow failed', [
                 'method_type' => $methodType,

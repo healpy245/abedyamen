@@ -19,6 +19,8 @@ class UpdateWorkspaceSettingsRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:120'],
             'disabled_message' => ['nullable', 'string', 'max:1000'],
+            'ignored_reply_phones' => ['nullable', 'string', 'max:5000'],
+            'greenapi_url' => ['nullable', 'string', 'max:2000'],
             'prompt_sections' => ['required', 'array'],
             'prompt_sections.identity' => ['nullable', 'array'],
             'prompt_sections.identity.bot_name' => ['nullable', 'string', 'max:120'],

@@ -17,4 +17,16 @@ enum AppDevelopmentTicketType: string
     {
         return __('app-development.types.'.$this->value);
     }
+
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Bug => 'bug',
+            self::Feature => 'sparkles',
+            self::Improvement => 'trending',
+            self::Optimization => 'zap',
+            self::UiUx => 'layout',
+            self::Other => 'dots',
+        };
+    }
 }

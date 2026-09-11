@@ -207,6 +207,8 @@
                 let mediaHtml = '';
                 if (meta.attachment_url && meta.is_image) {
                     mediaHtml = `<a href="${escapeHtml(meta.attachment_url)}" target="_blank" rel="noopener" class="mb-2 block overflow-hidden rounded-xl"><img src="${escapeHtml(meta.attachment_url)}" alt="" class="max-h-56 w-full object-cover"></a>`;
+                } else if (meta.attachment_url && meta.is_video) {
+                    mediaHtml = `<div class="mb-2 overflow-hidden rounded-xl"><video controls playsinline preload="metadata" class="max-h-56 w-full bg-black" src="${escapeHtml(meta.attachment_url)}"></video></div>`;
                 } else if (meta.attachment_url && meta.is_pdf) {
                     mediaHtml = `<a href="${escapeHtml(meta.attachment_url)}" target="_blank" rel="noopener" class="mb-2 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${isUser ? 'bg-white/15' : 'bg-[#f7efe3]'}">📄 ${escapeHtml(t.attachment_file || 'PDF')}</a>`;
                 } else if (meta.attachment_url) {

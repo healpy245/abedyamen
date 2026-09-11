@@ -69,7 +69,14 @@ class MalanNormalizerAndMapperTest extends TestCase
                     'balance' => 0,
                 ],
                 'internet_services' => [
-                    ['package_name' => 'Summer Time'],
+                    [
+                        'package_name' => 'Summer Time',
+                        'radius_status' => [
+                            'request_succeeded' => true,
+                            'state' => 'מחובר',
+                            'is_online' => true,
+                        ],
+                    ],
                 ],
             ],
         ]]);
@@ -80,6 +87,52 @@ class MalanNormalizerAndMapperTest extends TestCase
         $this->assertNull($result->financial['debt_amount']);
         $this->assertSame('Summer Time', $result->service['package_name']);
         $this->assertSame('053***9841', $result->customer['phone_masked']);
+        $this->assertSame('connected', $result->radius['classification']);
+        $this->assertTrue($result->radius['is_online']);
+    }
+
+    public function test_mapper_classifies_offline_radius_as_other(): void
+    {
+        $mapper = new MalanCustomerResponseMapper;
+        $result = $mapper->mapSuccessfulPayload([
+            'result' => true,
+            'data' => [
+                'client' => ['id' => '1', 'status' => 'ACTIVE'],
+                'financial_summary' => ['balance' => 0],
+                'internet_services' => [[
+                    'package_name' => 'X',
+                    'radius_status' => [
+                        'request_succeeded' => true,
+                        'state' => 'offline',
+                        'is_online' => false,
+                    ],
+                ]],
+            ],
+        ]);
+
+        $this->assertSame('other', $result->radius['classification']);
+        $this->assertSame('offline', $result->radius['state']);
+    }
+
+    public function test_mapper_classifies_expired_radius(): void
+    {
+        $mapper = new MalanCustomerResponseMapper;
+        $result = $mapper->mapSuccessfulPayload([
+            'result' => true,
+            'data' => [
+                'client' => ['id' => '1', 'status' => 'ACTIVE'],
+                'financial_summary' => ['balance' => 0],
+                'internet_services' => [[
+                    'radius_status' => [
+                        'request_succeeded' => true,
+                        'state' => 'פג תוקף',
+                        'is_online' => false,
+                    ],
+                ]],
+            ],
+        ]);
+
+        $this->assertSame('expired', $result->radius['classification']);
     }
 
     public function test_mapper_parses_object_envelope_debt_disconnected(): void

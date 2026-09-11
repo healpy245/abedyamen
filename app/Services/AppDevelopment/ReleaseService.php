@@ -19,6 +19,7 @@ class ReleaseService
 {
     public function __construct(
         private readonly TicketWorkflowService $workflow,
+        private readonly AppDevelopmentNotificationService $notifications,
     ) {}
 
     /**
@@ -88,6 +89,8 @@ class ReleaseService
                         ],
                     );
                 }
+            } else {
+                $this->notifications->notifyRelease($release, $user);
             }
 
             return $release->refresh();

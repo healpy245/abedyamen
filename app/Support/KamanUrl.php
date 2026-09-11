@@ -37,6 +37,28 @@ final class KamanUrl
         return self::host($subdomain, $tld) . '/api/manager';
     }
 
+    /** Cashier API root, e.g. https://thex.kaman.dev/api/cashier */
+    public static function cashierApi(string $subdomain, ?string $tld = null): string
+    {
+        return self::host($subdomain, $tld) . '/api/cashier';
+    }
+
+    /** Tenant origin from a manager API base, e.g. https://thex.kaman.rest */
+    public static function originFromManagerApi(string $managerBaseUrl): string
+    {
+        $base = rtrim($managerBaseUrl, '/');
+        if (str_ends_with($base, '/api/manager')) {
+            return substr($base, 0, -strlen('/api/manager')) ?: $base;
+        }
+
+        return $base;
+    }
+
+    public static function cashierApiFromManager(string $managerBaseUrl): string
+    {
+        return self::originFromManagerApi($managerBaseUrl) . '/api/cashier';
+    }
+
     public static function loginEmail(string $subdomain, ?string $username = null): string
     {
         $username = trim((string) $username);

@@ -21,8 +21,6 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
 
     public function run(array $payload, ?callable $onProgress = null): array
     {
-        $restaurantName = trim($payload['restaurant_name'] ?? '');
-        $password = $payload['password'] ?? '';
         $description = trim($payload['description'] ?? '');
         $drinksSelection = $payload['drinks_selection'] ?? [];
         $imageDirectory = $payload['drinks_directory'] ?? 'ColdDrinks';
@@ -31,10 +29,11 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
             $onProgress && $onProgress($step, $message, $data);
         };
 
-        if ($restaurantName === '' || $password === '') {
+        $auth = $this->resolveKamanAuth($payload, $progress);
+        if (! ($auth['ok'] ?? false)) {
             return [
                 'success' => false,
-                'error' => 'Restaurant name and password are required.',
+                'error' => $auth['error'] ?? 'Restaurant name and password are required. Click Login first.',
             ];
         }
 
@@ -45,17 +44,14 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
             ];
         }
 
-        $subdomain = $this->toSubdomain($restaurantName);
-        $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
+        $restaurantName = $auth['restaurant_name'];
+        $baseUrl = $auth['base_url'];
+        $token = $auth['token'];
         $imageBasePath = public_path($imageDirectory);
 
         set_time_limit(600);
 
         try {
-            $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
-            $loginEmail = KamanUrl::loginEmail($subdomain, $payload['username'] ?? null);
-            $token = $this->login($baseUrl, $loginEmail, $password);
-            $progress('login', 'Logged in successfully', ['subdomain' => $subdomain]);
 
             $progress('categories', 'Fetching categories...', []);
             $categories = $this->fetchCategories($baseUrl, $token);

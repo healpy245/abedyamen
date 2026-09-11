@@ -40,7 +40,7 @@ class ChatbotTestService
      * }  $input
      * @return array<string, mixed>
      */
-    public function run(User $user, ChatbotInstance $instance, array $input): array
+    public function run(User $user, ChatbotInstance $instance, array $input, ?\App\Models\Malan\MalanCampaign $campaign = null): array
     {
         $channel = (string) ($input['channel'] ?? ChatbotConversation::CHANNEL_TEST);
         if (! in_array($channel, [
@@ -53,7 +53,7 @@ class ChatbotTestService
         }
 
         $voiceMode = (bool) ($input['voice_mode'] ?? false);
-        $conversation = $this->resolveTestConversation($user, $instance, $input, $channel);
+        $conversation = $this->resolveTestConversation($user, $instance, $input, $channel, $campaign);
         $conversationId = (int) $conversation->id;
 
         $message = trim((string) ($input['message'] ?? ''));
@@ -68,10 +68,37 @@ class ChatbotTestService
                     'duration_ms' => null,
                     'messages' => [],
                     'tool_calls' => [],
+                    'campaign_id' => $campaign?->id,
                 ];
             }
 
             throw new RuntimeException('Test message is required.');
+        }
+
+        $demo = app(KamanPosDemoVideoService::class);
+        if ($instance->hasKamanWhatsappIntegration()
+            && $demo->customerAskedForVisual($message)
+            && $demo->isReady($instance)
+        ) {
+            return $this->recordPosDemoTestReply($instance, $conversation, $message, $demo, $campaign);
+        }
+
+        $visa = app(KamanVisaDeviceFact::class);
+        if ($instance->hasKamanWhatsappIntegration() && $visa->customerAsked($message)) {
+            return $this->recordVisaDeviceTestReply($instance, $conversation, $message, $campaign);
+        }
+
+        $origin = app(KamanOriginFact::class);
+        if ($instance->hasKamanWhatsappIntegration() && $origin->customerAsked($message)) {
+            return $this->recordOriginFactTestReply($instance, $conversation, $message, $campaign);
+        }
+
+        $closer = app(KamanConversationCloser::class);
+        $hasPriorAssistant = $conversation->messages()
+            ->where('role', 'assistant')
+            ->exists();
+        if ($instance->hasKamanWhatsappIntegration() && $hasPriorAssistant && $closer->isThanksClosing($message)) {
+            return $this->recordThanksClosingTestReply($instance, $conversation, $message, $campaign, $closer);
         }
 
         try {
@@ -85,6 +112,7 @@ class ChatbotTestService
                     'voice_mode' => $voiceMode,
                     // Allow real Malan lookups in the sandbox; WhatsApp is never sent for CHANNEL_TEST.
                     'dry_run' => false,
+                    'campaign_lead_bot' => $campaign !== null,
                     'conversation_attributes' => [
                         'channel' => ChatbotConversation::CHANNEL_TEST,
                     ],
@@ -101,6 +129,7 @@ class ChatbotTestService
                 'user_message' => $message,
                 'messages' => $this->messageHistory($instance, $conversationId),
                 'tool_calls' => [],
+                'campaign_id' => $campaign?->id,
             ];
         }
 
@@ -113,6 +142,7 @@ class ChatbotTestService
             'duration_ms' => $result['duration_ms'] ?? null,
             'messages' => $this->messageHistory($instance, (int) $result['conversation']->id),
             'tool_calls' => $this->sanitizeToolCalls($result['tool_calls'] ?? []),
+            'campaign_id' => $campaign?->id,
         ];
     }
 
@@ -185,19 +215,27 @@ class ChatbotTestService
         ChatbotInstance $instance,
         array $input,
         string $simulatedChannel,
+        ?\App\Models\Malan\MalanCampaign $campaign = null,
     ): ChatbotConversation {
         $conversationId = isset($input['conversation_id']) ? (int) $input['conversation_id'] : null;
         $wantsReset = ! empty($input['reset']) || $conversationId === null;
 
         if ($wantsReset) {
-            return $this->startFreshTestConversation($user, $instance, $input, $simulatedChannel);
+            return $this->startFreshTestConversation($user, $instance, $input, $simulatedChannel, $campaign);
         }
 
-        $conversation = ChatbotConversation::query()
+        $query = ChatbotConversation::query()
             ->where('id', $conversationId)
             ->where('instance_id', $instance->id)
-            ->where('channel', ChatbotConversation::CHANNEL_TEST)
-            ->first();
+            ->where('channel', ChatbotConversation::CHANNEL_TEST);
+
+        if ($campaign !== null) {
+            $query->where('campaign_id', $campaign->id);
+        } else {
+            $query->whereNull('campaign_id');
+        }
+
+        $conversation = $query->first();
 
         if ($conversation === null) {
             throw new RuntimeException('Test conversation not found.');
@@ -217,24 +255,33 @@ class ChatbotTestService
         ChatbotInstance $instance,
         array $input,
         string $simulatedChannel,
+        ?\App\Models\Malan\MalanCampaign $campaign = null,
     ): ChatbotConversation {
         $phone = trim((string) ($input['phone'] ?? '0533046830'));
         if ($phone === '') {
             $phone = '0533046830';
         }
 
-        $externalChatId = $this->externalChatIdForPhone($phone);
+        $baseExternal = $this->externalChatIdForPhone($phone);
+        $externalChatId = $campaign !== null
+            ? 'campaign:'.$campaign->id.':test:'.$baseExternal
+            : $baseExternal;
+
         $attributes = [
             'user_id' => $user->id,
-            'title' => 'Simulation — '.now()->format('Y-m-d H:i'),
+            'campaign_id' => $campaign?->id,
+            'title' => ($campaign ? 'Campaign test — ' : 'Simulation — ').now()->format('Y-m-d H:i'),
             'contact_phone' => $phone,
             'contact_name' => $input['customer_name'] ?? 'Test customer',
             'bot_mode' => ChatbotConversation::BOT_MODE_ACTIVE,
             'attention_status' => ChatbotConversation::ATTENTION_NORMAL,
-            'metadata' => [
+            'metadata' => array_filter([
                 'simulation' => true,
                 'simulated_channel' => $simulatedChannel,
-            ],
+                'campaign_id' => $campaign?->id,
+                'campaign_lead_bot' => $campaign !== null,
+                'whatsapp_chat_id' => $baseExternal,
+            ]),
         ];
 
         $conversation = ChatbotConversation::query()
@@ -297,6 +344,195 @@ class ChatbotTestService
         return $digits.'@c.us';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function recordPosDemoTestReply(
+        ChatbotInstance $instance,
+        ChatbotConversation $conversation,
+        string $userMessage,
+        KamanPosDemoVideoService $demo,
+        ?\App\Models\Malan\MalanCampaign $campaign = null,
+    ): array {
+        $conversation->messages()->create([
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_CUSTOMER,
+            'message' => $userMessage,
+        ]);
+
+        $stored = $demo->settings($instance);
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message_type' => 'video',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'message' => $demo->caption(),
+            'delivery_status' => 'sent',
+            'attachment_disk' => (string) ($stored['disk'] ?? KamanPosDemoVideoService::DISK),
+            'attachment_path' => (string) ($stored['path'] ?? ''),
+            'attachment_mime' => $demo->mime($instance),
+            'metadata' => [
+                'kaman_pos_demo' => true,
+                'simulation' => true,
+            ],
+        ]);
+
+        $conversation->recordAssistantActivity();
+
+        return [
+            'ok' => true,
+            'simulation' => true,
+            'conversation_id' => (int) $conversation->id,
+            'user_message' => $userMessage,
+            'assistant_response' => $demo->caption(),
+            'duration_ms' => 0,
+            'messages' => $this->messageHistory($instance, (int) $conversation->id),
+            'tool_calls' => [],
+            'campaign_id' => $campaign?->id,
+            'pos_demo_video' => true,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function recordVisaDeviceTestReply(
+        ChatbotInstance $instance,
+        ChatbotConversation $conversation,
+        string $userMessage,
+        ?\App\Models\Malan\MalanCampaign $campaign = null,
+    ): array {
+        $conversation->messages()->create([
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_CUSTOMER,
+            'message' => $userMessage,
+        ]);
+
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'message' => KamanVisaDeviceFact::REPLY,
+            'delivery_status' => 'sent',
+            'metadata' => [
+                'kaman_visa_device' => true,
+                'simulation' => true,
+            ],
+        ]);
+
+        $conversation->recordAssistantActivity();
+
+        return [
+            'ok' => true,
+            'simulation' => true,
+            'conversation_id' => (int) $conversation->id,
+            'user_message' => $userMessage,
+            'assistant_response' => KamanVisaDeviceFact::REPLY,
+            'duration_ms' => 0,
+            'messages' => $this->messageHistory($instance, (int) $conversation->id),
+            'tool_calls' => [],
+            'campaign_id' => $campaign?->id,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function recordOriginFactTestReply(
+        ChatbotInstance $instance,
+        ChatbotConversation $conversation,
+        string $userMessage,
+        ?\App\Models\Malan\MalanCampaign $campaign = null,
+    ): array {
+        $conversation->messages()->create([
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_CUSTOMER,
+            'message' => $userMessage,
+        ]);
+
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'message' => KamanOriginFact::REPLY,
+            'delivery_status' => 'sent',
+            'metadata' => [
+                'kaman_origin' => true,
+                'simulation' => true,
+            ],
+        ]);
+
+        $conversation->recordAssistantActivity();
+
+        return [
+            'ok' => true,
+            'simulation' => true,
+            'conversation_id' => (int) $conversation->id,
+            'user_message' => $userMessage,
+            'assistant_response' => KamanOriginFact::REPLY,
+            'duration_ms' => 0,
+            'messages' => $this->messageHistory($instance, (int) $conversation->id),
+            'tool_calls' => [],
+            'campaign_id' => $campaign?->id,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function recordThanksClosingTestReply(
+        ChatbotInstance $instance,
+        ChatbotConversation $conversation,
+        string $userMessage,
+        ?\App\Models\Malan\MalanCampaign $campaign,
+        KamanConversationCloser $closer,
+    ): array {
+        $reply = $closer->closingReplyFor($userMessage);
+
+        $conversation->messages()->create([
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_CUSTOMER,
+            'message' => $userMessage,
+        ]);
+
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'message' => $reply,
+            'delivery_status' => 'sent',
+            'metadata' => [
+                'kaman_conversation_close' => true,
+                'simulation' => true,
+            ],
+        ]);
+
+        $conversation->recordAssistantActivity();
+
+        return [
+            'ok' => true,
+            'simulation' => true,
+            'conversation_id' => (int) $conversation->id,
+            'user_message' => $userMessage,
+            'assistant_response' => $reply,
+            'duration_ms' => 0,
+            'messages' => $this->messageHistory($instance, (int) $conversation->id),
+            'tool_calls' => [],
+            'campaign_id' => $campaign?->id,
+        ];
+    }
+
     private function isDuplicateExternalChatConstraint(QueryException $e): bool
     {
         $message = $e->getMessage();
@@ -331,6 +567,7 @@ class ChatbotTestService
                     'attachment_url' => $attachmentUrl,
                     'is_image' => $m->isImageAttachment(),
                     'is_pdf' => $m->isPdfAttachment(),
+                    'is_video' => $m->isVideoAttachment(),
                 ];
             })
             ->all();

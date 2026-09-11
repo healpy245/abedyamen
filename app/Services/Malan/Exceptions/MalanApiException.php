@@ -53,6 +53,26 @@ class MalanApiException extends Exception
         return new self('Multiple customers matched.', 'conflict', 409, $userMessage);
     }
 
+    public static function leadDuplicate(): self
+    {
+        return new self(
+            'Matching Malan lead already exists.',
+            'lead_duplicate',
+            409,
+            'طلب التسجيل مسجّل من قبل. مندوب رح يتواصل معك قريب إن شاء الله.',
+        );
+    }
+
+    public static function leadSourceNotFound(): self
+    {
+        return new self(
+            'Malan lead source not found or inactive.',
+            'lead_source_not_found',
+            404,
+            'ما قدرت أسجّل الطلب هلق. بحوّل لمندوب يتابع معك.',
+        );
+    }
+
     public static function rateLimited(): self
     {
         return new self(

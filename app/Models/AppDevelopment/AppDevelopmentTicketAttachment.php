@@ -57,6 +57,31 @@ class AppDevelopmentTicketAttachment extends Model
         return str_starts_with($mime, 'video/');
     }
 
+    public function isAudio(): bool
+    {
+        $mime = strtolower((string) $this->mime_type);
+        $ext = $this->extension();
+        $name = strtolower((string) $this->original_name);
+
+        if (str_starts_with($mime, 'audio/')) {
+            return true;
+        }
+
+        // Browser MediaRecorder often labels voice clips as video/webm.
+        if (
+            str_starts_with($name, 'voice-')
+            && in_array($ext, ['webm', 'ogg', 'mp3', 'm4a', 'wav', 'aac'], true)
+        ) {
+            return true;
+        }
+
+        if ($this->isVideo() || $this->isImage()) {
+            return false;
+        }
+
+        return in_array($ext, ['ogg', 'mp3', 'm4a', 'wav', 'aac', 'webm'], true);
+    }
+
     public function humanSize(): string
     {
         return FileSize::format((int) $this->size);

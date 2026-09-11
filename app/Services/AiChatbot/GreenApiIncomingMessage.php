@@ -9,6 +9,8 @@ namespace App\Services\AiChatbot;
  */
 final class GreenApiIncomingMessage
 {
+    public const STICKER_LABEL = '[الزبون أرسل ستيكر واتساب]';
+
     /**
      * @param  array<string, mixed>  $raw
      */
@@ -22,11 +24,24 @@ final class GreenApiIncomingMessage
         public readonly ?string $mimeType,
         public readonly ?string $fileName,
         public readonly ?string $senderName = null,
+        public readonly ?int $timestamp = null,
         public readonly array $raw = [],
+        public readonly ?string $quotedText = null,
     ) {}
+
+    public function isSticker(): bool
+    {
+        $type = strtolower($this->type);
+
+        return in_array($type, ['stickermessage', 'stickermessagedata'], true);
+    }
 
     public function isImage(): bool
     {
+        if ($this->isSticker()) {
+            return false;
+        }
+
         $type = strtolower($this->type);
         if (in_array($type, ['imagemessage', 'imagemessagedata'], true)) {
             return true;
@@ -57,11 +72,15 @@ final class GreenApiIncomingMessage
 
     public function isMedia(): bool
     {
-        return $this->isImage() || $this->isPdf() || $this->isAudio();
+        return $this->isImage() || $this->isPdf() || $this->isAudio() || $this->isSticker();
     }
 
     public function customerFacingText(): ?string
     {
+        if ($this->isSticker()) {
+            return $this->stickerFacingText();
+        }
+
         $text = trim((string) ($this->text ?? ''));
         if ($text !== '') {
             return $text;
@@ -81,5 +100,28 @@ final class GreenApiIncomingMessage
         }
 
         return null;
+    }
+
+    private function stickerFacingText(): string
+    {
+        $bits = [];
+        $text = trim((string) ($this->text ?? ''));
+        $caption = trim((string) ($this->caption ?? ''));
+        if ($text !== '') {
+            $bits[] = $text;
+        }
+        if ($caption !== '' && $caption !== $text) {
+            $bits[] = $caption;
+        }
+        $quoted = trim((string) ($this->quotedText ?? ''));
+        if ($quoted !== '') {
+            $bits[] = 'رداً على: "'.$quoted.'"';
+        }
+
+        if ($bits === []) {
+            return self::STICKER_LABEL;
+        }
+
+        return self::STICKER_LABEL.' '.implode(' — ', $bits);
     }
 }

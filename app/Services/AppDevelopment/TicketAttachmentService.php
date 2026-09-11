@@ -11,7 +11,8 @@ use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class TicketAttachmentService
 {
@@ -21,6 +22,20 @@ class TicketAttachmentService
 
     public function store(AppDevelopmentTicket $ticket, User $user, UploadedFile $file): AppDevelopmentTicketAttachment
     {
+        return $this->storeFile($ticket, $user, $file, recordActivity: true);
+    }
+
+    public function storeForComment(AppDevelopmentTicket $ticket, User $user, UploadedFile $file): AppDevelopmentTicketAttachment
+    {
+        return $this->storeFile($ticket, $user, $file, recordActivity: false);
+    }
+
+    private function storeFile(
+        AppDevelopmentTicket $ticket,
+        User $user,
+        UploadedFile $file,
+        bool $recordActivity,
+    ): AppDevelopmentTicketAttachment {
         $extension = strtolower($file->getClientOriginalExtension());
         $storedName = Str::uuid()->toString().($extension !== '' ? '.'.$extension : '');
         $path = $file->storeAs(
@@ -43,22 +58,29 @@ class TicketAttachmentService
             'size' => $file->getSize() ?: Storage::disk('local')->size($path),
         ]);
 
-        $this->workflow->record(
-            $ticket,
-            $user,
-            AppDevelopmentTicketActivityType::AttachmentAdded,
-            $ticket->status,
-            $ticket->status,
-            [
-                'attachment_id' => $attachment->id,
-                'original_name' => $attachment->original_name,
-            ],
-        );
+        if ($recordActivity) {
+            $this->workflow->record(
+                $ticket,
+                $user,
+                AppDevelopmentTicketActivityType::AttachmentAdded,
+                $ticket->status,
+                $ticket->status,
+                [
+                    'attachment_id' => $attachment->id,
+                    'original_name' => $attachment->original_name,
+                    'excerpt' => $attachment->original_name,
+                ],
+            );
+        }
 
         return $attachment;
     }
 
-    public function download(AppDevelopmentTicketAttachment $attachment): StreamedResponse
+    /**
+     * Serve media with HTTP Range support so browsers can start video/audio
+     * playback before the full file finishes downloading.
+     */
+    public function download(AppDevelopmentTicketAttachment $attachment): BinaryFileResponse
     {
         $disk = Storage::disk($attachment->disk ?: 'local');
 
@@ -66,18 +88,46 @@ class TicketAttachmentService
             abort(404);
         }
 
-        $inline = $attachment->isImage() || $attachment->isVideo();
-
+        $absolute = $disk->path($attachment->path);
+        $inline = $attachment->isImage() || $attachment->isVideo() || $attachment->isAudio();
         $filename = str_replace(["\"", "\r", "\n"], '', (string) $attachment->original_name);
+        $mime = (string) ($attachment->mime_type ?: 'application/octet-stream');
 
-        return $disk->response(
-            $attachment->path,
-            $inline ? null : $filename,
-            [
-                'Content-Type' => (string) ($attachment->mime_type ?: 'application/octet-stream'),
-                'Cache-Control' => 'private, max-age=3600',
-                'Content-Disposition' => ($inline ? 'inline' : 'attachment').'; filename="'.$filename.'"',
-            ],
+        if ($attachment->isVideo() && ! str_starts_with($mime, 'video/')) {
+            $mime = 'video/mp4';
+        }
+
+        $response = new BinaryFileResponse($absolute, 200, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'private, max-age=86400',
+            'Accept-Ranges' => 'bytes',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+
+        $response->setContentDisposition(
+            $inline ? ResponseHeaderBag::DISPOSITION_INLINE : ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            $filename,
         );
+        $response->headers->set(
+            'Content-Disposition',
+            ($inline ? 'inline' : 'attachment').'; filename="'.$filename.'"',
+        );
+
+        return $response;
+    }
+
+    public function deleteForTicket(AppDevelopmentTicket $ticket): void
+    {
+        $attachments = $ticket->attachments()->get();
+
+        foreach ($attachments as $attachment) {
+            $disk = Storage::disk($attachment->disk ?: 'local');
+            if ($attachment->path && $disk->exists($attachment->path)) {
+                $disk->delete($attachment->path);
+            }
+            $attachment->delete();
+        }
+
+        Storage::disk('local')->deleteDirectory('app-development/tickets/'.$ticket->id);
     }
 }

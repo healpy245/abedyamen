@@ -201,4 +201,118 @@ class MalanApiClientTest extends TestCase
             throw $e;
         }
     }
+
+    public function test_create_task_posts_json_with_api_key_and_assignee(): void
+    {
+        Http::fake([
+            'www.malan.app/apiClient/createTask' => Http::response([
+                'result' => true,
+                'data' => ['task_id' => 901],
+            ], 200),
+        ]);
+
+        $result = app(MalanApiClient::class)->createTask([
+            'title' => 'متابعة محاسبة',
+            'subject' => 'زبون ניתוק חוב يطلب متابعة',
+            'to_user_id' => 147,
+            'status' => 'urgent',
+            'client_id' => 630,
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(901, $result['task_id']);
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://www.malan.app/apiClient/createTask'
+                && $request->hasHeader('X-API-Key', 'test-malan-key')
+                && $request['to_user_id'] === 147
+                && $request['client_id'] === 630
+                && $request['status'] === 'urgent'
+                && ! str_contains($request->url(), 'test-malan-key');
+        });
+    }
+
+    public function test_create_lead_posts_json_and_maps_201(): void
+    {
+        Http::fake([
+            'www.malan.app/apiClient/createLead' => Http::response([
+                'result' => true,
+                'message' => 'Lead created successfully.',
+                'data' => [
+                    'lead_id' => 1234,
+                    'leads_sources_id' => 1,
+                    'statuses_id' => 4,
+                ],
+            ], 201),
+        ]);
+
+        $result = app(MalanApiClient::class)->createLead([
+            'full_name' => 'Test Lead',
+            'phone' => '0500000000',
+            'leads_sources_id' => 1,
+            'city_name' => 'كفرقاسم',
+            'with_fiber' => 0,
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(1234, $result['lead_id']);
+        $this->assertSame(201, $result['http_status']);
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://www.malan.app/apiClient/createLead'
+                && $request->hasHeader('X-API-Key', 'test-malan-key')
+                && $request['full_name'] === 'Test Lead'
+                && $request['phone'] === '0500000000'
+                && $request['leads_sources_id'] === 1
+                && $request['city_name'] === 'كفرقاسم'
+                && $request['with_fiber'] === 0;
+        });
+    }
+
+    public function test_create_lead_note_posts_json(): void
+    {
+        Http::fake([
+            'www.malan.app/apiClient/createLeadNote' => Http::response([
+                'result' => true,
+                'message' => 'Note created successfully.',
+            ], 201),
+        ]);
+
+        $result = app(MalanApiClient::class)->createLeadNote(4720, 'يفضل مكالمة الساعة 16:00');
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(201, $result['http_status']);
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://www.malan.app/apiClient/createLeadNote'
+                && $request->hasHeader('X-API-Key', 'test-malan-key')
+                && $request['lead_id'] === 4720
+                && $request['note'] === 'يفضل مكالمة الساعة 16:00';
+        });
+    }
+
+    public function test_get_lead_sources_parses_list(): void
+    {
+        Http::fake([
+            'www.malan.app/apiClient/getLeadSources' => Http::response([
+                'result' => true,
+                'data' => [
+                    'sources' => [
+                        ['id' => 3, 'title' => 'WhatsApp'],
+                        ['id' => 1, 'title' => 'Website'],
+                    ],
+                    'count' => 2,
+                ],
+            ], 200),
+        ]);
+
+        $result = app(MalanApiClient::class)->getLeadSources();
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(2, $result['count']);
+        $this->assertSame(3, $result['sources'][0]['id']);
+    }
 }

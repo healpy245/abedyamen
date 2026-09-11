@@ -37,8 +37,18 @@
         <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('chatbot.workspace.integration_status') }}</h2>
         <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
             <div><dt class="text-[#a78a6c] text-xs">{{ __('chatbot.workspace.integration_type') }}</dt><dd>{{ $integrationStatus['type'] ?: '—' }}</dd></div>
-            <div><dt class="text-[#a78a6c] text-xs">{{ __('chatbot.workspace.greenapi') }}</dt><dd>{{ $integrationStatus['greenapi_configured'] ? __('chatbot.workspace.configured') : __('chatbot.workspace.not_configured') }}</dd></div>
-            <div><dt class="text-[#a78a6c] text-xs">{{ __('chatbot.workspace.webhook') }}</dt><dd>{{ $integrationStatus['webhook_configured'] ? __('chatbot.workspace.configured') : __('chatbot.workspace.not_configured') }}</dd></div>
+            <div>
+                <dt class="text-[#a78a6c] text-xs">{{ __('chatbot.workspace.greenapi') }}</dt>
+                <dd class="font-semibold {{ $integrationStatus['greenapi_configured'] ? 'text-emerald-700' : 'text-red-600' }}">
+                    {{ $integrationStatus['greenapi_configured'] ? __('chatbot.workspace.configured') : __('chatbot.workspace.not_configured') }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-[#a78a6c] text-xs">{{ __('chatbot.workspace.webhook') }}</dt>
+                <dd class="font-semibold {{ $integrationStatus['webhook_configured'] ? 'text-emerald-700' : 'text-red-600' }}">
+                    {{ $integrationStatus['webhook_configured'] ? __('chatbot.workspace.configured') : __('chatbot.workspace.not_configured') }}
+                </dd>
+            </div>
             <div>
                 <dt class="text-[#a78a6c] text-xs">{{ __('chatbot.workspace.global_bot') }}</dt>
                 <dd class="font-semibold {{ $integrationStatus['is_active'] ? 'text-emerald-700' : 'text-red-600' }}">
@@ -48,9 +58,87 @@
         </dl>
     </div>
 
+    @if($instance->hasKamanWhatsappIntegration())
+        <div class="kaman-card kaman-card--pad mb-4 space-y-3">
+            <div>
+                <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('chatbot.workspace.pos_demo_title') }}</h2>
+                <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.pos_demo_help') }}</p>
+            </div>
+            @if($posDemoReady ?? false)
+                <p class="text-sm text-emerald-700">
+                    {{ __('chatbot.workspace.pos_demo_current', ['name' => $posDemo['original_name'] ?? ($posDemo['file_name'] ?? 'video')]) }}
+                </p>
+            @else
+                <p class="text-sm text-[#7c6a56]">{{ __('chatbot.workspace.pos_demo_empty') }}</p>
+            @endif
+            @if($canManageSettings)
+                <form method="post"
+                      action="{{ route('ai-chatbot.workspace.settings.pos-demo', $instance) }}"
+                      enctype="multipart/form-data"
+                      class="flex flex-wrap items-end gap-2">
+                    @csrf
+                    <div class="min-w-0 flex-1">
+                        <label class="kaman-label block" for="pos_demo_video">{{ __('chatbot.workspace.pos_demo_file') }}</label>
+                        <input id="pos_demo_video"
+                               name="video"
+                               type="file"
+                               accept="video/mp4,video/quicktime,video/webm,video/3gpp,.mp4,.mov,.webm,.3gp,.m4v"
+                               required
+                               class="kaman-input w-full text-xs">
+                    </div>
+                    <button type="submit" class="kaman-button kaman-button--sm">{{ __('chatbot.workspace.pos_demo_upload') }}</button>
+                </form>
+                @if($posDemoReady ?? false)
+                    <form method="post"
+                          action="{{ route('ai-chatbot.workspace.settings.pos-demo.destroy', $instance) }}"
+                          onsubmit="return confirm(@json(__('chatbot.workspace.pos_demo_delete_confirm')))">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="kaman-button-ghost kaman-button--sm text-red-700">{{ __('chatbot.workspace.pos_demo_delete') }}</button>
+                    </form>
+                @endif
+            @endif
+        </div>
+    @endif
+
     <form method="post" action="{{ route('ai-chatbot.workspace.settings.update', $instance) }}" class="space-y-4">
         @csrf
         @method('PUT')
+
+        <div class="kaman-card kaman-card--pad space-y-4">
+            <div>
+                <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('chatbot.greenapi_title') }}</h2>
+                <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_desc') }}</p>
+            </div>
+            <div>
+                <label class="kaman-label block" for="greenapi_url">{{ __('chatbot.greenapi_send_url') }}</label>
+                <input id="greenapi_url"
+                       name="greenapi_url"
+                       type="url"
+                       maxlength="2000"
+                       value="{{ old('greenapi_url', $instance->greenapi_url) }}"
+                       placeholder="{{ __('chatbot.greenapi_send_url_placeholder') }}"
+                       class="kaman-input w-full font-mono text-xs"
+                       @disabled(! ($canManageIntegration || $canManageSettings))>
+                <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_send_url_help') }}</p>
+            </div>
+            <div>
+                <label class="kaman-label block" for="greenapi_webhook_url">{{ __('chatbot.greenapi_webhook_url') }}</label>
+                <div class="flex flex-wrap gap-2">
+                    <input id="greenapi_webhook_url"
+                           type="text"
+                           readonly
+                           value="{{ $greenapiWebhookUrl }}"
+                           class="kaman-input min-w-0 flex-1 font-mono text-xs bg-[#faf6f0]">
+                    <button type="button"
+                            class="kaman-button-ghost kaman-button--sm shrink-0"
+                            onclick="navigator.clipboard.writeText(document.getElementById('greenapi_webhook_url').value)">
+                        {{ __('chatbot.copy') }}
+                    </button>
+                </div>
+                <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_webhook_url_help') }}</p>
+            </div>
+        </div>
 
         <div class="kaman-card kaman-card--pad space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -64,6 +152,32 @@
                 <label class="kaman-label block" for="disabled_message">{{ __('chatbot.workspace.disabled_message') }}</label>
                 <textarea id="disabled_message" name="disabled_message" rows="2" class="kaman-input w-full" @disabled(! $canManageSettings)
                           placeholder="{{ __('chatbot.workspace.disabled_message_hint') }}">{{ old('disabled_message', $instance->disabled_message) }}</textarea>
+            </div>
+            <div>
+                <p class="kaman-label mb-2">{{ __('chatbot.workspace.ignored_reply_phones') }}</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="kaman-label block text-xs font-medium text-[#6b5340]" for="ignored_reply_phones">{{ __('chatbot.workspace.ignored_reply_phones_manual') }}</label>
+                        <textarea id="ignored_reply_phones"
+                                  name="ignored_reply_phones"
+                                  rows="5"
+                                  class="kaman-input kaman-scroll w-full font-mono text-xs leading-relaxed"
+                                  @disabled(! $canManageSettings)
+                                  placeholder="{{ __('chatbot.workspace.ignored_reply_phones_placeholder') }}">{{ old('ignored_reply_phones', implode("\n", $instance->manualIgnoredReplyPhones())) }}</textarea>
+                        <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.ignored_reply_phones_manual_help') }}</p>
+                    </div>
+                    <div>
+                        <label class="kaman-label block text-xs font-medium text-[#6b5340]" for="ignored_reply_phones_api">{{ __('chatbot.workspace.ignored_reply_phones_api') }}</label>
+                        <textarea id="ignored_reply_phones_api"
+                                  rows="5"
+                                  class="kaman-input kaman-scroll w-full font-mono text-xs leading-relaxed bg-[#faf6f1] text-[#6b5340]"
+                                  readonly
+                                  tabindex="-1"
+                                  placeholder="{{ __('chatbot.workspace.ignored_reply_phones_api_empty') }}">{{ implode("\n", $instance->apiIgnoredReplyPhones()) }}</textarea>
+                        <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.ignored_reply_phones_api_help') }}</p>
+                    </div>
+                </div>
+                <p class="mt-2 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.ignored_reply_phones_help') }}</p>
             </div>
         </div>
 
@@ -136,6 +250,9 @@
         @endphp
 
         @foreach($sectionDefs as $sectionKey => $section)
+            @if($sectionKey === 'malan_workflows' && ! $instance->hasMalanIntegration())
+                @continue
+            @endif
             <details class="kaman-card overflow-hidden group" {{ $loop->first ? 'open' : '' }}>
                 <summary class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-2 bg-white hover:bg-[#fffaf3]">
                     <span class="text-sm font-semibold text-[#2b1e11]">{{ $section['title'] }}</span>
@@ -187,5 +304,20 @@
             </div>
         @endif
     </form>
+
+    @if($canManageSettings)
+        <div class="kaman-card kaman-card--pad mt-4 border border-red-200/80 bg-red-50/30 space-y-3">
+            <h2 class="text-sm font-semibold text-red-800">{{ __('chatbot.workspace.clear_conversations_title') }}</h2>
+            <p class="text-xs text-[#7c6a56]">{{ __('chatbot.workspace.clear_conversations_help') }}</p>
+            <form method="post"
+                  action="{{ route('ai-chatbot.workspace.settings.clear-conversations', $instance) }}"
+                  onsubmit="return confirm(@json(__('chatbot.workspace.clear_conversations_confirm')))">
+                @csrf
+                <button type="submit" class="kaman-button !bg-red-600 hover:!bg-red-700 !border-red-700">
+                    {{ __('chatbot.workspace.clear_conversations_button') }}
+                </button>
+            </form>
+        </div>
+    @endif
 </div>
 @endsection

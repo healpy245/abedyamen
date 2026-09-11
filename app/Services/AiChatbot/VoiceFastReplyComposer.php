@@ -42,6 +42,8 @@ class VoiceFastReplyComposer
             'lookup_malan_customer' => $this->fromLookup($result),
             'set_malan_payment_method_preference' => $this->fromPaymentPreference($result),
             'create_malan_support_report' => $this->fromSupportReport($result),
+            'create_malan_task' => $this->fromSupportReport($result),
+            'create_malan_lead' => $this->fromLead($result),
             'charge_malan_saved_payment_method' => $this->fromCharge($result),
             default => null,
         };
@@ -118,6 +120,24 @@ class VoiceFastReplyComposer
 
         if (($result['error_code'] ?? null) === 'confirmation_required') {
             return 'قبل ما أرفع المهمة لازم أأكد معك النص. بقرا عليك المسودة وإذا موافق أو في ملاحظة بسيطة قولّي.';
+        }
+
+        $message = trim((string) ($result['message'] ?? ''));
+
+        return $message !== '' ? $this->clip($message) : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function fromLead(array $result): ?string
+    {
+        if (($result['success'] ?? false) === true) {
+            return 'سجّلت طلبك. مندوب رح يتواصل معك قريب عشان يكمل التسجيل.';
+        }
+
+        if (($result['error_code'] ?? null) === 'confirmation_required') {
+            return 'قبل ما أسجّل الطلب لازم أأكد معك الاسم والتلفون والبلدة. إذا تمام قولّي.';
         }
 
         $message = trim((string) ($result['message'] ?? ''));

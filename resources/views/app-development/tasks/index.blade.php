@@ -25,10 +25,7 @@
         </div>
 
         @can('create', \App\Models\AppDevelopment\AppDevelopmentTask::class)
-            <a href="{{ route('app-development.tasks.create') }}" class="kaman-button kaman-button--sm" data-app-dev-modal>
-                @include('app-development.partials.icon', ['name' => 'plus'])
-                {{ __('app-development.tasks.create') }}
-            </a>
+            <p class="max-w-xs text-end text-[11px] text-[#7c6a56]">{{ __('app-development.tasks.escalate_from_ticket_only') }}</p>
         @endcan
     </div>
 
@@ -89,14 +86,11 @@
                 </header>
                 <div class="space-y-2">
                     @forelse($columnTasks as $task)
-                        <a href="{{ route('app-development.tasks.show', $task) }}"
+                        <a href="{{ $task->ticket ? route('app-development.tickets.show', ['ticket' => $task->ticket, 'task' => $task->id]) : route('app-development.tasks.index') }}"
                            class="block rounded-lg border border-[#f1dfc5] bg-white px-2.5 py-2 hover:border-[#f47a2e]/data-app-dev-modal>
-                            <p class="text-sm font-medium text-[#2b1e11]">{{ $task->title }}</p>
+                            <p class="text-sm font-medium text-[#2b1e11]">{{ $task->ticket?->ticket_number ?? $task->title }}</p>
                             <p class="mt-0.5 text-[11px] text-[#a78a6c]">
-                                {{ $task->ticket?->ticket_number }}
-                                @if($task->assignee)
-                                    · {{ $task->assignee->name }}
-                                @endif
+                                {{ $task->assignee?->name ?? __('app-development.tickets.unassigned') }}
                             </p>
                             <div class="mt-1.5 flex flex-wrap items-center gap-1">
                                 @include('app-development.partials.priority-badge', ['priority' => $task->priority])

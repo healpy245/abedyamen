@@ -16,6 +16,21 @@ enum AppDevelopmentTicketPriority: string
         return __('app-development.priority.'.$this->value);
     }
 
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Low => 'chevron-down',
+            self::Normal => 'minus',
+            self::High => 'chevron-up',
+            self::Critical => 'alert',
+        };
+    }
+
+    public function cssClass(): string
+    {
+        return 'kaman-badge--priority-'.$this->value;
+    }
+
     /**
      * @return array{bg: string, text: string, border: string}
      */
@@ -23,19 +38,19 @@ enum AppDevelopmentTicketPriority: string
     {
         return match ($this) {
             self::Low => [
-                'bg' => 'bg-slate-50',
-                'text' => 'text-slate-600',
-                'border' => 'border-slate-200',
+                'bg' => 'bg-emerald-50',
+                'text' => 'text-emerald-800',
+                'border' => 'border-emerald-200',
             ],
             self::Normal => [
                 'bg' => 'bg-sky-50',
-                'text' => 'text-sky-700',
+                'text' => 'text-sky-800',
                 'border' => 'border-sky-200',
             ],
             self::High => [
                 'bg' => 'bg-orange-50',
                 'text' => 'text-orange-800',
-                'border' => 'border-orange-200',
+                'border' => 'border-orange-300',
             ],
             self::Critical => [
                 'bg' => 'bg-red-50',

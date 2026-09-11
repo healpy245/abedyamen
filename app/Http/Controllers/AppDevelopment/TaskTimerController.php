@@ -103,15 +103,22 @@ class TaskTimerController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
+        $timeEntry->loadMissing('task.ticket');
+
         return redirect()
-            ->route('app-development.tasks.show', $timeEntry->task_id)
+            ->route('app-development.tickets.show', [
+                'ticket' => $timeEntry->task?->ticket ?? $timeEntry->task?->ticket_id,
+                'task' => $timeEntry->task_id,
+            ])
             ->with('success', __('app-development.flash.time_entry_updated'));
     }
 
     public function destroyEntry(Request $request, AppDevelopmentTimeEntry $timeEntry): RedirectResponse
     {
         $this->authorize('editTimeEntry', $timeEntry);
+        $timeEntry->loadMissing('task.ticket');
         $taskId = $timeEntry->task_id;
+        $ticket = $timeEntry->task?->ticket ?? $timeEntry->task?->ticket_id;
 
         try {
             $this->timers->deleteEntry($timeEntry);
@@ -120,7 +127,10 @@ class TaskTimerController extends Controller
         }
 
         return redirect()
-            ->route('app-development.tasks.show', $taskId)
+            ->route('app-development.tickets.show', [
+                'ticket' => $ticket ?? $taskId,
+                'task' => $taskId,
+            ])
             ->with('success', __('app-development.flash.time_entry_deleted'));
     }
 
@@ -144,8 +154,12 @@ class TaskTimerController extends Controller
             ], $extra), $ok ? $status : ($status >= 400 ? $status : 422));
         }
 
-        $redirect = redirect()
-            ->route('app-development.tasks.show', $task);
+        $task->loadMissing('ticket');
+
+        $redirect = redirect()->route('app-development.tickets.show', [
+            'ticket' => $task->ticket ?? $task->ticket_id,
+            'task' => $task->id,
+        ]);
 
         if (! $ok) {
             return $redirect->with('error', $message);

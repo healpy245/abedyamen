@@ -13,10 +13,12 @@ use App\Services\AiChatbot\AiChatbotService;
 use App\Services\AiChatbot\AiChatbotSettingsService;
 use App\Services\AiChatbot\ChatbotAuthorizationService;
 use App\Services\AiChatbot\ChatbotImageUploadService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -30,6 +32,28 @@ class ChatbotController extends Controller
         protected ChatbotImageUploadService $imageUploadService,
         protected ChatbotAuthorizationService $authorizationService,
     ) {
+    }
+
+    /**
+     * Project entry: single-bot users open that workspace; multi-bot users pick first.
+     */
+    public function landing(Request $request): View|RedirectResponse
+    {
+        $instances = $this->authorizationService->instancesForUser($request->user());
+
+        if ($instances->isEmpty()) {
+            return view('ai-chatbot.empty', [
+                'instances' => collect(),
+            ]);
+        }
+
+        if ($instances->count() === 1) {
+            return redirect()->route('ai-chatbot.workspace.conversations', $instances->first());
+        }
+
+        return view('ai-chatbot.choose', [
+            'instances' => $instances,
+        ]);
     }
 
     public function index(Request $request, ChatbotInstance $instance)
@@ -181,7 +205,7 @@ class ChatbotController extends Controller
             ],
             'user_message_html' => $userMessageHtml,
             'assistant_message_html' => $assistantMessageHtml,
-            'typing_delay_ms' => $this->settingsService->typingDelayMs((string) $assistantMessage->message),
+            'typing_delay_ms' => $this->settingsService->typingDelayMs((string) $assistantMessage->message, $instance),
         ]);
     }
 
@@ -232,7 +256,7 @@ class ChatbotController extends Controller
                 'message' => $assistantMessage,
                 'instance' => $instance,
             ])->render(),
-            'typing_delay_ms' => $this->settingsService->typingDelayMs((string) $assistantMessage->message),
+            'typing_delay_ms' => $this->settingsService->typingDelayMs((string) $assistantMessage->message, $instance),
         ]);
     }
 

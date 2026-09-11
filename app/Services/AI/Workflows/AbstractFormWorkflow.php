@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Workflows;
 
 use App\Services\AI\Contracts\FormWorkflowContract;
+use App\Support\KamanUrl;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -163,5 +164,95 @@ abstract class AbstractFormWorkflow implements FormWorkflowContract
         $content = $body['choices'][0]['message']['content'] ?? '';
 
         return (string) $content;
+    }
+
+    /**
+     * Use the Login button session when present so workflows do not require the password again.
+     *
+     * @param  callable(string, string, array): void|null  $progress
+     * @return array{ok: true, restaurant_name: string, subdomain: string, base_url: string, token: string}|array{ok: false, error: string}
+     */
+    protected function resolveKamanAuth(array $payload, ?callable $progress = null): array
+    {
+        $restaurantName = trim((string) ($payload['restaurant_name'] ?? $payload['subdomain'] ?? ''));
+        $password = (string) ($payload['password'] ?? '');
+        $storedToken = trim((string) ($payload['kaman_token'] ?? ''));
+
+        if ($restaurantName === '' || ($password === '' && $storedToken === '')) {
+            return [
+                'ok' => false,
+                'error' => 'Restaurant name and password are required. Click Login first.',
+            ];
+        }
+
+        $subdomain = KamanUrl::normalizeSubdomain($restaurantName);
+        $baseUrl = trim((string) ($payload['kaman_base_url'] ?? ''));
+        if ($baseUrl === '') {
+            $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
+        }
+
+        if ($storedToken !== '') {
+            $progress && $progress('login', 'Using saved restaurant session', ['status' => 'ok', 'subdomain' => $subdomain]);
+
+            return [
+                'ok' => true,
+                'restaurant_name' => $restaurantName,
+                'subdomain' => $subdomain,
+                'base_url' => $baseUrl,
+                'token' => $storedToken,
+            ];
+        }
+
+        $progress && $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
+        $loginEmail = KamanUrl::loginEmail($subdomain, $payload['username'] ?? null);
+        $token = $this->loginToKaman($baseUrl, $loginEmail, $password);
+        $progress && $progress('login', 'Logged in successfully', ['status' => 'ok', 'subdomain' => $subdomain]);
+
+        return [
+            'ok' => true,
+            'restaurant_name' => $restaurantName,
+            'subdomain' => $subdomain,
+            'base_url' => $baseUrl,
+            'token' => $token,
+        ];
+    }
+
+    protected function loginToKaman(string $baseUrl, string $email, string $password): string
+    {
+        $http = Http::timeout(30)->acceptJson();
+        if (! config('services.kaman.ssl_verify', false)) {
+            $http = $http->withoutVerifying();
+        }
+
+        $url = rtrim($baseUrl, '/').'/login';
+        $credentials = [
+            'email' => $email,
+            'password' => $password,
+        ];
+
+        $response = $http->asForm()->post($url, $credentials);
+        if (! $response->successful()) {
+            $response = $http->asJson()->post($url, $credentials);
+        }
+
+        if (! $response->successful()) {
+            $body = $response->json();
+            $message = is_array($body)
+                ? ($body['message'] ?? $body['error'] ?? $response->body())
+                : $response->body();
+
+            throw new \RuntimeException('Login failed: '.(is_string($message) ? $message : json_encode($message)));
+        }
+
+        $data = $response->json();
+        $token = is_array($data)
+            ? ($data['token'] ?? $data['access_token'] ?? $data['data']['token'] ?? $data['data']['access_token'] ?? null)
+            : null;
+
+        if (! is_string($token) || $token === '') {
+            throw new \RuntimeException('Login response did not contain a token.');
+        }
+
+        return $token;
     }
 }

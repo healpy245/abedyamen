@@ -6,16 +6,27 @@ use App\Http\Controllers\AiChatbot\ChatbotInstanceController;
 use App\Http\Controllers\AiChatbot\ChatbotMemberController;
 use App\Http\Controllers\AiChatbot\ChatbotSettingsController;
 use App\Http\Controllers\AiChatbot\ChatbotWorkspaceController;
+use App\Http\Controllers\AiChatbot\KamanPosDemoController;
+use App\Http\Controllers\AiChatbot\MalanCampaignController;
+use App\Http\Controllers\AiChatbot\MalanCampaignWebhookController;
 use App\Http\Controllers\AiChatbot\RealtimeCallController;
 use App\Http\Controllers\AiChatbot\VoiceCallController;
 use App\Http\Controllers\AiChatbot\VoiceStreamController;
-use App\Services\AiChatbot\ChatbotAuthorizationService;
+use App\Http\Middleware\ExtendUploadTimeout;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+
+Route::post('/ai-chatbot/webhook/greenapi/campaign/{token}', [MalanCampaignWebhookController::class, 'handle'])
+    ->withoutMiddleware([
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+    ])
+    ->name('ai-chatbot.greenapi.campaign-webhook');
 
 Route::post('/ai-chatbot/webhook/greenapi/{token}', [ChatbotGreenApiWebhookController::class, 'handle'])
     ->withoutMiddleware([
@@ -26,28 +37,15 @@ Route::post('/ai-chatbot/webhook/greenapi/{token}', [ChatbotGreenApiWebhookContr
     ])
     ->name('ai-chatbot.greenapi.webhook');
 
+Route::get('/ai-chatbot/public/pos-demo/{token}', [KamanPosDemoController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{32,64}')
+    ->name('ai-chatbot.public.pos-demo');
+
 Route::middleware(['web', 'auth', 'project:ai-chatbot'])
     ->prefix('ai-chatbot')
     ->name('ai-chatbot.')
     ->group(function () {
-        Route::get('/', function (Request $request) {
-            $authz = app(ChatbotAuthorizationService::class);
-            $instance = $authz->firstAccessibleForUser($request->user());
-
-            if ($instance === null) {
-                return response()->view('ai-chatbot.empty', [
-                    'instances' => collect(),
-                ]);
-            }
-
-            // Single-access users land in the customer workspace; multi-instance keep studio.
-            $accessible = $authz->instancesForUser($request->user());
-            if ($accessible->count() === 1 && $instance->hasMalanIntegration()) {
-                return redirect()->route('ai-chatbot.workspace.conversations', $instance);
-            }
-
-            return redirect()->route('ai-chatbot.instances.show', $instance);
-        })->name('index');
+        Route::get('/', [ChatbotController::class, 'landing'])->name('index');
 
         Route::prefix('instances/{instance}')->group(function () {
             Route::get('/', [ChatbotController::class, 'index'])->name('instances.show');
@@ -100,10 +98,35 @@ Route::middleware(['web', 'auth', 'project:ai-chatbot'])
 
                 Route::get('/settings', [ChatbotWorkspaceController::class, 'settings'])->name('settings');
                 Route::put('/settings', [ChatbotWorkspaceController::class, 'updateSettings'])->name('settings.update');
+                Route::post('/settings/pos-demo', [ChatbotWorkspaceController::class, 'storePosDemo'])
+                    ->middleware(ExtendUploadTimeout::class)
+                    ->name('settings.pos-demo');
+                Route::delete('/settings/pos-demo', [ChatbotWorkspaceController::class, 'destroyPosDemo'])->name('settings.pos-demo.destroy');
+                Route::post('/settings/clear-conversations', [ChatbotWorkspaceController::class, 'clearConversations'])->name('settings.clear-conversations');
                 Route::post('/bot-active', [ChatbotWorkspaceController::class, 'updateBotActive'])->name('bot-active');
                 Route::get('/test', [ChatbotWorkspaceController::class, 'testPage'])->name('test.page');
                 Route::post('/test', [ChatbotWorkspaceController::class, 'test'])->name('test');
                 Route::post('/test/image', [ChatbotWorkspaceController::class, 'testImage'])->name('test.image');
+
+                Route::get('/campaigns', [MalanCampaignController::class, 'index'])->name('campaigns');
+                Route::post('/campaigns', [MalanCampaignController::class, 'store'])->name('campaigns.store');
+                Route::get('/campaigns/{campaign}', [MalanCampaignController::class, 'show'])->name('campaigns.show');
+                Route::get('/campaigns/{campaign}/conversations/poll', [MalanCampaignController::class, 'pollConversations'])->name('campaigns.conversations.poll');
+                Route::get('/campaigns/{campaign}/conversations/{conversation}/messages', [MalanCampaignController::class, 'pollMessages'])->name('campaigns.conversations.messages');
+                Route::post('/campaigns/{campaign}/conversations/{conversation}/bot-mode', [MalanCampaignController::class, 'updateBotMode'])->name('campaigns.conversations.bot-mode');
+                Route::post('/campaigns/{campaign}/conversations/{conversation}/read', [MalanCampaignController::class, 'markRead'])->name('campaigns.conversations.read');
+                Route::post('/campaigns/{campaign}/conversations/{conversation}/reply', [MalanCampaignController::class, 'reply'])->name('campaigns.conversations.reply');
+                Route::get('/campaigns/{campaign}/analytics', [MalanCampaignController::class, 'pollAnalytics'])->name('campaigns.analytics');
+                Route::get('/campaigns/{campaign}/analytics/export/{group}', [MalanCampaignController::class, 'exportAnalytics'])->name('campaigns.analytics.export');
+                Route::get('/campaigns/{campaign}/settings', [MalanCampaignController::class, 'settings'])->name('campaigns.settings');
+                Route::put('/campaigns/{campaign}/settings', [MalanCampaignController::class, 'updateSettings'])->name('campaigns.settings.update');
+                Route::post('/campaigns/{campaign}/bot-active', [MalanCampaignController::class, 'updateBotActive'])->name('campaigns.bot-active');
+                Route::get('/campaigns/{campaign}/test', [MalanCampaignController::class, 'testPage'])->name('campaigns.test.page');
+                Route::post('/campaigns/{campaign}/test', [MalanCampaignController::class, 'test'])->name('campaigns.test');
+                Route::post('/campaigns/{campaign}/start', [MalanCampaignController::class, 'start'])->name('campaigns.start');
+                Route::get('/campaigns/{campaign}/contacts', [MalanCampaignController::class, 'contactsJson'])->name('campaigns.contacts');
+                Route::post('/campaigns/{campaign}/contacts', [MalanCampaignController::class, 'storeContact'])->name('campaigns.contacts.store');
+                Route::post('/campaigns/{campaign}/stop', [MalanCampaignController::class, 'stop'])->name('campaigns.stop');
             });
         });
 

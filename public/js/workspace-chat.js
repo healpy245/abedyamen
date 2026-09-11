@@ -7,6 +7,7 @@
 
     const MESSAGE_POLL_MS = 1500;
     const LIST_POLL_MS = 4000;
+    const ANALYTICS_POLL_MS = 5000;
 
     const WorkspaceChat = {
         listTimer: null,
@@ -69,32 +70,249 @@
 
         startListPolling(root) {
             if (!root) return;
+            let pollSeq = 0;
+            let abortCtrl = null;
+
             const poll = async () => {
                 if (!this.visible()) return;
+                const requestedInsight = root.dataset.insight || 'all';
+                const filtering = requestedInsight !== 'all';
+                const seq = ++pollSeq;
+
+                if (abortCtrl) {
+                    try { abortCtrl.abort(); } catch (_) {}
+                }
+                abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+
                 const url = new URL(root.dataset.pollUrl, window.location.origin);
                 url.searchParams.set('filter', root.dataset.filter || 'all');
                 url.searchParams.set('q', root.dataset.q || '');
-                if (root.dataset.since) {
+                if (filtering) {
+                    url.searchParams.set('insight', requestedInsight);
+                } else if (root.dataset.since) {
                     url.searchParams.set('since', root.dataset.since);
                 }
                 try {
                     const res = await fetch(url.toString(), {
                         headers: { Accept: 'application/json' },
                         cache: 'no-store',
+                        signal: abortCtrl?.signal,
                     });
                     if (!res.ok) return;
                     const data = await res.json();
-                    // First response is a snapshot (may include rows outside the paginated DOM).
-                    // Only insert missing rows on later incremental polls — never full-page reload.
-                    const insertMissing = Boolean(root.dataset.since);
-                    this.mergeList(root, data.conversations || [], insertMissing);
-                    if (data.server_time) root.dataset.since = data.server_time;
-                } catch (_) { /* ignore transient */ }
+
+                    // Drop stale responses (e.g. unfiltered poll finishing after a card tap).
+                    if (seq !== pollSeq) return;
+                    const currentInsight = root.dataset.insight || 'all';
+                    if (currentInsight !== requestedInsight) return;
+
+                    if (filtering || !root.dataset.since) {
+                        this.replaceList(root, data.conversations || []);
+                        if (!filtering && data.server_time) {
+                            root.dataset.since = data.server_time;
+                        }
+                    } else {
+                        this.mergeList(root, data.conversations || [], true);
+                        if (data.server_time) root.dataset.since = data.server_time;
+                    }
+                    this.paintLiveDot(true);
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                    this.paintLiveDot(false);
+                }
             };
+            this.pollListNow = poll;
             poll();
             this.listTimer = setInterval(poll, LIST_POLL_MS);
             document.addEventListener('visibilitychange', () => {
                 if (this.visible()) poll();
+            });
+        },
+
+        replaceList(root, conversations) {
+            const list = root.querySelector('#conversation-list');
+            if (!list) return;
+            const activeId = document.querySelector('#workspace-chat')?.dataset?.conversationId
+                || new URLSearchParams(window.location.search).get('conversation')
+                || '';
+            list.innerHTML = '';
+            if (!conversations.length) {
+                const empty = document.createElement('p');
+                empty.id = 'list-empty';
+                empty.className = 'p-4 text-xs text-[#a78a6c]';
+                empty.textContent = root.dataset.filterEmptyLabel || root.dataset.emptyLabel || 'No chats in this group.';
+                list.appendChild(empty);
+                return;
+            }
+            conversations.forEach((c) => {
+                const row = this.buildListRow(root, c);
+                if (activeId && String(c.id) === String(activeId)) {
+                    row.classList.add('bg-white', 'border-s-4', 'border-s-[#f47a2e]');
+                }
+                list.appendChild(row);
+            });
+        },
+
+        setInsightFilter(listRoot, insight, label) {
+            if (!listRoot) return;
+            const next = insight && insight !== 'all' ? String(insight) : 'all';
+            listRoot.dataset.insight = next;
+            delete listRoot.dataset.since;
+
+            const clearBtn = document.getElementById('insight-filter-clear');
+            const labelEl = document.getElementById('insight-filter-label');
+            if (clearBtn) clearBtn.classList.toggle('hidden', next === 'all');
+            if (labelEl) {
+                if (next === 'all') {
+                    labelEl.classList.add('hidden');
+                    labelEl.textContent = '';
+                } else {
+                    labelEl.classList.remove('hidden');
+                    labelEl.textContent = label || next;
+                }
+            }
+
+            document.querySelectorAll('.analytics-card[data-insight-filter]').forEach((card) => {
+                const on = next !== 'all' && card.dataset.insightFilter === next;
+                card.setAttribute('aria-pressed', on ? 'true' : 'false');
+                card.classList.toggle('ring-2', on);
+                card.classList.toggle('ring-[#f47a2e]', on);
+                card.classList.toggle('shadow-sm', on);
+            });
+
+            // Instant UI filter from cached conversation ids (before API returns).
+            this.applyInsightFilterLocally(listRoot, next);
+
+            if (typeof this.pollListNow === 'function') {
+                this.pollListNow();
+            }
+        },
+
+        applyInsightFilterLocally(listRoot, insight) {
+            const list = listRoot?.querySelector('#conversation-list');
+            if (!list) return;
+
+            if (!insight || insight === 'all') {
+                list.querySelectorAll('.conversation-row').forEach((row) => {
+                    row.classList.remove('hidden');
+                    row.style.display = '';
+                });
+                list.querySelector('#list-empty')?.remove();
+                return;
+            }
+
+            let ids = [];
+            try {
+                const map = JSON.parse(listRoot.dataset.insightConversationIds || '{}');
+                ids = Array.isArray(map[insight]) ? map[insight] : [];
+            } catch (_) {
+                ids = [];
+            }
+            const allow = new Set(ids.map((id) => String(id)));
+            let visible = 0;
+            list.querySelectorAll('.conversation-row').forEach((row) => {
+                const show = allow.has(String(row.dataset.id || ''));
+                row.classList.toggle('hidden', !show);
+                row.style.display = show ? '' : 'none';
+                if (show) visible += 1;
+            });
+
+            let empty = list.querySelector('#list-empty');
+            if (visible === 0) {
+                if (!empty) {
+                    empty = document.createElement('p');
+                    empty.id = 'list-empty';
+                    empty.className = 'p-4 text-xs text-[#a78a6c]';
+                    list.appendChild(empty);
+                }
+                empty.textContent = listRoot.dataset.filterEmptyLabel || 'No chats in this group.';
+                empty.classList.remove('hidden');
+            } else if (empty) {
+                empty.remove();
+            }
+        },
+
+        bindInsightFilters(pageRoot, listRoot) {
+            if (!listRoot || listRoot.dataset.insightBound === '1') return;
+            listRoot.dataset.insightBound = '1';
+
+            const apply = (insight, label) => {
+                const current = listRoot.dataset.insight || 'all';
+                if (insight && insight === current) {
+                    this.setInsightFilter(listRoot, 'all', '');
+                    return;
+                }
+                this.setInsightFilter(listRoot, insight || 'all', label || '');
+            };
+
+            const onActivate = (e) => {
+                const card = e.target.closest?.('.analytics-card[data-insight-filter]');
+                if (!card) return;
+                if (e.target.closest('.analytics-download')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                apply(card.dataset.insightFilter, card.dataset.insightLabel || '');
+            };
+
+            // Delegation so desktop + mobile cards always work after re-renders.
+            document.addEventListener('click', onActivate);
+            document.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const card = e.target.closest?.('.analytics-card[data-insight-filter]');
+                if (!card) return;
+                if (e.target.closest('.analytics-download')) return;
+                e.preventDefault();
+                apply(card.dataset.insightFilter, card.dataset.insightLabel || '');
+            });
+
+            document.getElementById('insight-filter-clear')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.setInsightFilter(listRoot, 'all', '');
+            });
+        },
+        startAnalyticsPolling(root) {
+            if (!root?.dataset?.analyticsUrl) return;
+            const listRoot = document.getElementById('workspace-list-pane');
+            const poll = async () => {
+                if (!this.visible()) return;
+                try {
+                    const res = await fetch(root.dataset.analyticsUrl, {
+                        headers: { Accept: 'application/json' },
+                        cache: 'no-store',
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const analytics = data.analytics || {};
+                    ['leads', 'responded', 'messages', 'contacts', 'no_response', 'rejected', 'engaged'].forEach((key) => {
+                        if (analytics[key] === undefined) return;
+                        document.querySelectorAll(`[data-analytics="${key}"]`).forEach((el) => {
+                            el.textContent = String(analytics[key]);
+                        });
+                    });
+                    if (listRoot && analytics.conversation_ids) {
+                        listRoot.dataset.insightConversationIds = JSON.stringify(analytics.conversation_ids);
+                        const insight = listRoot.dataset.insight || 'all';
+                        if (insight !== 'all') {
+                            this.applyInsightFilterLocally(listRoot, insight);
+                        }
+                    }
+                    this.paintLiveDot(true);
+                } catch (_) {
+                    this.paintLiveDot(false);
+                }
+            };
+            poll();
+            this.analyticsTimer = setInterval(poll, ANALYTICS_POLL_MS);
+            document.addEventListener('visibilitychange', () => {
+                if (this.visible()) poll();
+            });
+        },
+
+        paintLiveDot(ok) {
+            document.querySelectorAll('#live-sync-dot span.animate-pulse, #live-sync-dot span[aria-hidden="true"]').forEach((dot) => {
+                dot.classList.toggle('bg-emerald-500', !!ok);
+                dot.classList.toggle('bg-amber-500', !ok);
             });
         },
 
@@ -228,6 +446,8 @@
             this.bindInstructor(root);
             this.bindDrawer(root);
             this.bindInstructorCollapse(root);
+            this.bindThreadScrollPassthrough(root);
+            this.scrollThreadToBottom(root, true);
 
             fetch(root.dataset.readUrl, {
                 method: 'POST',
@@ -249,7 +469,12 @@
                     });
                     if (!res.ok) return;
                     const data = await res.json();
-                    (data.messages || []).forEach((m) => this.appendMessage(root, m));
+                    const hadNew = (data.messages || []).length > 0;
+                    const nearBottom = this.isThreadNearBottom(root);
+                    (data.messages || []).forEach((m) => this.appendMessage(root, m, { autoScroll: false }));
+                    if (hadNew && nearBottom) {
+                        this.scrollThreadToBottom(root);
+                    }
                     if (data.conversation?.bot_mode) {
                         this.paintBotMode(root, data.conversation.bot_mode);
                     }
@@ -274,7 +499,53 @@
             });
         },
 
-        appendMessage(root, m) {
+        isThreadNearBottom(root, threshold = 120) {
+            const thread = root?.querySelector('#message-thread');
+            if (!thread) return true;
+            return (thread.scrollHeight - thread.scrollTop - thread.clientHeight) <= threshold;
+        },
+
+        scrollThreadToBottom(root, force = false) {
+            const thread = root?.querySelector('#message-thread');
+            if (!thread) return;
+            if (!force && !this.isThreadNearBottom(root)) return;
+
+            const go = () => {
+                // Only scroll the thread itself — never scrollIntoView (that traps/jumps the page).
+                thread.scrollTop = thread.scrollHeight;
+                const anchor = thread.querySelector('#thread-bottom-anchor');
+                if (anchor) {
+                    thread.scrollTop = Math.max(thread.scrollHeight, anchor.offsetTop + 40);
+                }
+            };
+            go();
+            requestAnimationFrame(() => {
+                go();
+                requestAnimationFrame(go);
+            });
+            setTimeout(go, 50);
+            setTimeout(go, 200);
+            setTimeout(go, 500);
+        },
+
+        bindThreadScrollPassthrough(root) {
+            const thread = root?.querySelector('#message-thread');
+            if (!thread || thread.dataset.scrollPassthroughBound === '1') return;
+            thread.dataset.scrollPassthroughBound = '1';
+
+            thread.addEventListener('wheel', (e) => {
+                const atTop = thread.scrollTop <= 0;
+                const atBottom = thread.scrollTop + thread.clientHeight >= thread.scrollHeight - 1;
+                // At the edge: let the page/outer scroll take over instead of getting stuck.
+                if ((atTop && e.deltaY < 0) || (atBottom && e.deltaY > 0)) {
+                    // Do not stopPropagation — allow the event to reach the document.
+                    return;
+                }
+            }, { passive: true });
+        },
+
+        appendMessage(root, m, options = {}) {
+            const autoScroll = options.autoScroll !== false;
             const thread = root.querySelector('#message-thread');
             if (!thread || thread.querySelector(`.message-bubble[data-id="${m.id}"]`)) return;
 
@@ -290,6 +561,8 @@
             let media = '';
             if (m.attachment_url && m.is_image) {
                 media = `<a href="${m.attachment_url}" target="_blank" rel="noopener" class="block mb-2"><img src="${m.attachment_url}" alt="" class="max-h-56 rounded-lg object-cover"></a>`;
+            } else if (m.attachment_url && m.is_video) {
+                media = `<div class="mb-2 overflow-hidden rounded-lg"><video controls playsinline preload="metadata" class="max-h-56 w-full bg-black" src="${m.attachment_url}"></video></div>`;
             } else if (m.attachment_url && m.is_audio) {
                 media = `<div class="mb-2 w-full min-w-[16rem] sm:min-w-[18rem] max-w-md rounded-xl px-2.5 py-2 ${isCustomer ? 'bg-[#f7efe3]' : 'bg-white/15'}"><audio controls preload="metadata" controlslist="nodownload" class="wa-audio-player block w-full" src="${m.attachment_url}"></audio></div>`;
             } else if (m.attachment_url && m.is_pdf) {
@@ -312,8 +585,10 @@
             const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
             wrap.querySelector('.text-end').textContent = time;
             thread.appendChild(wrap);
-            thread.scrollTop = thread.scrollHeight;
             root.dataset.lastMessageId = String(m.id);
+            if (autoScroll) {
+                this.scrollThreadToBottom(root, true);
+            }
         },
 
         bindComposer(root) {
@@ -322,6 +597,15 @@
             const input = root.querySelector('#reply-input');
             const err = root.querySelector('#reply-error');
             const btn = root.querySelector('#reply-submit');
+
+            const autosize = () => {
+                if (!input) return;
+                input.style.height = '2.75rem';
+                const next = Math.min(Math.max(input.scrollHeight, 44), 104);
+                input.style.height = next + 'px';
+            };
+            input?.addEventListener('input', autosize);
+            autosize();
 
             input?.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -354,6 +638,8 @@
                         throw new Error(typeof msg === 'string' ? msg : 'Failed to send to WhatsApp');
                     }
                     input.value = '';
+                    autosize();
+                    this.scrollThreadToBottom(root, true);
                     this.toast(root, data.delivery?.channel === 'whatsapp' ? 'Sent to WhatsApp' : 'Sent');
                 } catch (ex) {
                     err.textContent = ex.message || 'Error';

@@ -34,6 +34,11 @@
                      class="max-h-56 w-full object-cover"
                      loading="lazy">
             </a>
+        @elseif($attachmentUrl && $message->isVideoAttachment())
+            <div class="mb-2 overflow-hidden rounded-xl">
+                <video controls playsinline preload="metadata" class="max-h-56 w-full bg-black"
+                       src="{{ $attachmentUrl }}"></video>
+            </div>
         @elseif($attachmentUrl && $message->isAudioAttachment())
             <div class="mb-2 w-full min-w-[16rem] max-w-md rounded-xl px-2.5 py-2 {{ $isUser ? 'bg-white/15' : 'bg-[#fff6ea]' }}">
                 <audio controls preload="metadata" controlslist="nodownload"

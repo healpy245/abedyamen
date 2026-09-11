@@ -27,15 +27,19 @@ class TaskTimerTest extends TestCase
         $dev = $this->member(AppDevelopmentRole::Developer);
         $ticket = $this->ticket($qa);
 
-        $this->actingAs($qa)->post(route('app-development.tickets.tasks.store', $ticket), [
-            'title' => 'Diagnose printer',
-            'description' => 'Check logs',
+        $response = $this->actingAs($qa)->post(route('app-development.tickets.tasks.store', $ticket), [
             'assignee_id' => $dev->id,
-            'priority' => AppDevelopmentTicketPriority::High->value,
-        ])->assertRedirect();
+        ]);
 
         $task = AppDevelopmentTask::query()->firstOrFail();
+        $response->assertRedirect(route('app-development.tickets.show', [
+            'ticket' => $ticket,
+            'task' => $task->id,
+        ]));
         $this->assertSame(AppDevelopmentTaskStatus::Todo, $task->status);
+        $this->assertSame($ticket->title, $task->title);
+        $this->assertSame($ticket->description, $task->description);
+        $this->assertSame(AppDevelopmentTicketPriority::High, $task->priority);
 
         $other = AppDevelopmentTask::query()->create([
             'ticket_id' => $ticket->id,
@@ -56,6 +60,8 @@ class TaskTimerTest extends TestCase
         $this->actingAs($dev)
             ->postJson(route('app-development.tasks.timer.start', $other))
             ->assertStatus(409);
+
+        $this->travel(5)->seconds();
 
         $this->actingAs($dev)
             ->post(route('app-development.tasks.timer.pause', $task))

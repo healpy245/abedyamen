@@ -84,9 +84,10 @@ class AiChatbotService
             'attachment_disk' => $options['attachment_disk'] ?? null,
             'attachment_path' => $options['attachment_path'] ?? null,
             'attachment_mime' => $options['attachment_mime'] ?? null,
-            'metadata' => array_filter([
-                'channel' => $channel,
-            ]),
+            'metadata' => array_filter(array_merge(
+                ['channel' => $channel],
+                is_array($options['metadata'] ?? null) ? $options['metadata'] : [],
+            ), static fn ($v) => $v !== null && $v !== ''),
         ]);
 
         if ($conversation->title === null) {
@@ -121,7 +122,8 @@ class AiChatbotService
         $started = microtime(true);
 
         // Digit-by-digit phone/ID dictation: acknowledge mid-way without waiting on OpenAI.
-        if ($instance->hasMalanIntegration() && ! $dryRun) {
+        // Campaign sales chats never use existing-account lookup / dictation.
+        if ($instance->hasMalanIntegration() && ! $dryRun && ! $conversation->isCampaignLeadBot()) {
             $dictation = $this->numberDictationService->ingest($conversation, $instance, $message);
 
             if (in_array($dictation['status'], ['incomplete', 'reset'], true) && is_string($dictation['reply']) && $dictation['reply'] !== '') {
@@ -242,6 +244,10 @@ class AiChatbotService
             $this->memoryService->observeAssistantMessage($conversation, $instance, $generation['text']);
         }
 
+        if ($instance->hasKamanWhatsappIntegration()) {
+            app(KamanLeadScorer::class)->refresh($conversation->fresh() ?? $conversation);
+        }
+
         return [
             'conversation' => $conversation->fresh(),
             'user_message' => $userMessage,
@@ -324,6 +330,10 @@ class AiChatbotService
             'attachment_disk' => $options['attachment_disk'] ?? null,
             'attachment_path' => $options['attachment_path'] ?? null,
             'attachment_mime' => $options['attachment_mime'] ?? null,
+            'metadata' => array_filter(array_merge(
+                ['channel' => $channel],
+                is_array($options['metadata'] ?? null) ? $options['metadata'] : [],
+            ), static fn ($v) => $v !== null && $v !== ''),
         ]);
 
         if ($conversation->title === null) {
@@ -476,7 +486,7 @@ class AiChatbotService
             $instructionBundle['section'],
         );
 
-        $tools = $this->toolDefinitions->forInstance($instance, $channel, $voiceMode);
+        $tools = $this->toolDefinitions->forInstance($instance, $channel, $voiceMode, $conversation);
         $toolCallsLog = [];
         $timing = ['openai_ms' => 0, 'tools_ms' => 0];
 
@@ -754,7 +764,18 @@ class AiChatbotService
             }
         }
 
+        $isCampaignLeadBot = $conversation->isCampaignLeadBot();
         $systemPrompt = trim((string) ($instance->system_prompt ?? ''));
+
+        if ($isCampaignLeadBot) {
+            // Full prompt isolation: never use the central Malan/Sally instance prompt.
+            $campaign = $conversation->relationLoaded('campaign')
+                ? $conversation->campaign
+                : $conversation->campaign()->first();
+            $systemPrompt = $campaign instanceof \App\Models\Malan\MalanCampaign
+                ? $campaign->resolvedSystemPrompt()
+                : \App\Models\Malan\MalanCampaign::defaultLeadSystemPrompt($instance);
+        }
 
         if ($voiceMode) {
             $voicePrompt = trim((string) __('voice.phone.agent_system_prompt'));
@@ -770,14 +791,51 @@ class AiChatbotService
         $context = $instance->hasMalanIntegration()
             ? $this->memoryService->rememberForConversation($conversation, $instance)
             : $this->contextService->getActive($conversation);
-        $summary = $this->contextService->toPromptSummary($context);
-        if ($summary !== null) {
+        $summary = $this->contextService->toPromptSummary($context, $instance);
+
+        if ($isCampaignLeadBot) {
+            // Soft infrastructure rails + authoritative campaign mode summary (sales vs lead collection).
+            // Never inject central new_signup "Collect full_name + phone + city" rules.
+            $systemPrompt = trim($systemPrompt."\n\n".
+                '# Technical isolation (mandatory)'."\n".
+                '- This conversation is campaign_sales_mode — NOT the central Malan support bot.'."\n".
+                '- Never discuss outages, debt, radius, reactivation, payment proofs, or technician visits.'."\n".
+                '- Never call any tool except create_malan_lead.'."\n".
+                '- conversation_id='.$conversation->id.' — never mix with other chats.');
+
+            if ($summary !== null) {
+                $systemPrompt = trim($systemPrompt."\n\n".
+                    '# Campaign conversation state (authoritative)'."\n".
+                    json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            } else {
+                $profile = $instance->companyProfile();
+                $systemPrompt = trim($systemPrompt."\n\n".
+                    '# Campaign conversation state (authoritative)'."\n".
+                    json_encode([
+                        'mode' => 'campaign_sales',
+                        'pending_flow' => 'campaign_sales_conversation',
+                        'rules' => [
+                            $profile->localize('Spoken WhatsApp Arabic only — no فصحى for the whole chat. Dialect swaps: فكر بالأمر→فكر بلاشي; نعمل طول الأسبوع→بنشتغل وبنعطي خدمة طول الأسبوع; انقطاعات→تقطيعات. Hebrew term exact: מגדיل טווח. Who-am-I / first contact → "انا سالي من شركة ملان، اكيد بتعرفنا صح؟" then wait. Never use "مش رح اوخذ من وقتك".'),
+                            $profile->localize('Confident salesperson. Branch on whether they know Malan; then AUTO short 5-towns line then fiber-at-home. Instagram/solutions bubble is MID-CHAT only when they ask or want to hear more — never in the intro. No-fiber: 300-500 vs free for first 200, then 29/149, then join. Competitor/refusal: استغل السعر + can switch (تنبسط never ينبسط). Short answers for short questions.'),
+                        ],
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+        } elseif ($summary !== null) {
             $systemPrompt = trim($systemPrompt."\n\n".'# Verified server-side conversation context (authoritative — scoped to this conversation only)'."\n".
                 json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n".
-                'This memory belongs only to conversation #'.$conversation->id.'. Never mix with other chats. '.
-                'Do not ask again for phone/identity. Do not invent a different customer_id. '.
-                'If pending_flow is awaiting_bank_transfer_proof, treat the next image as bank transfer proof. '.
-                'When the customer chooses bank transfer or visa, call set_malan_payment_method_preference.');
+                'This memory belongs only to conversation #'.$conversation->id.'. Never mix with other chats. ');
+
+            if (($summary['mode'] ?? null) === 'new_signup') {
+                $systemPrompt = trim($systemPrompt.
+                    'MODE=new_signup: Do NOT call lookup_malan_customer. Do NOT ask for identity. '.
+                    'Collect full_name + phone + city, confirm with the customer, then create_malan_lead. '.
+                    'Never talk about existing account status or specialist line inspection during signup.');
+            } else {
+                $systemPrompt = trim($systemPrompt.
+                    'Do not ask again for phone/identity. Do not invent a different customer_id. '.
+                    'If pending_flow is awaiting_bank_transfer_proof, treat the next image as bank transfer proof. '.
+                    'When the customer chooses bank transfer or visa, call set_malan_payment_method_preference.');
+            }
         }
 
         if (
@@ -803,10 +861,21 @@ class AiChatbotService
             }
 
             if (is_string($whatsappPhone) && $whatsappPhone !== '') {
-                $systemPrompt = trim($systemPrompt."\n\n".
-                    '# Chat contact phone (authoritative for this chat)'."\n".
-                    'whatsapp_chat_phone='.$whatsappPhone."\n".
-                    'If the customer says to check "الرقم الي بحكي منه" / "هالرقم" / this WhatsApp number, call lookup_malan_customer with lookup_type=phone and value=whatsapp_chat_phone (server resolves it). Do not invent another number.');
+                if ($isCampaignLeadBot) {
+                    $city = $instance->campaignDefaultCity();
+                    $systemPrompt = trim($systemPrompt."\n\n".
+                        '# Chat contact phone (campaign '.$city.')'."\n".
+                        'whatsapp_chat_phone='.$whatsappPhone."\n".
+                        'city_name must always be '.$city.' — never ask for city.'."\n".
+                        'When collecting a lead: ask same-number once; on بنفع/اه set contact_on_current_number; if they write another 05 number that is phone not name — then ask full name only; create_malan_lead; close «تمام {first_name}، رح تتواصل معك الصبيه كمان شوي 👍». NEVER pass digits as full_name.'."\n".
+                        'If the customer means this WhatsApp number (نفس الرقم / هالرقم / عهاذ الرقم / بنفع / اه after the ask), '
+                        .'call create_malan_lead with phone=whatsapp_chat_phone (server resolves). Do not invent another number and do not re-ask.');
+                } else {
+                    $systemPrompt = trim($systemPrompt."\n\n".
+                        '# Chat contact phone (authoritative for this chat)'."\n".
+                        'whatsapp_chat_phone='.$whatsappPhone."\n".
+                        'If the customer says to check "الرقم الي بحكي منه" / "هالرقم" / this WhatsApp number, call lookup_malan_customer with lookup_type=phone and value=whatsapp_chat_phone (server resolves it). Do not invent another number.');
+                }
             }
         }
 
@@ -865,7 +934,12 @@ class AiChatbotService
             }
 
             $dataUrl = 'data:'.$mime.';base64,'.base64_encode($binary);
-            $caption = $text !== '' ? $text : 'الزبون أرسل صورة عبر WhatsApp. اقرأ النص الظاهر فيها (OCR) وحلّل المحتوى، ورد بما تفهمه منها.';
+            $meta = is_array($msg->metadata) ? $msg->metadata : [];
+            $isSticker = str_contains($text, 'ستيكر واتساب')
+                || (($meta['whatsapp_sticker'] ?? false) === true);
+            $caption = $isSticker
+                ? ($text !== '' ? $text : GreenApiIncomingMessage::STICKER_LABEL)."\nThis is a WhatsApp sticker, not a restaurant photo. Identify the gesture/emotion in a few words (thumbs up, smile, heart, ok, laugh, sad, angry, thinking, waving, shrug). Treat a positive/ack sticker after you already explained something as the customer wrapping up — reply like a human on WhatsApp and stop. Do not OCR. Do not pitch the product. Do not ask if they want more details."
+                : ($text !== '' ? $text : 'الزبون أرسل صورة عبر WhatsApp. اقرأ النص الظاهر فيها (OCR) وحلّل المحتوى، ورد بما تفهمه منها.');
 
             return [
                 [

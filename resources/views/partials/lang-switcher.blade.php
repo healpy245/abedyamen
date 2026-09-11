@@ -7,11 +7,11 @@
     ];
 @endphp
 
-<div class="flex items-center gap-1 rounded-full border border-[#f1dfc5] bg-white/80 p-0.5 text-[11px] font-semibold uppercase tracking-wide">
+<div class="kaman-lang-switcher">
     @foreach($locales as $code => $label)
         <a href="{{ route('lang.switch', $code) }}"
-           class="rounded-full px-2.5 py-1 transition {{ $currentLocale === $code
-               ? 'bg-[#f47a2e] text-white shadow-sm'
+           class="kaman-lang-link rounded-[7px] px-2.5 py-1 {{ $currentLocale === $code
+               ? 'is-active bg-[#f47a2e] text-white shadow-sm'
                : 'text-[#a78a6c] hover:text-[#f16229] hover:bg-[#f47a2e]/8' }}"
            @if($currentLocale === $code) aria-current="true" @endif>
             {{ $code === 'he' ? 'עב' : ($code === 'ar' ? 'ع' : 'EN') }}

@@ -12,6 +12,7 @@ use App\Services\AiChatbot\ChatbotAuthorizationService;
 use App\Services\AiChatbot\PromptCompiler;
 use Database\Seeders\WorkspaceUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -315,6 +316,82 @@ class ChatbotWorkspaceTest extends TestCase
         $this->assertNotSame($legacy, $instance->system_prompt);
         $this->assertStringContainsString('سالي', $instance->system_prompt);
         $this->assertSame(1, $instance->settings_schema_version);
+    }
+
+    public function test_workspace_settings_can_save_greenapi_url(): void
+    {
+        $owner = $this->owner();
+        $instance = ChatbotInstance::factory()->create([
+            'user_id' => $owner->id,
+            'name' => 'Kaman POS — WhatsApp',
+            'integration_type' => 'kaman_whatsapp',
+            'system_prompt' => 'You are a POS assistant.',
+            'greenapi_url' => null,
+            'is_active' => false,
+        ]);
+
+        $sendUrl = 'https://7107.api.greenapi.com/waInstance7107/sendMessage/token-abc';
+
+        $this->actingAs($owner)
+            ->get(route('ai-chatbot.workspace.settings', $instance))
+            ->assertOk()
+            ->assertSee('name="greenapi_url"', false)
+            ->assertSee(__('chatbot.greenapi_title'), false);
+
+        $this->actingAs($owner)
+            ->put(route('ai-chatbot.workspace.settings.update', $instance), [
+                'name' => $instance->name,
+                'greenapi_url' => $sendUrl,
+                'prompt_sections' => [
+                    'identity' => ['bot_name' => 'POS'],
+                    'business' => [],
+                    'conversation_behavior' => [],
+                    'restrictions' => [],
+                    'malan_workflows' => [],
+                    'advanced' => [],
+                ],
+            ])
+            ->assertRedirect(route('ai-chatbot.workspace.settings', $instance));
+
+        $instance->refresh();
+        $this->assertSame($sendUrl, $instance->greenapi_url);
+        $this->assertNotEmpty($instance->greenapi_webhook_token);
+    }
+
+    public function test_kaman_settings_can_upload_and_serve_pos_demo_video(): void
+    {
+        Storage::fake('local');
+
+        $owner = $this->owner();
+        $instance = ChatbotInstance::factory()->create([
+            'user_id' => $owner->id,
+            'name' => 'Kaman POS — WhatsApp',
+            'integration_type' => 'kaman_whatsapp',
+            'system_prompt' => 'You are a POS assistant.',
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('ai-chatbot.workspace.settings', $instance))
+            ->assertOk()
+            ->assertSee(__('chatbot.workspace.pos_demo_title'), false);
+
+        $file = UploadedFile::fake()->create('kaman-pos.mp4', 400, 'video/mp4');
+
+        $this->actingAs($owner)
+            ->post(route('ai-chatbot.workspace.settings.pos-demo', $instance), [
+                'video' => $file,
+            ])
+            ->assertRedirect(route('ai-chatbot.workspace.settings', $instance));
+
+        $instance->refresh();
+        $demo = $instance->integration_settings['pos_demo'] ?? [];
+        $this->assertNotEmpty($demo['token'] ?? null);
+        $this->assertNotEmpty($demo['path'] ?? null);
+        Storage::disk('local')->assertExists((string) $demo['path']);
+
+        $this->get(route('ai-chatbot.public.pos-demo', ['token' => $demo['token']]))
+            ->assertOk();
     }
 
     public function test_test_form_never_sends_greenapi_or_mutates_malan(): void

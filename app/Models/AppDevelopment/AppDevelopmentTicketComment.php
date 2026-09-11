@@ -16,6 +16,7 @@ class AppDevelopmentTicketComment extends Model
         'ticket_id',
         'user_id',
         'body',
+        'attachment_id',
     ];
 
     public function ticket(): BelongsTo
@@ -26,5 +27,10 @@ class AppDevelopmentTicketComment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function attachment(): BelongsTo
+    {
+        return $this->belongsTo(AppDevelopmentTicketAttachment::class, 'attachment_id');
     }
 }

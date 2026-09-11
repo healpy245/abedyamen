@@ -48,20 +48,28 @@
             @endforeach
         </div>
 
-        <form method="get" class="shrink-0">
-            @if($tab !== 'all')
-                <input type="hidden" name="tab" value="{{ $tab }}">
-            @endif
-            @foreach($selectedAppTypes as $appType)
-                <input type="hidden" name="app_type[]" value="{{ $appType }}">
-            @endforeach
-            <select name="priority" class="kaman-input kaman-input--sm w-32" onchange="this.form.submit()">
-                <option value="">{{ __('app-development.tickets.priority') }}</option>
-                @foreach(\App\Enums\AppDevelopmentTicketPriority::cases() as $priority)
-                    <option value="{{ $priority->value }}" @selected(request('priority') === $priority->value)>{{ $priority->label() }}</option>
+        <div class="flex shrink-0 flex-wrap items-center gap-1.5">
+            <form method="get">
+                @if($tab !== 'all')
+                    <input type="hidden" name="tab" value="{{ $tab }}">
+                @endif
+                @foreach($selectedAppTypes as $appType)
+                    <input type="hidden" name="app_type[]" value="{{ $appType }}">
                 @endforeach
-            </select>
-        </form>
+                <select name="priority" class="kaman-input kaman-input--sm w-32" onchange="this.form.submit()">
+                    <option value="">{{ __('app-development.tickets.priority') }}</option>
+                    @foreach(\App\Enums\AppDevelopmentTicketPriority::cases() as $priority)
+                        <option value="{{ $priority->value }}" @selected(request('priority') === $priority->value)>{{ $priority->label() }}</option>
+                    @endforeach
+                </select>
+            </form>
+            @can('create', \App\Models\AppDevelopment\AppDevelopmentTicket::class)
+                <a href="{{ route('app-development.tickets.create') }}" class="kaman-button kaman-button--sm" data-app-dev-modal>
+                    @include('app-development.partials.icon', ['name' => 'plus'])
+                    {{ __('app-development.nav.new_ticket') }}
+                </a>
+            @endcan
+        </div>
     </div>
 
     <div class="mt-2 flex flex-wrap items-center gap-1.5" data-app-type-filters>

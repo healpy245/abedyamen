@@ -84,6 +84,41 @@ class PromptCompiler
     }
 
     /**
+     * Same Sally / Malan regulated sections, relabeled for Speedcom (رهط واللقية).
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function speedcomDefaultSections(): array
+    {
+        $sections = $this->sallyMalanDefaultSections();
+        $profile = \App\Support\InternetCompanyProfile::speedcom();
+        $sections = $this->localizeSectionStrings($sections, $profile);
+        $sections['business']['locations'] = $profile->supportedLocations;
+
+        return $this->normalize($sections);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $sections
+     * @return array<string, array<string, mixed>>
+     */
+    private function localizeSectionStrings(array $sections, \App\Support\InternetCompanyProfile $profile): array
+    {
+        foreach ($sections as $name => $fields) {
+            if (! is_array($fields)) {
+                continue;
+            }
+            foreach ($fields as $key => $value) {
+                if (is_string($value)) {
+                    $sections[$name][$key] = $profile->localize($value);
+                }
+            }
+        }
+
+        return $sections;
+    }
+
+    /**
      * @param  array<string, mixed>|null  $input
      * @return array<string, array<string, mixed>>
      */

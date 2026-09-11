@@ -8,6 +8,7 @@ enum AppDevelopmentRole: string
 {
     case Qa = 'qa';
     case Developer = 'developer';
+    case Admin = 'admin';
 
     public function label(): string
     {

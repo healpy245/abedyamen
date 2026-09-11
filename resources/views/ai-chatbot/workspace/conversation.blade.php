@@ -52,19 +52,19 @@
         <a href="{{ route('ai-chatbot.workspace.conversations', $instance) }}" class="kaman-button-ghost kaman-button--sm">← {{ __('chatbot.workspace.back_to_list') }}</a>
     </div>
 
-    <div class="kaman-card overflow-hidden flex flex-col flex-1 min-h-[75vh]">
+    <div class="kaman-card wa-chat-shell flex flex-col flex-1 min-h-0">
         {{-- list | chat | instructor (RTL: list on the right, like WhatsApp Web) --}}
         <div id="workspace-chat-grid"
-             class="grid grid-cols-1 md:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr_280px] flex-1 min-h-0">
+             class="grid grid-cols-1 md:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr_280px] flex-1 min-h-0 h-full overflow-hidden">
             @include('ai-chatbot.workspace.partials.conversation-list-pane', [
                 'activeId' => $conversation->id,
                 'listPaneClass' => 'hidden md:flex',
             ])
 
             {{-- Chat column --}}
-            <section class="flex flex-col min-h-0 border-e border-[#eadfce]">
+            <section class="wa-chat-pane border-e border-[#eadfce]">
                 {{-- Header --}}
-                <header class="px-4 py-3 border-b border-[#eadfce] bg-[#fffaf3]/80 flex flex-wrap items-start justify-between gap-3">
+                <header class="wa-chat-header px-4 py-3 border-b border-[#eadfce] flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2">
                             <div class="w-10 h-10 rounded-full bg-[#f1dfc5] text-[#7c6a56] flex items-center justify-center text-sm font-bold shrink-0">{{ $conversation->initials() }}</div>
@@ -121,32 +121,28 @@
                 </header>
 
                 {{-- Messages --}}
-                <div id="message-thread" class="flex-1 overflow-y-auto kaman-scroll p-4 space-y-3 bg-[linear-gradient(180deg,#f7efe3_0%,#fffaf3_40%,#f7efe3_100%)]" role="log" aria-live="polite">
+                <div id="message-thread" class="wa-chat-thread kaman-scroll p-4 space-y-3 bg-[linear-gradient(180deg,#f7efe3_0%,#fffaf3_40%,#f7efe3_100%)]" role="log" aria-live="polite">
                     @forelse($messages as $message)
                         @include('ai-chatbot.workspace.partials.message-bubble', ['message' => $message, 'instance' => $instance])
                     @empty
                         <p class="text-center text-sm text-[#a78a6c] py-12">{{ __('chatbot.workspace.no_messages') }}</p>
                     @endforelse
+                    <div id="thread-bottom-anchor" class="h-px w-full shrink-0" aria-hidden="true"></div>
                 </div>
 
                 {{-- Composer: staff → customer (WhatsApp), never the AI bot --}}
-                <footer class="border-t border-[#eadfce] p-3 bg-white">
+                <footer class="wa-chat-composer p-2.5 sm:p-3">
                     @if($canReply)
-                        <p class="mb-2 text-[11px] text-[#7c6a56]">
-                            {{ $conversation->isWhatsApp()
-                                ? __('chatbot.workspace.reply_hint_whatsapp')
-                                : __('chatbot.workspace.reply_hint') }}
-                        </p>
                         <form id="reply-form" class="flex gap-2 items-end">
                             <label class="sr-only" for="reply-input">{{ __('chatbot.workspace.reply_placeholder') }}</label>
-                            <textarea id="reply-input" rows="2" required maxlength="4000"
+                            <textarea id="reply-input" rows="1" required maxlength="4000"
                                       placeholder="{{ $conversation->isWhatsApp()
                                           ? __('chatbot.workspace.reply_placeholder_whatsapp')
                                           : __('chatbot.workspace.reply_placeholder') }}"
-                                      class="kaman-input flex-1 resize-none text-sm"></textarea>
+                                      class="kaman-input wa-reply-input flex-1 text-sm"></textarea>
                             <button type="submit" id="reply-submit" class="kaman-button shrink-0">{{ __('chatbot.workspace.send') }}</button>
                         </form>
-                        <p id="reply-error" class="hidden mt-2 text-xs text-red-600" role="alert"></p>
+                        <p id="reply-error" class="hidden mt-1.5 text-xs text-red-600" role="alert"></p>
                     @else
                         <p class="text-sm text-[#a78a6c]">{{ __('chatbot.workspace.viewer_no_reply') }}</p>
                     @endif

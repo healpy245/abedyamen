@@ -8,7 +8,7 @@ return [
     'trusted_by' => 'מהימן על ידי מותגים מובילים',
     'join_restaurants' => 'הצטרפו ליותר מ-500 מסעדות שכבר בקמן',
     'restaurant_details' => 'פרטי המסעדה',
-    'restaurant_details_desc' => 'נשתמש במידע זה כדי להתאים את החנות שלכם.',
+    'restaurant_details_desc' => 'התחברו ואז השתמשו בסוכן התפריט לשמירת קטגוריות ומנות. העתקת HAAT נשארת כאן לייבוא המוני.',
     
     'method_type' => 'סוג השיטה',
     'select_method_type' => 'בחר סוג שיטה',
@@ -30,6 +30,16 @@ return [
     
     'description' => 'תיאור',
     'description_placeholder' => 'שתף את הסיפור שלך, מנות חתימה או הערות מיוחדות (אופציונלי)',
+    'category_store_placeholder' => "המבורגרים\nפסטה\nסלטים\nמשקאות",
+    'category_store_hint' => 'הזינו שם קטגוריה אחד בכל שורה. הבינה המלאכותית תיצור כל קטגוריה באנגלית, ערבית ועברית.',
+    'structured_blocks_hint' => "כתבו כותרת קטגוריה, ואז רשמו מתחתיה מנות או רכיבים (שם ומחיר).\n\nדוגמה:\nהמבורגרים\nהמבורגר קלאסי 45\nהמבורגר גבינה 52\n\nמשקאות\nקולה 8",
+
+    'haat_menu_json' => 'קובץ תפריט HAAT (JSON)',
+    'haat_menu_json_hint' => 'העלו את menu_response.json. התפריט הקיים בקמן נטען קודם, ואז מבוצעים רק היצירות והעריכות הנדרשות (קטגוריות, מנות, קבוצות תוספות, רכיבים וקישורים). מקטעי Top Selling ו-Footer מתעלמים.',
+    'haat_menu_json_required' => 'אנא העלו קובץ JSON של תפריט HAAT.',
+    'haat_restaurant_id' => 'מזהה מסעדת HAAT (אופציונלי)',
+    'haat_restaurant_id_placeholder' => 'בשימוש רק כאשר HAAT_MENU_API_URL מוגדר',
+    'haat_no_images' => 'דלג על הורדת תמונות',
     
     'category_name_en' => 'שם קטגוריה (אנגלית)',
     'category_name_en_desc' => '(אופציונלי, משמש לנתיבי חנות כמו חנות המבורגרים, חנות פסטה, מרכיבים עם תמונות, משקאות וכו\')',
@@ -77,7 +87,7 @@ return [
     'maximum_reached' => '(הגעת למקסימום)',
     'up_to_allowed' => '(עד :max מותר)',
     
-    'submit_application' => 'שלח בקשה',
+    'haat_submit' => 'העתקת תפריט HAAT',
     'back_to_home' => '← חזרה לדף הבית',
     
     'required' => '*',
@@ -109,5 +119,36 @@ return [
     'arabic' => 'ערבית',
     'hebrew' => 'עברית',
     'tag' => 'טופס מסעדה',
+
+    'runs_title' => 'צ׳אטים ושליחות',
+    'runs_running' => 'רץ כעת',
+    'runs_history' => 'היסטוריה',
+    'runs_empty' => 'אין צ׳אטים עדיין. שלחו הודעה לסוכן התפריט או שליחת HAAT כדי לראות אותן כאן.',
+    'runs_pause' => 'השהה',
+    'runs_continue' => 'המשך',
+    'runs_paused' => 'מושהה',
+    'runs_completed' => 'הושלם',
+    'runs_failed' => 'נכשל',
+    'runs_status_running' => 'רץ',
+    'runs_watch' => 'צפייה',
+    'runs_inspect' => 'בדיקה',
+    'runs_delete' => 'מחק',
+    'runs_delete_confirm' => 'למחוק את הצ׳אט מההיסטוריה?',
+    'runs_by' => 'של',
+
+    'haat_bulk_title' => 'ייבוא HAAT מרוכז',
+    'agent_title' => 'סוכן תפריט',
+    'agent_subtitle' => 'זה הטופס הראשי. צרפו תמונות או קבצי תפריט ואז בקשו לשמור, לדלג על כפילויות או למחוק אותן.',
+    'agent_placeholder' => 'למשל: הוסף את תמונות התפריט. שם הפריט הוא התיאור. אל תערבב עברית בערבית.',
+    'agent_send' => 'שליחה',
+    'agent_attach' => 'צירוף תפריטים',
+    'agent_need_login' => 'התחברו למסעדה קודם (תת-דומיין + כניסה), ואז כתבו כאן.',
+    'agent_empty' => 'צרפו תמונות תפריט או כתבו הוראה. אני שומר אותן בצ׳אט הזה — אין צורך להעלות שוב.',
+    'agent_thinking' => 'עובד…',
+    'agent_error' => 'הסוכן לא הצליח לסיים. נסו שוב.',
+    'agent_new' => 'צ׳אט חדש',
+    'agent_drop' => 'שחררו כאן תמונות תפריט',
+    'debug_title' => 'מאתר באגים של תהליך',
+    'debug_placeholder' => 'תהליך העבודה נשאר כאן. שלחו צ׳אט או פתחו שליחה כדי לבדוק אותה.',
 ];
 

@@ -2,11 +2,12 @@
 
 namespace App\Services\AiChatbot;
 
+use App\Models\AiChatbot\ChatbotInstance;
 use App\Models\AiChatbot\ChatbotSetting;
 
 class AiChatbotSettingsService
 {
-    /** Calibration sample: this Arabic sentence should take ~15 seconds to "type". */
+    /** Calibration sample: this Arabic sentence should take ~5 seconds to "type". */
     public const TYPING_REFERENCE_SAMPLE = 'إن شاء الله! مجموعة "المشتركة" عندهم رؤية واضحة لمستقبل أفضل. إذا احتجت أي معلومات إضافية عنهم، أنا جاهز!';
 
     public function defaults(): array
@@ -24,16 +25,16 @@ class AiChatbotSettingsService
             'max_tokens' => 2000,
             'typing_delay_enabled' => true,
             'typing_reference_chars' => mb_strlen(self::TYPING_REFERENCE_SAMPLE),
-            'typing_reference_seconds' => 15,
-            'typing_min_seconds' => 2,
-            'typing_max_seconds' => 45,
+            'typing_reference_seconds' => 5,
+            'typing_min_seconds' => 1,
+            'typing_max_seconds' => 8,
         ];
     }
 
     /**
      * Dynamic typing delay before showing an assistant message (milliseconds).
      */
-    public function typingDelayMs(string $text): int
+    public function typingDelayMs(string $text, ?ChatbotInstance $instance = null): int
     {
         $settings = $this->all();
 
@@ -41,10 +42,14 @@ class AiChatbotSettingsService
             return 0;
         }
 
+        if ($instance?->hasKamanWhatsappIntegration()) {
+            return KamanHumanDelay::millisecondsForText($text);
+        }
+
         $referenceChars = max(1, (int) ($settings['typing_reference_chars'] ?? mb_strlen(self::TYPING_REFERENCE_SAMPLE)));
-        $referenceSeconds = max(1, (int) ($settings['typing_reference_seconds'] ?? 15));
-        $minSeconds = max(0, (int) ($settings['typing_min_seconds'] ?? 2));
-        $maxSeconds = max($minSeconds, (int) ($settings['typing_max_seconds'] ?? 45));
+        $referenceSeconds = max(1, (int) ($settings['typing_reference_seconds'] ?? 5));
+        $minSeconds = max(0, (int) ($settings['typing_min_seconds'] ?? 1));
+        $maxSeconds = max($minSeconds, (int) ($settings['typing_max_seconds'] ?? 8));
 
         $length = mb_strlen(trim($text));
         $seconds = ($length / $referenceChars) * $referenceSeconds;

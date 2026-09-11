@@ -16,6 +16,16 @@ enum AppDevelopmentTicketStatus: string
         return __('app-development.status.'.$this->value);
     }
 
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Open => 'inbox',
+            self::Working => 'wrench',
+            self::Qa => 'clipboard',
+            self::Completed => 'check-circle',
+        };
+    }
+
     /**
      * @return array{bg: string, text: string, border: string}
      */

@@ -18,20 +18,6 @@
                             aria-label="{{ __('app-development.nav.open_menu') }}">
                         @include('app-development.partials.icon', ['name' => 'menu'])
                     </button>
-                    <div class="app-dev-main__actions">
-                        @can('create', \App\Models\AppDevelopment\AppDevelopmentTicket::class)
-                            <a href="{{ route('app-development.tickets.create') }}" class="kaman-button kaman-button--sm" data-app-dev-modal>
-                                @include('app-development.partials.icon', ['name' => 'plus'])
-                                <span>{{ __('app-development.nav.new_ticket') }}</span>
-                            </a>
-                        @endcan
-                        @can('uploadRelease', \App\Models\AppDevelopment\AppDevelopmentRelease::class)
-                            <a href="{{ route('app-development.releases.create') }}" class="kaman-button-ghost kaman-button--sm" data-app-dev-modal>
-                                @include('app-development.partials.icon', ['name' => 'upload'])
-                                <span>{{ __('app-development.nav.upload_apk') }}</span>
-                            </a>
-                        @endcan
-                    </div>
                 </div>
                 @unless($hidePageFlash ?? false)
                     @include('app-development.partials.flash')

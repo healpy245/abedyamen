@@ -14,8 +14,6 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
 {
     public function run(array $payload, ?callable $onProgress = null): array
     {
-        $restaurantName = trim($payload['restaurant_name'] ?? '');
-        $password = $payload['password'] ?? '';
         $description = trim($payload['description'] ?? '');
         $logoPath = isset($payload['category_logo_path']) && is_string($payload['category_logo_path'])
             ? $payload['category_logo_path']
@@ -25,10 +23,11 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
             $onProgress && $onProgress($step, $message, $data);
         };
 
-        if ($restaurantName === '' || $password === '') {
+        $auth = $this->resolveKamanAuth($payload, $progress);
+        if (! ($auth['ok'] ?? false)) {
             return [
                 'success' => false,
-                'error' => 'Restaurant name and password are required.',
+                'error' => $auth['error'] ?? 'Restaurant name and password are required. Click Login first.',
             ];
         }
 
@@ -46,15 +45,11 @@ final class CategoryStoreWithAiImageWorkflow extends AbstractFormWorkflow
             ];
         }
 
-        $subdomain = $this->toSubdomain($restaurantName);
-        $baseUrl = KamanUrl::managerApi($subdomain, KamanUrl::tldFromEnvironment($payload['environment'] ?? null));
+        $restaurantName = $auth['restaurant_name'];
+        $baseUrl = $auth['base_url'];
+        $token = $auth['token'];
 
         try {
-            $progress('login', 'Logging in to Kaman API...', ['subdomain' => $subdomain]);
-            $loginEmail = KamanUrl::loginEmail($subdomain, $payload['username'] ?? null);
-            $token = $this->login($baseUrl, $loginEmail, $password);
-            $progress('login', 'Logged in successfully', ['subdomain' => $subdomain]);
-
             $progress('ai', 'Parsing categories with AI...', []);
             $categories = $this->parseCategoriesWithAi($description);
             $progress('ai', 'Parsed '.count($categories).' categories', ['count' => count($categories)]);

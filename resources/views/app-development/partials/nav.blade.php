@@ -73,19 +73,4 @@
             </a>
         @endif
     </nav>
-
-    <div class="app-dev-sidebar__footer">
-        @can('create', \App\Models\AppDevelopment\AppDevelopmentTicket::class)
-            <a href="{{ route('app-development.tickets.create') }}" class="kaman-button kaman-button--sm app-dev-sidebar__cta" data-app-dev-modal>
-                @include('app-development.partials.icon', ['name' => 'plus'])
-                <span class="app-dev-sidebar__label">{{ __('app-development.nav.new_ticket') }}</span>
-            </a>
-        @endcan
-        @can('uploadRelease', \App\Models\AppDevelopment\AppDevelopmentRelease::class)
-            <a href="{{ route('app-development.releases.create') }}" class="kaman-button-ghost kaman-button--sm app-dev-sidebar__cta" data-app-dev-modal>
-                @include('app-development.partials.icon', ['name' => 'upload'])
-                <span class="app-dev-sidebar__label">{{ __('app-development.nav.upload_apk') }}</span>
-            </a>
-        @endcan
-    </div>
 </aside>

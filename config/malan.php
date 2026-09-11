@@ -22,6 +22,29 @@ return [
 
     'support_report_duplicate_window_minutes' => (int) env('MALAN_SUPPORT_REPORT_DUPLICATE_MINUTES', 30),
 
+    /*
+    | Malan createTask assignee user IDs (CRM employee IDs).
+    | Accounting (גבייה / ניתוק חוב follow-up) defaults to 147.
+    */
+    'tasks' => [
+        'accounting_user_id' => (int) env('MALAN_TASK_ACCOUNTING_USER_ID', 147),
+        'technical_user_id' => (int) env('MALAN_TASK_TECHNICAL_USER_ID', 147),
+        'default_status' => (string) env('MALAN_TASK_DEFAULT_STATUS', 'non_urgent'),
+    ],
+
+    /*
+    | New-signup leads (apiClient/createLead).
+    | Set MALAN_LEAD_SOURCE_ID to a valid getLeadSources id, or leave 0 to auto-pick.
+    | Campaign WhatsApp leads always use campaign_source_id (default 66).
+    */
+    'leads' => [
+        'default_source_id' => (int) env('MALAN_LEAD_SOURCE_ID', 0),
+        'campaign_source_id' => (int) env('MALAN_CAMPAIGN_LEAD_SOURCE_ID', 66),
+        'preferred_source_title' => (string) env('MALAN_LEAD_SOURCE_TITLE', ''),
+        'source_cache_seconds' => (int) env('MALAN_LEAD_SOURCE_CACHE_SECONDS', 3600),
+        'duplicate_window_minutes' => (int) env('MALAN_LEAD_DUPLICATE_MINUTES', 30),
+    ],
+
     'media' => [
         'max_bytes' => (int) env('MALAN_MEDIA_MAX_BYTES', 15 * 1024 * 1024),
         'allowed_mimes' => [
@@ -33,7 +56,11 @@ return [
             'audio/mpeg',
             'audio/mp4',
             'audio/aac',
+            'audio/x-m4a',
+            'audio/x-hx-aac-adts',
             'audio/opus',
+            'audio/flac',
+            'audio/x-flac',
             'audio/wav',
             'audio/webm',
             'audio/x-wav',
@@ -50,6 +77,19 @@ return [
                 'media.green-api.com,api.green-api.com,digitaloceanspaces.com,amazonaws.com'
             ))
         ))),
+    ],
+
+    'voice' => [
+        'transcription_model' => (string) env('MALAN_VOICE_TRANSCRIPTION_MODEL', 'gpt-transcribe'),
+        'transcription_fallback_model' => (string) env('MALAN_VOICE_TRANSCRIPTION_FALLBACK_MODEL', 'whisper-1'),
+        // Singular hint for models that take one language; the list is for gpt-transcribe.
+        'transcription_language' => (string) env('MALAN_VOICE_TRANSCRIPTION_LANGUAGE', 'ar'),
+        'transcription_languages' => (string) env('MALAN_VOICE_TRANSCRIPTION_LANGUAGES', 'ar,he'),
+        'transcription_timeout' => (int) env('MALAN_VOICE_TRANSCRIPTION_TIMEOUT', 60),
+        'transcription_min_bytes' => (int) env('MALAN_VOICE_TRANSCRIPTION_MIN_BYTES', 900),
+        'transcription_min_confidence' => (float) env('MALAN_VOICE_TRANSCRIPTION_MIN_CONFIDENCE', -1.25),
+        'transcription_max_no_speech' => (float) env('MALAN_VOICE_TRANSCRIPTION_MAX_NO_SPEECH', 0.75),
+        'transcription_logprobs' => (bool) env('MALAN_VOICE_TRANSCRIPTION_LOGPROBS', true),
     ],
 
     'proof' => [

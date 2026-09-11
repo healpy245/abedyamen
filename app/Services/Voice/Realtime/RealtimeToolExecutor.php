@@ -53,12 +53,14 @@ class RealtimeToolExecutor
             'lookup_customer' => $this->legacyLookupCustomer($call, $arguments),
             'lookup_malan_customer' => $this->runMalanTool($call, 'lookup_malan_customer', $arguments),
             'create_malan_support_report' => $this->runMalanTool($call, 'create_malan_support_report', $arguments),
+            'create_malan_task' => $this->runMalanTool($call, 'create_malan_task', $arguments),
+            'create_malan_lead' => $this->runMalanTool($call, 'create_malan_lead', $arguments),
             'set_malan_payment_method_preference' => $this->runMalanTool($call, 'set_malan_payment_method_preference', $arguments),
             'charge_malan_saved_payment_method' => $this->runMalanTool($call, 'charge_malan_saved_payment_method', $arguments),
             'create_malan_one_time_payment_link' => $this->runMalanTool($call, 'create_malan_one_time_payment_link', $arguments),
             'check_malan_payment_status' => $this->runMalanTool($call, 'check_malan_payment_status', $arguments),
             'request_malan_service_reactivation' => $this->runMalanTool($call, 'request_malan_service_reactivation', $arguments),
-            'create_lead' => $this->createLead($arguments),
+            'create_lead' => $this->createLead($call, $arguments),
             'create_support_ticket' => $this->createSupportTicket($arguments),
             'escalate_to_human' => $this->escalateToHuman($arguments),
             default => [
@@ -154,18 +156,25 @@ class RealtimeToolExecutor
      * @param  array<string, mixed>  $arguments
      * @return array<string, mixed>
      */
-    private function createLead(array $arguments): array
+    private function createLead(VoiceCall $call, array $arguments): array
     {
-        $name = trim((string) ($arguments['name'] ?? ''));
-        if ($name === '') {
-            return ['success' => false, 'message' => 'Lead name is required.'];
+        $fullName = trim((string) ($arguments['full_name'] ?? $arguments['name'] ?? ''));
+        $phone = trim((string) ($arguments['phone'] ?? ''));
+        $city = trim((string) ($arguments['city_name'] ?? $arguments['city'] ?? ''));
+
+        if ($fullName === '' || $phone === '' || $city === '') {
+            return [
+                'success' => false,
+                'message' => 'لازم الاسم ورقم التلفون والبلدة لتسجيل الطلب.',
+            ];
         }
 
-        return [
-            'success' => true,
-            'lead_id' => 'pending',
-            'message' => 'Lead queued for follow-up.',
-        ];
+        return $this->runMalanTool($call, 'create_malan_lead', [
+            'full_name' => $fullName,
+            'phone' => $phone,
+            'city_name' => $city,
+            'confirmed_by_customer' => (bool) ($arguments['confirmed_by_customer'] ?? true),
+        ]);
     }
 
     /**

@@ -8,7 +8,7 @@ return [
     'trusted_by' => 'Trusted by leading brands',
     'join_restaurants' => 'Join 500+ restaurants already on Kaman',
     'restaurant_details' => 'Restaurant Details',
-    'restaurant_details_desc' => 'We will use this information to tailor your storefront.',
+    'restaurant_details_desc' => 'Sign in, then use the menu agent to store categories and meals. HAAT copy stays here for bulk imports.',
     
     'method_type' => 'Method Type',
     'select_method_type' => 'Select a method type',
@@ -30,6 +30,16 @@ return [
     
     'description' => 'Description',
     'description_placeholder' => 'Share your story, signature dishes, or special notes (optional)',
+    'category_store_placeholder' => "Burgers\nPasta\nSalads\nDrinks",
+    'category_store_hint' => 'Enter one category name per line. AI will create each category in English, Arabic, and Hebrew.',
+    'structured_blocks_hint' => "Write a category heading, then list meals or ingredients under it (name and price).\n\nExample:\nBurgers\nClassic burger 45\nCheese burger 52\n\nDrinks\nCola 8",
+
+    'haat_menu_json' => 'HAAT menu JSON',
+    'haat_menu_json_hint' => 'Upload the HAAT menu_response.json. The existing Kaman menu is loaded first, then only the needed creates and edits are applied (categories, meals, addon groups, ingredients, and links). Top Selling and Footer are ignored.',
+    'haat_menu_json_required' => 'Please upload a HAAT menu JSON file.',
+    'haat_restaurant_id' => 'HAAT restaurant id (optional)',
+    'haat_restaurant_id_placeholder' => 'Only used when HAAT_MENU_API_URL is configured',
+    'haat_no_images' => 'Skip downloading images',
     
     'category_name_en' => 'Category Name (English)',
     'category_name_en_desc' => '(optional, used for store paths like Burger Store, Pasta Store, Ingredients with images, Drinks, etc.)',
@@ -77,7 +87,7 @@ return [
     'maximum_reached' => '(maximum reached)',
     'up_to_allowed' => '(up to :max allowed)',
     
-    'submit_application' => 'Submit application',
+    'haat_submit' => 'Copy HAAT menu',
     'back_to_home' => '← Back to home',
     
     'required' => '*',
@@ -109,5 +119,36 @@ return [
     'arabic' => 'Arabic',
     'hebrew' => 'Hebrew',
     'tag' => 'Restaurant Form',
+
+    'runs_title' => 'Chats & submissions',
+    'runs_running' => 'Running now',
+    'runs_history' => 'History',
+    'runs_empty' => 'No chats yet. Send a menu-agent message or submit HAAT to see them here.',
+    'runs_pause' => 'Pause',
+    'runs_continue' => 'Continue',
+    'runs_paused' => 'Paused',
+    'runs_completed' => 'Completed',
+    'runs_failed' => 'Failed',
+    'runs_status_running' => 'Running',
+    'runs_watch' => 'Watch',
+    'runs_inspect' => 'Inspect',
+    'runs_delete' => 'Delete',
+    'runs_delete_confirm' => 'Delete this chat from history?',
+    'runs_by' => 'by',
+
+    'haat_bulk_title' => 'HAAT bulk import',
+    'agent_title' => 'Menu agent',
+    'agent_subtitle' => 'This is the main form. Attach menu photos or files, then tell it what to do — store, skip duplicates, or delete extras.',
+    'agent_placeholder' => 'e.g. Add these menu photos. Item name is the description. Do not mix Hebrew into Arabic.',
+    'agent_send' => 'Send',
+    'agent_attach' => 'Attach menus',
+    'agent_need_login' => 'Sign in to the restaurant first (subdomain + Login), then chat here.',
+    'agent_empty' => 'Drop menu photos or type an instruction. I keep them in this chat — you do not need to upload twice.',
+    'agent_thinking' => 'Working…',
+    'agent_error' => 'The agent could not finish. Try again.',
+    'agent_new' => 'New chat',
+    'agent_drop' => 'Drop menu photos here',
+    'debug_title' => 'Workflow Debugger',
+    'debug_placeholder' => 'The live process stays here. Send a chat or open a submission to inspect it.',
 ];
 

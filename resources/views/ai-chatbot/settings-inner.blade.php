@@ -1,7 +1,7 @@
 @php
     /** @var array<string,mixed> $settings */
     $refChars = $settings['typing_reference_chars'] ?? 96;
-    $refSeconds = $settings['typing_reference_seconds'] ?? 15;
+    $refSeconds = $settings['typing_reference_seconds'] ?? 5;
 @endphp
 
 <div class="page-container">
@@ -101,19 +101,19 @@
                     <div class="space-y-2">
                         <label for="typing_reference_seconds" class="kaman-label block">{{ __('chatbot.reference_delay') }}</label>
                         <input id="typing_reference_seconds" name="typing_reference_seconds" type="number" min="1" max="120"
-                               value="{{ old('typing_reference_seconds', $settings['typing_reference_seconds'] ?? 15) }}"
+                               value="{{ old('typing_reference_seconds', $settings['typing_reference_seconds'] ?? 5) }}"
                                class="kaman-input w-full">
                     </div>
                     <div class="space-y-2">
                         <label for="typing_min_seconds" class="kaman-label block">{{ __('chatbot.min_delay') }}</label>
                         <input id="typing_min_seconds" name="typing_min_seconds" type="number" min="0" max="120"
-                               value="{{ old('typing_min_seconds', $settings['typing_min_seconds'] ?? 2) }}"
+                               value="{{ old('typing_min_seconds', $settings['typing_min_seconds'] ?? 1) }}"
                                class="kaman-input w-full">
                     </div>
                     <div class="space-y-2">
                         <label for="typing_max_seconds" class="kaman-label block">{{ __('chatbot.max_delay') }}</label>
                         <input id="typing_max_seconds" name="typing_max_seconds" type="number" min="1" max="300"
-                               value="{{ old('typing_max_seconds', $settings['typing_max_seconds'] ?? 45) }}"
+                               value="{{ old('typing_max_seconds', $settings['typing_max_seconds'] ?? 8) }}"
                                class="kaman-input w-full">
                     </div>
                 </div>

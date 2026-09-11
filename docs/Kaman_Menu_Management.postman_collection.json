@@ -1,0 +1,667 @@
+{
+  "info": {
+    "_postman_id": "kaman-menu-mgmt-001",
+    "name": "Kaman Menu Management API",
+    "description": "Restaurant menu management APIs used by Webtimize / Kaman Workspace.\n\n## Base URLs\n- Manager: `https://{{subdomain}}.kaman.{{tld}}/api/manager`\n- Cashier (POS extras): `https://{{subdomain}}.kaman.{{tld}}/api/cashier`\n\n## Auth\n1. Run **Login** → copies `token` into collection variable `token`.\n2. All other requests send `Authorization: Bearer {{token}}`.\n\n## Environments\n- `tld` = `rest` (production restaurants) or `dev`\n- Login email is usually the restaurant username, or `{subdomain}@kaman.rest`\n\n## Notes\n- Lists are often paginated (`?page=1`). Walk pages until empty.\n- Images: multipart field name is `image` on create endpoints.\n- Linking meal ↔ ingredients prefers **Cashier** API. Manager link paths are fallbacks and may be ignored by the server.\n- This collection mirrors what the Form Menu Agent + HAAT Menu Copy workflows call.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "subdomain", "value": "alarishetest" },
+    { "key": "tld", "value": "rest" },
+    { "key": "manager_base", "value": "https://{{subdomain}}.kaman.{{tld}}/api/manager" },
+    { "key": "cashier_base", "value": "https://{{subdomain}}.kaman.{{tld}}/api/cashier" },
+    { "key": "email", "value": "" },
+    { "key": "password", "value": "" },
+    { "key": "token", "value": "" },
+    { "key": "category_id", "value": "1" },
+    { "key": "item_id", "value": "1" },
+    { "key": "ingredient_id", "value": "1" },
+    { "key": "ingredient_category_id", "value": "1" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "Login (Manager)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const token = json.token || json.access_token || (json.data && (json.data.token || json.data.access_token));",
+                  "if (token) {",
+                  "  pm.collectionVariables.set('token', token);",
+                  "  console.log('Token saved');",
+                  "} else {",
+                  "  console.warn('No token found in response', json);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{manager_base}}/login",
+            "description": "Authenticate against the restaurant manager API.\n\n**Body**\n- `email` — restaurant username, or `{subdomain}@kaman.rest`\n- `password` — restaurant password\n\n**Response token fields tried:** `token`, `access_token`, `data.token`, `data.access_token`.\n\nTest script stores the token into collection variable `token`."
+          }
+        },
+        {
+          "name": "Login (form-urlencoded fallback)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const token = json.token || json.access_token || (json.data && (json.data.token || json.data.access_token));",
+                  "if (token) pm.collectionVariables.set('token', token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "email", "value": "{{email}}" },
+                { "key": "password", "value": "{{password}}" }
+              ]
+            },
+            "url": "{{manager_base}}/login",
+            "description": "Some tenants accept form login better than JSON. Use if JSON login fails."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Categories (Manager)",
+      "item": [
+        {
+          "name": "List categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{manager_base}}/categories?page=1",
+              "host": ["{{manager_base}}"],
+              "path": ["categories"],
+              "query": [{ "key": "page", "value": "1" }]
+            },
+            "description": "Paginated list of menu categories."
+          }
+        },
+        {
+          "name": "Create category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Drinks\",\n  \"name_ar\": \"مشروبات\",\n  \"name_he\": \"משקאות\",\n  \"position\": 1\n}"
+            },
+            "url": "{{manager_base}}/categories",
+            "description": "Create a category.\n\n**Common fields**\n- `name_en`, `name_ar`, `name_he` (required)\n- `position` or `order_index` (ordering; both used in the wild)\n\n**With image:** use multipart form with field `image` (file)."
+          }
+        },
+        {
+          "name": "Create category (with image)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name_en", "value": "Drinks", "type": "text" },
+                { "key": "name_ar", "value": "مشروبات", "type": "text" },
+                { "key": "name_he", "value": "משקאות", "type": "text" },
+                { "key": "position", "value": "1", "type": "text" },
+                { "key": "image", "type": "file", "src": [] }
+              ]
+            },
+            "url": "{{manager_base}}/categories"
+          }
+        },
+        {
+          "name": "Update category (PUT JSON)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Drinks\",\n  \"name_ar\": \"مشروبات\",\n  \"name_he\": \"משקאות\",\n  \"order_index\": \"1\"\n}"
+            },
+            "url": "{{manager_base}}/categories/{{category_id}}"
+          }
+        },
+        {
+          "name": "Update category (POST _method=PUT)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "_method", "value": "PUT" },
+                { "key": "name_en", "value": "Drinks" },
+                { "key": "name_ar", "value": "مشروبات" },
+                { "key": "name_he", "value": "משקאות" },
+                { "key": "order_index", "value": "1" }
+              ]
+            },
+            "url": "{{manager_base}}/categories/{{category_id}}",
+            "description": "Laravel method spoof fallback used by HAAT writer when PUT JSON fails."
+          }
+        },
+        {
+          "name": "Delete category",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{manager_base}}/categories/{{category_id}}",
+            "description": "Used by Menu Agent when deleting duplicate categories."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Items / Meals (Manager)",
+      "item": [
+        {
+          "name": "List items",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{manager_base}}/items?page=1",
+              "host": ["{{manager_base}}"],
+              "path": ["items"],
+              "query": [{ "key": "page", "value": "1" }]
+            }
+          }
+        },
+        {
+          "name": "Show item",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{manager_base}}/items/{{item_id}}",
+            "description": "Single meal. Also used to discover whether ingredients are nested on the item payload."
+          }
+        },
+        {
+          "name": "Create item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Family Meal\",\n  \"name_ar\": \"عائلي\",\n  \"name_he\": \"משפחתי\",\n  \"description_en\": \"Family Meal\",\n  \"description_ar\": \"عائلي\",\n  \"description_he\": \"משפחתי\",\n  \"price\": \"50.00\",\n  \"category_id\": \"{{category_id}}\"\n}"
+            },
+            "url": "{{manager_base}}/items",
+            "description": "**Required-ish fields**\n- `name_en`, `name_ar`, `name_he`\n- `price` as numeric string (`\"25.00\"`)\n- `category_id`\n- optional `description_*`\n\nKnown drinks may be created with a catalog `image` multipart."
+          }
+        },
+        {
+          "name": "Create item (with image)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name_en", "value": "Cola", "type": "text" },
+                { "key": "name_ar", "value": "كولا", "type": "text" },
+                { "key": "name_he", "value": "קולה", "type": "text" },
+                { "key": "description_en", "value": "Cola", "type": "text" },
+                { "key": "description_ar", "value": "كولا", "type": "text" },
+                { "key": "description_he", "value": "קולה", "type": "text" },
+                { "key": "price", "value": "8.00", "type": "text" },
+                { "key": "category_id", "value": "{{category_id}}", "type": "text" },
+                { "key": "image", "type": "file", "src": [] }
+              ]
+            },
+            "url": "{{manager_base}}/items"
+          }
+        },
+        {
+          "name": "Bulk create items",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"name_en\": \"Meal A\",\n      \"name_ar\": \"وجبة أ\",\n      \"name_he\": \"מנה א\",\n      \"description_en\": \"Meal A\",\n      \"description_ar\": \"وجبة أ\",\n      \"description_he\": \"מנה א\",\n      \"price\": \"20.00\",\n      \"category_id\": \"{{category_id}}\",\n      \"status\": \"1\"\n    }\n  ]\n}"
+            },
+            "url": "{{manager_base}}/items/bulk",
+            "description": "HAAT bulk create. Some restaurants return 404 — fall back to single POST /items."
+          }
+        },
+        {
+          "name": "Update item (PUT JSON)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Family Meal\",\n  \"name_ar\": \"عائلي\",\n  \"name_he\": \"משפחתי\",\n  \"description_en\": \"Family Meal\",\n  \"description_ar\": \"عائلي\",\n  \"description_he\": \"משפחתי\",\n  \"price\": \"55.00\",\n  \"category_id\": \"{{category_id}}\"\n}"
+            },
+            "url": "{{manager_base}}/items/{{item_id}}"
+          }
+        },
+        {
+          "name": "Update item (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": \"55.00\"\n}"
+            },
+            "url": "{{manager_base}}/items/{{item_id}}"
+          }
+        },
+        {
+          "name": "Disable item (status=0)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "_method", "value": "PUT" },
+                { "key": "status", "value": "0" }
+              ]
+            },
+            "url": "{{manager_base}}/items/{{item_id}}",
+            "description": "HAAT uses this to mark unavailable meals."
+          }
+        },
+        {
+          "name": "Delete item",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{manager_base}}/items/{{item_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Ingredient categories (Manager)",
+      "item": [
+        {
+          "name": "List ingredient categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{manager_base}}/ingredients-categories?page=1",
+              "host": ["{{manager_base}}"],
+              "path": ["ingredients-categories"],
+              "query": [{ "key": "page", "value": "1" }]
+            },
+            "description": "Manager spelling is plural: `/ingredients-categories`."
+          }
+        },
+        {
+          "name": "Create ingredient category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Sides\",\n  \"name_ar\": \"إضافات\",\n  \"name_he\": \"תוספות\"\n}"
+            },
+            "url": "{{manager_base}}/ingredients-categories"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Ingredients (Manager)",
+      "item": [
+        {
+          "name": "List ingredients",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{manager_base}}/ingredients?page=1",
+              "host": ["{{manager_base}}"],
+              "path": ["ingredients"],
+              "query": [{ "key": "page", "value": "1" }]
+            }
+          }
+        },
+        {
+          "name": "Create ingredient",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Extra cheese\",\n  \"name_ar\": \"جبنة إضافية\",\n  \"name_he\": \"גבינה נוספת\",\n  \"price\": \"3.00\",\n  \"category_id\": \"{{ingredient_category_id}}\"\n}"
+            },
+            "url": "{{manager_base}}/ingredients",
+            "description": "Menu Agent sometimes creates with names only (`name_en/ar/he`). HAAT also sends `price` + `category_id`."
+          }
+        },
+        {
+          "name": "Create ingredient (with image)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name_en", "value": "Extra cheese", "type": "text" },
+                { "key": "name_ar", "value": "جبنة إضافية", "type": "text" },
+                { "key": "name_he", "value": "גבינה נוספת", "type": "text" },
+                { "key": "price", "value": "3.00", "type": "text" },
+                { "key": "category_id", "value": "{{ingredient_category_id}}", "type": "text" },
+                { "key": "image", "type": "file", "src": [] }
+              ]
+            },
+            "url": "{{manager_base}}/ingredients"
+          }
+        },
+        {
+          "name": "Delete ingredient",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{manager_base}}/ingredients/{{ingredient_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Cashier — Ingredient categories (preferred for POS)",
+      "item": [
+        {
+          "name": "List cashier ingredient-categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{cashier_base}}/ingredient-categories?page=1&per_page=100",
+              "host": ["{{cashier_base}}"],
+              "path": ["ingredient-categories"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "100" }
+              ]
+            },
+            "description": "Also used as a probe: if this works, use Cashier for extras/linking."
+          }
+        },
+        {
+          "name": "Create cashier ingredient-category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Sides\",\n  \"name_ar\": \"إضافات\",\n  \"name_he\": \"תוספות\",\n  \"type\": \"multi_option\",\n  \"max_options\": 99,\n  \"min_options\": 0,\n  \"order_index\": 0,\n  \"must_pick\": false\n}"
+            },
+            "url": "{{cashier_base}}/ingredient-categories"
+          }
+        },
+        {
+          "name": "Update cashier ingredient-category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Sides\",\n  \"name_ar\": \"إضافات\",\n  \"name_he\": \"תוספות\",\n  \"type\": \"multi_option\",\n  \"max_options\": 99,\n  \"min_options\": 0,\n  \"order_index\": 0,\n  \"must_pick\": false\n}"
+            },
+            "url": "{{cashier_base}}/ingredient-categories/{{ingredient_category_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Cashier — Ingredients",
+      "item": [
+        {
+          "name": "List cashier ingredients",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{cashier_base}}/ingredients?page=1&per_page=100",
+              "host": ["{{cashier_base}}"],
+              "path": ["ingredients"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "100" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create cashier ingredient",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Extra cheese\",\n  \"name_ar\": \"جبنة إضافية\",\n  \"name_he\": \"גבינה נוספת\",\n  \"price\": 2.5,\n  \"category_id\": \"{{ingredient_category_id}}\",\n  \"allow_multiple\": false,\n  \"order_index\": 0\n}"
+            },
+            "url": "{{cashier_base}}/ingredients"
+          }
+        },
+        {
+          "name": "Update cashier ingredient",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name_en\": \"Extra cheese\",\n  \"name_ar\": \"جبنة إضافية\",\n  \"name_he\": \"גבינה נוספת\",\n  \"price\": 3,\n  \"category_id\": \"{{ingredient_category_id}}\",\n  \"allow_multiple\": false,\n  \"order_index\": 0\n}"
+            },
+            "url": "{{cashier_base}}/ingredients/{{ingredient_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Cashier — Link meal ↔ ingredients (preferred)",
+      "item": [
+        {
+          "name": "List item ingredients",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{cashier_base}}/items/{{item_id}}/ingredients"
+          }
+        },
+        {
+          "name": "Attach ingredient to item",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ingredient_id\": \"{{ingredient_id}}\",\n  \"default_ingredient\": false,\n  \"extra_fee\": true,\n  \"custom_fee\": 3.0\n}"
+            },
+            "url": "{{cashier_base}}/items/{{item_id}}/ingredients",
+            "description": "Preferred linking API used by HAAT Menu Copy.\n\n- `default_ingredient` — selected by default\n- `extra_fee` — charge extra\n- `custom_fee` — amount (null when no extra fee)"
+          }
+        },
+        {
+          "name": "Update item-ingredient link",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"default_ingredient\": true,\n  \"extra_fee\": false,\n  \"custom_fee\": null\n}"
+            },
+            "url": "{{cashier_base}}/items/{{item_id}}/ingredients/{{ingredient_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Manager link fallbacks (may be ignored)",
+      "description": "Probed when Cashier linking is unavailable. Many restaurants accept the HTTP call but do not persist extras on the meal.",
+      "item": [
+        {
+          "name": "POST /items/{id}/ingredients",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ingredients\": [\n    {\n      \"ingredient_id\": \"{{ingredient_id}}\",\n      \"price\": \"3\",\n      \"selected\": \"1\",\n      \"is_default\": \"0\",\n      \"ingredient_category_id\": \"{{ingredient_category_id}}\",\n      \"min\": \"0\",\n      \"max\": \"3\"\n    }\n  ]\n}"
+            },
+            "url": "{{manager_base}}/items/{{item_id}}/ingredients"
+          }
+        },
+        {
+          "name": "POST /items/{id}/item-ingredients",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ingredients\": [\n    {\n      \"ingredient_id\": \"{{ingredient_id}}\",\n      \"price\": \"3\",\n      \"ingredient_category_id\": \"{{ingredient_category_id}}\"\n    }\n  ]\n}"
+            },
+            "url": "{{manager_base}}/items/{{item_id}}/item-ingredients"
+          }
+        },
+        {
+          "name": "POST /item-ingredients",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"{{item_id}}\",\n  \"ingredients\": [\n    {\n      \"ingredient_id\": \"{{ingredient_id}}\",\n      \"price\": \"3\",\n      \"ingredient_category_id\": \"{{ingredient_category_id}}\"\n    }\n  ]\n}"
+            },
+            "url": "{{manager_base}}/item-ingredients"
+          }
+        },
+        {
+          "name": "POST /items/{id}/ingredient-categories",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ingredient_categories\": [\n    {\n      \"ingredient_category_id\": \"{{ingredient_category_id}}\",\n      \"min\": \"0\",\n      \"max\": \"3\",\n      \"ingredients\": [\n        { \"ingredient_id\": \"{{ingredient_id}}\", \"price\": \"3\" }\n      ]\n    }\n  ]\n}"
+            },
+            "url": "{{manager_base}}/items/{{item_id}}/ingredient-categories"
+          }
+        },
+        {
+          "name": "POST /item-ingredient-categories",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"{{item_id}}\",\n  \"ingredient_categories\": [\n    {\n      \"ingredient_category_id\": \"{{ingredient_category_id}}\",\n      \"min\": \"0\",\n      \"max\": \"3\",\n      \"ingredients\": [\n        { \"ingredient_id\": \"{{ingredient_id}}\", \"price\": \"3\" }\n      ]\n    }\n  ]\n}"
+            },
+            "url": "{{manager_base}}/item-ingredient-categories"
+          }
+        },
+        {
+          "name": "PUT item with nested ingredients",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ingredients\": [\n    {\n      \"ingredient_id\": \"{{ingredient_id}}\",\n      \"price\": \"3\",\n      \"ingredient_category_id\": \"{{ingredient_category_id}}\"\n    }\n  ]\n}"
+            },
+            "url": "{{manager_base}}/items/{{item_id}}",
+            "description": "Often returns 200 but GET item still has no ingredients — verify with Show item."
+          }
+        }
+      ]
+    }
+  ]
+}

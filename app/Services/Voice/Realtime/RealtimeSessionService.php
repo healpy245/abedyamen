@@ -312,13 +312,17 @@ class RealtimeSessionService
             [
                 'type' => 'function',
                 'name' => 'create_lead',
-                'description' => 'Create a sales lead for follow-up.',
+                'description' => 'Create a Malan sales lead for new sign-up follow-up. Prefer create_malan_lead when available.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
                         'name' => ['type' => 'string'],
+                        'full_name' => ['type' => 'string'],
                         'phone' => ['type' => 'string'],
+                        'city_name' => ['type' => 'string'],
+                        'city' => ['type' => 'string'],
                         'notes' => ['type' => 'string'],
+                        'confirmed_by_customer' => ['type' => 'boolean'],
                     ],
                     'required' => ['name'],
                 ],
@@ -378,6 +382,39 @@ class RealtimeSessionService
                             'confirmed_by_customer' => ['type' => 'boolean'],
                         ],
                         'required' => ['issue_type', 'summary', 'confirmed_by_customer'],
+                    ],
+                ],
+                [
+                    'type' => 'function',
+                    'name' => 'create_malan_task',
+                    'description' => 'Create Malan CRM task for accounting/technical ONLY after draft + explicit customer approval. Use department=accounting for DEBT_DISCONNECTED. Pass confirmed_by_customer=true only after approval.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'department' => ['type' => 'string', 'enum' => ['accounting', 'technical']],
+                            'title' => ['type' => 'string'],
+                            'subject' => ['type' => 'string'],
+                            'status' => ['type' => 'string', 'enum' => ['urgent', 'non_urgent']],
+                            'confirmed_by_customer' => ['type' => 'boolean'],
+                        ],
+                        'required' => ['department', 'subject', 'confirmed_by_customer'],
+                    ],
+                ],
+                [
+                    'type' => 'function',
+                    'name' => 'create_malan_lead',
+                    'description' => 'Create Malan CRM sales lead for NEW sign-up ONLY after confirming name, phone, and city with the customer. Pass confirmed_by_customer=true only after approval. Do not use lookup for new customers.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'full_name' => ['type' => 'string'],
+                            'phone' => ['type' => 'string'],
+                            'city_name' => ['type' => 'string'],
+                            'identity' => ['type' => 'string'],
+                            'with_fiber' => ['type' => 'integer', 'enum' => [0, 1]],
+                            'confirmed_by_customer' => ['type' => 'boolean'],
+                        ],
+                        'required' => ['full_name', 'phone', 'city_name', 'confirmed_by_customer'],
                     ],
                 ],
                 [

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AppDevelopment;
 
 use App\Enums\AppDevelopmentTicketActivityType;
+use App\Enums\AppDevelopmentTicketPriority;
 use App\Enums\AppDevelopmentTicketStatus;
 use App\Exceptions\AppDevelopment\TicketWorkflowException;
 use App\Models\AppDevelopment\AppDevelopmentTicket;
@@ -15,6 +16,9 @@ use Illuminate\Support\Facades\DB;
 
 class TicketWorkflowService
 {
+    public function __construct(
+        private readonly AppDevelopmentNotificationService $notifications,
+    ) {}
     public function startWork(AppDevelopmentTicket $ticket, User $user): AppDevelopmentTicket
     {
         $this->assertDeveloper($user);
@@ -36,6 +40,7 @@ class TicketWorkflowService
             $locked->forceFill([
                 'status' => AppDevelopmentTicketStatus::Working,
                 'assigned_to' => $user->id,
+                'status_changed_by' => $user->id,
             ])->save();
 
             $this->record(
@@ -112,6 +117,7 @@ class TicketWorkflowService
             $locked->forceFill([
                 'status' => AppDevelopmentTicketStatus::Qa,
                 'submitted_for_qa_at' => now(),
+                'status_changed_by' => $user->id,
             ])->save();
 
             if ($note !== null) {
@@ -153,6 +159,7 @@ class TicketWorkflowService
             $locked->forceFill([
                 'status' => AppDevelopmentTicketStatus::Working,
                 'qa_rejection_count' => $locked->qa_rejection_count + 1,
+                'status_changed_by' => $user->id,
             ])->save();
 
             $this->addNoteComment($locked, $user, $note);
@@ -192,6 +199,7 @@ class TicketWorkflowService
                 'status' => AppDevelopmentTicketStatus::Completed,
                 'completed_at' => now(),
                 'completed_by' => $user->id,
+                'status_changed_by' => $user->id,
             ])->save();
 
             if ($note !== null) {
@@ -211,6 +219,90 @@ class TicketWorkflowService
         });
     }
 
+    public function setPriority(AppDevelopmentTicket $ticket, User $user, AppDevelopmentTicketPriority $priority): AppDevelopmentTicket
+    {
+        return DB::transaction(function () use ($ticket, $user, $priority): AppDevelopmentTicket {
+            $locked = $this->lock($ticket);
+
+            if ($locked->priority === $priority) {
+                return $locked;
+            }
+
+            $from = $locked->status;
+            $previous = $locked->priority;
+
+            $locked->forceFill([
+                'priority' => $priority,
+                'priority_changed_by' => $user->id,
+            ])->save();
+
+            $this->record(
+                $locked,
+                $user,
+                AppDevelopmentTicketActivityType::Updated,
+                $from,
+                $from,
+                [
+                    'changed' => ['priority'],
+                    'priority_from' => $previous->value,
+                    'priority_to' => $priority->value,
+                ],
+            );
+
+            return $locked->refresh();
+        });
+    }
+
+    public function setStatus(AppDevelopmentTicket $ticket, User $user, AppDevelopmentTicketStatus $status): AppDevelopmentTicket
+    {
+        return DB::transaction(function () use ($ticket, $user, $status): AppDevelopmentTicket {
+            $locked = $this->lock($ticket);
+
+            if ($locked->status === $status) {
+                return $locked;
+            }
+
+            $from = $locked->status;
+            $attributes = [
+                'status' => $status,
+                'status_changed_by' => $user->id,
+            ];
+
+            if ($status === AppDevelopmentTicketStatus::Working && $user->isDeveloper()) {
+                $attributes['assigned_to'] = $user->id;
+            }
+
+            if ($status === AppDevelopmentTicketStatus::Completed) {
+                $attributes['completed_at'] = now();
+                $attributes['completed_by'] = $user->id;
+            } elseif ($from === AppDevelopmentTicketStatus::Completed) {
+                $attributes['completed_at'] = null;
+                $attributes['completed_by'] = null;
+            }
+
+            if ($status === AppDevelopmentTicketStatus::Qa && $locked->submitted_for_qa_at === null) {
+                $attributes['submitted_for_qa_at'] = now();
+            }
+
+            $locked->forceFill($attributes)->save();
+
+            $this->record(
+                $locked,
+                $user,
+                AppDevelopmentTicketActivityType::Updated,
+                $from,
+                $status,
+                [
+                    'changed' => ['status'],
+                    'status_from' => $from->value,
+                    'status_to' => $status->value,
+                ],
+            );
+
+            return $locked->refresh();
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $metadata
      */
@@ -222,7 +314,7 @@ class TicketWorkflowService
         ?AppDevelopmentTicketStatus $to,
         array $metadata = [],
     ): AppDevelopmentTicketActivity {
-        return AppDevelopmentTicketActivity::query()->create([
+        $activity = AppDevelopmentTicketActivity::query()->create([
             'ticket_id' => $ticket->id,
             'user_id' => $user?->id,
             'event_type' => $type,
@@ -231,6 +323,10 @@ class TicketWorkflowService
             'metadata' => $metadata === [] ? null : $metadata,
             'created_at' => now(),
         ]);
+
+        $this->notifications->notifyActivity($ticket, $user, $type, $metadata);
+
+        return $activity;
     }
 
     private function lock(AppDevelopmentTicket $ticket): AppDevelopmentTicket

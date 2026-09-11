@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\AppDevelopment;
 
-use App\Enums\AppDevelopmentRole;
 use App\Models\AppDevelopment\AppDevelopmentMember;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -23,10 +22,7 @@ class AssignTicketRequest extends FormRequest
      */
     public function rules(): array
     {
-        $developerIds = AppDevelopmentMember::query()
-            ->where('role', AppDevelopmentRole::Developer)
-            ->pluck('user_id')
-            ->all();
+        $developerIds = AppDevelopmentMember::assignableDeveloperUserIds();
 
         return [
             'assigned_to' => ['required', 'integer', Rule::in($developerIds)],
