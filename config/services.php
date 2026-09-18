@@ -54,10 +54,12 @@ return [
     ],
 
     'kaman_agents' => [
-        'base_url' => env('KAMAN_AGENTS_BASE_URL'),
-        'username' => env('KAMAN_AGENTS_USERNAME'),
-        'password' => env('KAMAN_AGENTS_PASSWORD'),
+        'base_url' => env('KAMAN_AGENTS_BASE_URL', 'https://kamanagents-production.up.railway.app'),
+        'username' => env('KAMAN_AGENTS_USERNAME', 'yamen'),
+        'password' => env('KAMAN_AGENTS_PASSWORD', 'yamen123'),
         'ssl_verify' => filter_var(env('KAMAN_AGENTS_SSL_VERIFY', 'true'), FILTER_VALIDATE_BOOLEAN),
+        'lead_source' => env('KAMAN_AGENTS_LEAD_SOURCE', 'whatsapp'),
+        'lead_idle_minutes' => (int) env('KAMAN_AGENTS_LEAD_IDLE_MINUTES', 30),
     ],
 
     'openai' => [

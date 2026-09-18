@@ -901,7 +901,7 @@ class FormController extends Controller
                 ]);
 
                 return $this->formJsonError(
-                    'Could not reach the restaurant API ('.$subdomain.'.kaman.'.KamanUrl::tld().'). Check the subdomain, username, password, and server outbound HTTPS.',
+                    'Could not reach the restaurant API ('.$subdomain.'.kaman.'.$tld.'). Check the subdomain, username, password, and server outbound HTTPS.',
                     503
                 );
             }
@@ -957,10 +957,14 @@ class FormController extends Controller
                 );
             }
 
-            Log::info('Full AI login succeeded', ['subdomain' => $subdomain]);
+            Log::info('Full AI login succeeded', ['subdomain' => $subdomain, 'tld' => $tld]);
 
             return $this->formJsonSuccess(
-                'Token stored successfully. You can start Full AI automation.'
+                'Signed in to '.$subdomain.'.kaman.'.$tld.'. You can start workflows.',
+                [
+                    'environment' => $tld,
+                    'host' => KamanUrl::host($subdomain, $tld),
+                ]
             );
         } catch (ValidationException $e) {
             $message = $e->validator->errors()->first()

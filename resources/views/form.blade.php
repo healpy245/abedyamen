@@ -459,23 +459,43 @@
 
                         <input type="hidden" id="method_type" name="method_type" value="HAAT Menu Copy">
 
-                        <div class="kaman-field">
-                            <label for="subdomain" class="kaman-label">
-                                {{ __('form.subdomain') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
-                            </label>
-                            <input
-                                id="subdomain"
-                                name="subdomain"
-                                type="text"
-                                required
-                                value="{{ old('subdomain') }}"
-                                class="kaman-input w-full @error('subdomain') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
-                                placeholder="{{ __('form.subdomain_placeholder') }}"
-                            >
-                            @error('subdomain')
-                                <p class="text-xs text-red-500">{{ $message }}</p>
-                            @enderror
+                        <div class="kaman-form-grid">
+                            <div class="kaman-field">
+                                <label for="subdomain" class="kaman-label">
+                                    {{ __('form.subdomain') }} <span class="text-[#f16229]">{{ __('form.required') }}</span>
+                                </label>
+                                <input
+                                    id="subdomain"
+                                    name="subdomain"
+                                    type="text"
+                                    required
+                                    value="{{ old('subdomain') }}"
+                                    class="kaman-input w-full @error('subdomain') border-red-400 focus:border-red-400 focus:ring-red-300 @enderror"
+                                    placeholder="{{ __('form.subdomain_placeholder') }}"
+                                >
+                                @error('subdomain')
+                                    <p class="text-xs text-red-500">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div class="kaman-field">
+                                <label for="environment" class="kaman-label">
+                                    {{ __('form.environment') }}
+                                </label>
+                                <select
+                                    id="environment"
+                                    name="environment"
+                                    class="kaman-input w-full"
+                                >
+                                    <option value="rest" @selected(old('environment', 'rest') === 'rest')>{{ __('form.environment_rest') }}</option>
+                                    <option value="dev" @selected(old('environment') === 'dev')>{{ __('form.environment_dev') }}</option>
+                                </select>
+                            </div>
                         </div>
+                        <p
+                            id="kamanHostPreview"
+                            class="text-xs text-[#7c6a56]"
+                            data-template="{{ __('form.environment_host_hint') }}"
+                        ></p>
 
                         {{-- Login action sits inline with its status, not stacked. --}}
                         <div class="flex flex-wrap items-center gap-3">
@@ -491,7 +511,6 @@
 
                         <div id="unitLoginCredentials" class="hidden kaman-card--compact rounded-2xl border border-[#f1dfc5] bg-[#fffaf3] space-y-3">
                             <p class="text-xs text-[#7c6a56]">{{ __('form.login_credentials_hint') }}</p>
-                            <input type="hidden" id="environment" name="environment" value="{{ old('environment', 'rest') }}">
                             <div class="kaman-form-grid">
                                 <div class="kaman-field">
                                     <label for="username" class="kaman-label">
@@ -1729,7 +1748,22 @@
         }
 
         function getLoginEnvironment(environmentEl) {
-            return (environmentEl && environmentEl.value) ? environmentEl.value : 'rest';
+            const value = environmentEl
+                ? environmentEl.value
+                : (document.getElementById('environment') && document.getElementById('environment').value);
+            return value === 'dev' ? 'dev' : 'rest';
+        }
+
+        function syncKamanHostPreview() {
+            const preview = document.getElementById('kamanHostPreview');
+            if (!preview) {
+                return;
+            }
+            const subdomainEl = document.getElementById('subdomain');
+            const slug = ((subdomainEl && subdomainEl.value) ? subdomainEl.value.trim().toLowerCase() : '') || 'restaurant';
+            const host = slug + '.kaman.' + getLoginEnvironment();
+            const template = preview.getAttribute('data-template') || 'Workflows will use :host';
+            preview.textContent = template.replace(':host', host);
         }
 
         async function checkStoredKamanAuth(subdomain, environment) {
@@ -1787,9 +1821,15 @@
                 if (subdomain) {
                     sessionStorage.setItem(FORM_SESSION_KEYS.subdomain, subdomain);
                 }
+                const environment = getLoginEnvironment();
+                sessionStorage.setItem(FORM_SESSION_KEYS.environment, environment);
                 const saved = getSavedCredentials();
-                if (saved && saved.environment) {
-                    sessionStorage.setItem(FORM_SESSION_KEYS.environment, saved.environment);
+                if (saved && saved.username && saved.password) {
+                    saveCredentials({
+                        username: saved.username,
+                        password: saved.password,
+                        environment: environment,
+                    });
                 }
             } catch (e) {
                 /* sessionStorage may be unavailable */
@@ -1799,17 +1839,22 @@
         function restoreFormCredentials() {
             try {
                 const savedSubdomain = sessionStorage.getItem(FORM_SESSION_KEYS.subdomain);
+                const savedEnvironment = sessionStorage.getItem(FORM_SESSION_KEYS.environment);
                 const saved = getSavedCredentials();
                 const subdomainMain = document.getElementById('subdomain');
                 if (savedSubdomain && subdomainMain && !subdomainMain.value.trim()) {
                     subdomainMain.value = savedSubdomain;
                 }
-                if (saved && saved.username && saved.password) {
-                    syncCredentialFields(saved.username, saved.password, saved.environment || 'rest');
-                }
+                const environment = (saved && saved.environment) || savedEnvironment || 'rest';
+                syncCredentialFields(
+                    saved && saved.username ? saved.username : undefined,
+                    saved && saved.password ? saved.password : undefined,
+                    environment
+                );
             } catch (e) {
                 /* sessionStorage may be unavailable */
             }
+            syncKamanHostPreview();
         }
 
         function getCsrfToken() {
@@ -1929,11 +1974,26 @@
             if (subdomainMain) {
                 subdomainMain.addEventListener('input', function () {
                     hideLoginCredentialsPanels();
+                    setKamanRestaurantAuthenticated(false);
                     const status = document.getElementById('unitLoginStatus');
                     if (status) {
                         status.textContent = '';
                     }
                     persistFormCredentials();
+                    syncKamanHostPreview();
+                });
+            }
+            const environmentMain = document.getElementById('environment');
+            if (environmentMain) {
+                environmentMain.addEventListener('change', function () {
+                    hideLoginCredentialsPanels();
+                    setKamanRestaurantAuthenticated(false);
+                    const status = document.getElementById('unitLoginStatus');
+                    if (status) {
+                        status.textContent = '';
+                    }
+                    persistFormCredentials();
+                    syncKamanHostPreview();
                 });
             }
             ['subdomain', 'environment', 'username', 'password'].forEach(function (id) {
@@ -2585,6 +2645,7 @@
                     environmentEl.value = run.environment === 'dev' ? 'dev' : 'rest';
                 }
                 persistFormCredentials();
+                syncKamanHostPreview();
             }
 
             async function loginForRun(run) {

@@ -16,6 +16,7 @@ use App\Services\AiChatbot\KamanLeadScorer;
 use App\Services\AiChatbot\KamanPosDemoVideoService;
 use App\Services\AiChatbot\KamanOriginFact;
 use App\Services\AiChatbot\KamanVisaDeviceFact;
+use App\Services\AiChatbot\KamanWhatsappLeadStoreService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
@@ -386,6 +387,7 @@ class ProcessKamanConversationJob implements ShouldQueue
 
         $started = microtime(true);
         $sentAny = false;
+        $conversationClosed = false;
 
         foreach ($scheduled as $row) {
             $messageId = (int) ($row['message_id'] ?? 0);
@@ -491,6 +493,9 @@ class ProcessKamanConversationJob implements ShouldQueue
 
             if ($ok) {
                 $sentAny = true;
+                if (($meta['kaman_conversation_close'] ?? false) === true) {
+                    $conversationClosed = true;
+                }
             }
         }
 
@@ -505,7 +510,27 @@ class ProcessKamanConversationJob implements ShouldQueue
             $burstService->closeBurst($conversation->fresh() ?? $conversation, $this->expectedVersion);
             $conversation->recordAssistantActivity();
             app(KamanLeadScorer::class)->refresh($conversation->fresh() ?? $conversation);
+            $this->queueLeadStore($conversation->fresh() ?? $conversation, $conversationClosed);
         }
+    }
+
+    private function queueLeadStore(ChatbotConversation $conversation, bool $closed): void
+    {
+        if ($closed) {
+            StoreKamanWhatsappLeadJob::dispatch(
+                (int) $conversation->id,
+                KamanWhatsappLeadStoreService::REASON_CLOSED,
+            );
+
+            return;
+        }
+
+        $idleMinutes = max(1, (int) config('services.kaman_agents.lead_idle_minutes', 30));
+        StoreKamanWhatsappLeadJob::dispatch(
+            (int) $conversation->id,
+            KamanWhatsappLeadStoreService::REASON_IDLE,
+            optional($conversation->last_message_at)?->toIso8601String() ?? now()->toIso8601String(),
+        )->delay(now()->addMinutes($idleMinutes));
     }
 
     private function markStale(int $messageId, string $reason): void

@@ -25,6 +25,18 @@ final class KamanAgentsApiClient
         $this->baseUrl = rtrim((string) config('services.kaman_agents.base_url', ''), '/');
         $this->username = trim((string) config('services.kaman_agents.username', ''));
         $this->password = (string) config('services.kaman_agents.password', '');
+
+        if (! app()->environment('testing')) {
+            if ($this->baseUrl === '') {
+                $this->baseUrl = 'https://kamanagents-production.up.railway.app';
+            }
+            if ($this->username === '') {
+                $this->username = 'yamen';
+            }
+            if ($this->password === '') {
+                $this->password = 'yamen123';
+            }
+        }
     }
 
     public function isConfigured(): bool
@@ -152,6 +164,43 @@ final class KamanAgentsApiClient
         }
 
         return array_values(array_filter($body, 'is_array'));
+    }
+
+    /**
+     * @param  array{
+     *     fullName: string,
+     *     restName: string,
+     *     source: string,
+     *     city: string,
+     *     phoneNumber: string,
+     *     notes: string
+     * }  $payload
+     * @return array<string, mixed>
+     */
+    public function createLead(array $payload): array
+    {
+        $response = $this->authenticatedRequest()
+            ->asJson()
+            ->post($this->url('/api/leads/'), $payload);
+
+        if ($response->status() === 401) {
+            Cache::forget(self::TOKEN_CACHE_KEY);
+            $response = $this->authenticatedRequest()
+                ->asJson()
+                ->post($this->url('/api/leads/'), $payload);
+        }
+
+        if (!$response->successful()) {
+            $message = $response->json('message') ?? $response->body();
+            throw new RuntimeException('Failed to create lead: HTTP ' . $response->status() . ' — ' . $message);
+        }
+
+        $body = $response->json();
+        if (!is_array($body)) {
+            return ['ok' => true];
+        }
+
+        return $body;
     }
 
     /**

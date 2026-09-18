@@ -22,6 +22,7 @@ return [
     'environment' => 'Environment',
     'environment_rest' => 'Production (.kaman.rest)',
     'environment_dev' => 'Testing (.kaman.dev)',
+    'environment_host_hint' => 'Workflows will use :host',
     'login_credentials_hint' => 'No active session found. Enter your username and password, then click Login again to store a token.',
     'username' => 'Username',
     'username_placeholder' => 'e.g. thex@kaman.rest',

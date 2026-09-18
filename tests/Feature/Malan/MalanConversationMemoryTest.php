@@ -239,4 +239,25 @@ class MalanConversationMemoryTest extends TestCase
         $this->assertSame('bank_transfer', $context?->payment_method);
         $this->assertSame('3119', $context?->verified_customer_id);
     }
+
+    public function test_campaign_detectors_recognize_guardian_privacy_and_refusals(): void
+    {
+        $memory = app(MalanConversationMemoryService::class);
+
+        $this->assertTrue($memory->looksLikeDecisionMakerDeferral('جوزي هو الي بتصرف بهاي الامور'));
+        $this->assertTrue($memory->looksLikeDecisionMakerDeferral('خليني اسال جوزي وبقلك'));
+        $this->assertTrue($memory->looksLikeDecisionMakerDeferral('ابني بطلع بهيك اشياء'));
+        $this->assertFalse($memory->looksLikeDecisionMakerDeferral('اه لا شكرا الولد مشترك بشركه'));
+
+        $this->assertTrue($memory->looksLikeAsksWhereNumberFrom('منين جبتي رقمي؟ انا مش مسجل بمحل'));
+        $this->assertFalse($memory->looksLikeAsksWhereNumberFrom('قديش السعر'));
+
+        $this->assertTrue($memory->looksLikeSoftRefusal('لا شكرا'));
+        $this->assertTrue($memory->looksLikeSoftRefusal('وبدخلش بهاى الامور'));
+        $this->assertTrue($memory->looksLikeSoftRefusal('عندي إنترنت مش بحاجة'));
+        $this->assertFalse($memory->looksLikeBareYes('اه لا شكرا الولد مشترك بشركه'));
+        $this->assertFalse($memory->looksLikeHasFiberAtHome('اه لا شكرا الولد مشترك بشركه'));
+        $this->assertFalse($memory->looksLikeAsksAboutCustomerReviews('تسلمي عنا ومبسوطين مش حابين نغير'));
+        $this->assertFalse($memory->looksLikeWantsToKeepTalking('بس اسال جوزي ان شاء الله وبقلك'));
+    }
 }

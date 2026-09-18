@@ -284,7 +284,7 @@
                     if (!res.ok) return;
                     const data = await res.json();
                     const analytics = data.analytics || {};
-                    ['leads', 'responded', 'messages', 'contacts', 'no_response', 'rejected', 'engaged'].forEach((key) => {
+                    ['leads', 'responded', 'messages', 'contacts', 'no_response', 'rejected', 'engaged', 'guardians'].forEach((key) => {
                         if (analytics[key] === undefined) return;
                         document.querySelectorAll(`[data-analytics="${key}"]`).forEach((el) => {
                             el.textContent = String(analytics[key]);

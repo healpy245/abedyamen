@@ -74,6 +74,17 @@ class MalanConversationMemoryService
             $existing = $this->contextService->getActive($conversation);
             $alreadySentCallback = $this->assistantRecentlyOfferedCallback($conversation);
 
+            if ($this->looksLikeDecisionMakerDeferral($text)) {
+                return $this->contextService->mergeCampaignFlags($conversation, $instance, [
+                    'awaiting_guardian_number' => true,
+                    'mode' => 'campaign_guardian_referral',
+                ]);
+            }
+
+            if ($this->looksLikeAsksWhereNumberFrom($text)) {
+                return $this->contextService->beginCampaignSales($conversation, $instance);
+            }
+
             if ($this->lastAssistantAskedFiberAtHome($conversation)) {
                 if ($this->looksLikeNoFiberAtHome($text) || $this->looksLikeBareNo($text)) {
                     $this->contextService->rememberCampaignFiber($conversation, $instance, false);
@@ -100,7 +111,7 @@ class MalanConversationMemoryService
             }
 
             if ($this->looksLikeHardCampaignOptOut($text)
-                || ($this->assistantRecentlySentGiveChance($conversation)
+                || ($this->assistantRecentlySentCompetitorPersuasion($conversation)
                     && ($this->looksLikeSoftRefusal($text) || $this->looksLikeBareNo($text)))
             ) {
                 return $this->contextService->markCampaignOptedOut($conversation, $instance);
@@ -109,7 +120,7 @@ class MalanConversationMemoryService
             if ($this->looksLikeCampaignOptOut($text)
                 || ($alreadySentCallback && $this->looksLikeBareNo($text))
             ) {
-                if ($alreadySentCallback || $this->assistantRecentlySentGiveChance($conversation)) {
+                if ($alreadySentCallback || $this->assistantRecentlySentCompetitorPersuasion($conversation)) {
                     return $this->contextService->markCampaignOptedOut($conversation, $instance);
                 }
 
@@ -644,9 +655,14 @@ class MalanConversationMemoryService
 
         return (bool) preg_match(
             '/('.
-            'مش\s*مهتم|مش\s*حابب|'.
+            'مش\s*مهتم|مش\s*حابب|مش\s*حابين|'.
             'ما\s*بدي|مابديش|بديش|'.
             'بلزمش|لا\s*بلزم|مش\s*ناقص|'.
+            'لا\s*شكرا|'.
+            'بدخلش|ما\s*بدخل|'.
+            'مش\s*بحاج[هة]|'.
+            'الله\s*يوفقك|'.
+            'صعب\s*اقتنع|'.
             'not\s*interested'.
             ')/u',
             $normalized,
@@ -696,6 +712,16 @@ class MalanConversationMemoryService
     public function looksLikeBareYes(string $text): bool
     {
         $normalized = $this->normalizeCampaignUtterance($text);
+        if ($normalized === '') {
+            return false;
+        }
+
+        if ($this->looksLikeSoftRefusal($normalized)
+            || $this->looksLikeHardCampaignOptOut($normalized)
+            || preg_match('/^اه+\s+(لا|لا+|شكرا)/u', $normalized)
+        ) {
+            return false;
+        }
 
         return in_array($normalized, ['اه', 'اها', 'ايوه', 'ايه', 'نعم', 'yes', 'yep', 'في', 'عنا', 'موجود'], true)
             || (bool) preg_match('/^(اه+|ايوه|نعم|في\s*عنا|عنا\s*فايبر|عنا\s*סיב)/u', $normalized);
@@ -716,6 +742,7 @@ class MalanConversationMemoryService
             || $this->looksLikeCompetitorLoyalty($normalized)
             || $this->looksLikeSoftStayObjection($normalized)
             || $this->looksLikeBareNo($normalized)
+            || $this->looksLikeDecisionMakerDeferral($normalized)
         ) {
             return false;
         }
@@ -742,7 +769,10 @@ class MalanConversationMemoryService
             return false;
         }
 
-        if ($this->looksLikeNoFiberAtHome($normalized)) {
+        if ($this->looksLikeNoFiberAtHome($normalized)
+            || $this->looksLikeSoftRefusal($normalized)
+            || $this->looksLikeHardCampaignOptOut($normalized)
+        ) {
             return false;
         }
 
@@ -941,14 +971,16 @@ class MalanConversationMemoryService
             return false;
         }
 
-        if ($this->looksLikeCampaignOptOut($normalized)) {
+        if ($this->looksLikeCampaignOptOut($normalized)
+            || $this->looksLikeDecisionMakerDeferral($normalized)
+        ) {
             return false;
         }
 
         return (bool) preg_match(
             '/('.
             'اسمع|اشرح|شرح|فكره|فكرة|'.
-            'دردش|دردشه|اسال|أسأل|سؤال|'.
+            'دردش|دردشه|بدي\s*اسال|عندي\s*سؤال|'.
             'فاضيه|فاضي|هسا|هلق|هلق|اسا|'.
             'هاد\s*الوقت|بهالوقت|هلق\s*فاضي'.
             ')/u',
@@ -975,7 +1007,7 @@ class MalanConversationMemoryService
             '(راي|رأي|آراء|اراء).{0,40}(زباين|زبائن|لكوحوت|لكوحت|לקוחות)|'.
             '(زباين|زبائن|لكوحوت|لكوحت|לקוחות).{0,40}(راي|رأي|آراء|اراء|مبسوط)|'.
             'باقي.{0,20}(زباين|لكوحوت|لكوحت|לקוחות|الناس)|'.
-            'مبسوطين|آراء\s*الزباين|اراء\s*الزباين|'.
+            'آراء\s*الزباين|اراء\s*الزباين|'.
             'فيديو.{0,20}(زباين|اراء|آراء)'.
             ')/u',
             $normalized,
@@ -987,6 +1019,70 @@ class MalanConversationMemoryService
         $normalized = $this->normalizeCampaignUtterance($text);
 
         return in_array($normalized, ['لا', 'لأ', 'لاء', 'no', 'nope'], true);
+    }
+
+    /**
+     * Husband / son / parent is the one who decides — ask for their number, no lead.
+     */
+    public function looksLikeDecisionMakerDeferral(string $text): bool
+    {
+        $normalized = $this->normalizeCampaignUtterance($text);
+        if ($normalized === '') {
+            return false;
+        }
+
+        $family = 'جوزي|زوجي|الزوج|ابني|ولدي|الولد|بنتي|ابنتي|ابوي|ابويا|امي|اخوي|اخي|اختي|اهلي';
+
+        if (preg_match('/('.$family.').{0,40}(بتصرف|يتصرف|بطلع|بعرف|بفهم|مسؤول|מטפל|هو الي|هي الي|الي بعرف)/u', $normalized)) {
+            return true;
+        }
+
+        if (preg_match('/(هو|هي)\s+الي\s+(بتصرف|بطلع|بعرف|بفهم|مسؤول)/u', $normalized)) {
+            return true;
+        }
+
+        return (bool) preg_match(
+            '/(افحص|اسال|اسئل|احكي|بحكي|خلي)\s*(مع)?\s*('.$family.')/u',
+            $normalized,
+        );
+    }
+
+    public function looksLikeAsksWhereNumberFrom(string $text): bool
+    {
+        $normalized = $this->normalizeCampaignUtterance($text);
+        if ($normalized === '') {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/('.
+            'منين\s+جبتي?\s+رقمي|'.
+            'من\s+وين\s+(جبتي?|جبت|الرقم)|'.
+            'كيف\s+(وصل|عندكم|حصلت).{0,24}رقم|'.
+            'مين\s+عطاك\s+رقمي|'.
+            'where\s+did\s+you\s+get'.
+            ')/u',
+            $normalized,
+        );
+    }
+
+    public function looksLikePoliteCloseAck(string $text): bool
+    {
+        $normalized = $this->normalizeCampaignUtterance($text);
+        if ($normalized === '') {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/('.
+            'الله\s+يعافيك|يعافيك|'.
+            'نهارك\s+(اسعد|سعيد)|'.
+            'ماشي\s+ونهارك|'.
+            'شكرا(\s+(الك|لك))?$|'.
+            '^تسلم'.
+            ')/u',
+            $normalized,
+        ) || $this->looksLikeCampaignGreetingOrSmallTalk($normalized);
     }
 
     /**
@@ -1232,6 +1328,33 @@ class MalanConversationMemoryService
             $conversation,
             fn (string $text): bool => $this->assistantMessageLooksLikeGiveChance($text),
         );
+    }
+
+    public function assistantRecentlyAskedGuardianNumber(ChatbotConversation $conversation): bool
+    {
+        return $this->recentAssistantMatches(
+            $conversation,
+            fn (string $text): bool => str_contains($this->normalizeCampaignUtterance($text), 'رقم حدا اتواصل')
+                || str_contains($this->normalizeCampaignUtterance($text), 'ابعثيلي رقم حدا'),
+        );
+    }
+
+    public function assistantRecentlyClosed(ChatbotConversation $conversation): bool
+    {
+        $last = ChatbotMessage::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('role', 'assistant')
+            ->orderByDesc('id')
+            ->value('message');
+
+        if (! is_string($last) || $last === '') {
+            return false;
+        }
+
+        $normalized = $this->normalizeCampaignUtterance($last);
+
+        return str_contains($normalized, 'يعطيك العافيه ونهارك سعيد')
+            || str_contains($normalized, 'رح نتواصل معه');
     }
 
     /**

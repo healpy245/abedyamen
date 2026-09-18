@@ -206,6 +206,16 @@
                         'export' => 'leads',
                     ],
                     [
+                        'key' => 'guardians',
+                        'label' => __('chatbot.workspace.campaigns.stat_guardians'),
+                        'hint' => __('chatbot.workspace.campaigns.stat_guardians_hint'),
+                        'icon' => 'users',
+                        'tone' => 'bg-violet-50 border-violet-200/80 text-violet-900',
+                        'iconTone' => 'bg-violet-100 text-violet-700',
+                        'count' => (int) ($analytics['guardians'] ?? 0),
+                        'export' => 'guardians',
+                    ],
+                    [
                         'key' => 'no_response',
                         'label' => __('chatbot.workspace.campaigns.stat_no_response'),
                         'hint' => __('chatbot.workspace.campaigns.stat_no_response_hint'),

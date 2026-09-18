@@ -30,6 +30,10 @@ final class FormMenuAgentTest extends TestCase
             ->assertSee(__('form.debug_title'), false)
             ->assertSee('HAAT Menu Copy', false)
             ->assertSee(__('form.haat_submit'), false)
+            ->assertSee(__('form.environment'), false)
+            ->assertSee(__('form.environment_dev'), false)
+            ->assertSee(__('form.environment_rest'), false)
+            ->assertSee('id="environment"', false)
             ->assertDontSee(__('form.select_method_type'), false)
             ->assertDontSee('wf-debug__body hidden', false);
     }
@@ -112,6 +116,67 @@ final class FormMenuAgentTest extends TestCase
                 && $request['name_ar'] === 'عائلي'
                 && $request->hasHeader('Authorization', 'Bearer kaman-token');
         });
+    }
+
+    public function test_agent_continues_against_kaman_dev_base_url(): void
+    {
+        config(['openai.api_key' => 'test-key']);
+        $user = $this->formUser();
+
+        Http::fake([
+            '*chat/completions*' => Http::sequence()
+                ->push([
+                    'choices' => [[
+                        'message' => [
+                            'content' => null,
+                            'tool_calls' => [[
+                                'id' => 'call_1',
+                                'type' => 'function',
+                                'function' => [
+                                    'name' => 'kaman_request',
+                                    'arguments' => json_encode([
+                                        'method' => 'POST',
+                                        'path' => '/items',
+                                        'body' => [
+                                            'name_en' => 'Family Meal',
+                                            'name_ar' => 'عائلي',
+                                            'name_he' => 'משפחתי',
+                                            'price' => '50.00',
+                                            'category_id' => '1',
+                                        ],
+                                    ]),
+                                ],
+                            ]],
+                        ],
+                    ]],
+                ])
+                ->push([
+                    'choices' => [[
+                        'message' => [
+                            'content' => 'Created the Family Meal on thex.kaman.dev.',
+                        ],
+                    ]],
+                ]),
+            'https://thex.kaman.dev/*' => Http::response(['id' => 99], 201),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'dev-token',
+                'full_ai_kaman_base_url' => 'https://thex.kaman.dev/api/manager',
+            ])
+            ->post(route('form.menu-agent.chat'), [
+                'messages' => [
+                    ['role' => 'user', 'content' => 'Add a family meal at 50. Item name is the description.'],
+                ],
+            ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString('Created the Family Meal on thex.kaman.dev.', $response->streamedContent());
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://thex.kaman.dev/api/manager/items'
+            && $request->method() === 'POST'
+            && $request->hasHeader('Authorization', 'Bearer dev-token'));
     }
 
     public function test_agent_rejects_off_host_paths(): void

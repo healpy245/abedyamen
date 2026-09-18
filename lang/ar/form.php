@@ -22,6 +22,7 @@ return [
     'environment' => 'البيئة',
     'environment_rest' => 'الإنتاج (.kaman.rest)',
     'environment_dev' => 'الاختبار (.kaman.dev)',
+    'environment_host_hint' => 'ستُنفَّذ جميع العمليات عبر :host',
     'login_credentials_hint' => 'لا يوجد جلسة نشطة. أدخل اسم المستخدم وكلمة المرور، ثم انقر تسجيل الدخول مرة أخرى لحفظ الرمز.',
     'username' => 'اسم المستخدم',
     'username_placeholder' => 'مثال: thex@kaman.rest',

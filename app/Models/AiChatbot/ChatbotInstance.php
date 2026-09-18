@@ -191,14 +191,38 @@ class ChatbotInstance extends Model
     }
 
     /**
+     * Numbers entered by hand in workspace Settings.
+     *
+     * @return list<string>
+     */
+    public function manualIgnoredReplyPhones(): array
+    {
+        return $this->phoneListFromSettings('ignored_reply_phones');
+    }
+
+    /**
+     * Numbers added by the Kaman ignore-list API (read-only in Settings).
+     *
+     * @return list<string>
+     */
+    public function apiIgnoredReplyPhones(): array
+    {
+        return $this->phoneListFromSettings('ignored_reply_phones_api');
+    }
+
+    /**
      * Numbers the bot must never auto-reply to, even when globally active.
+     * Merges the manual Settings list with the API list.
      * Accepts local (05…) or international (972…) forms.
      *
      * @return list<string>
      */
     public function ignoredReplyPhones(): array
     {
-        return $this->phoneListFromSettings('ignored_reply_phones');
+        return array_values(array_unique(array_merge(
+            $this->manualIgnoredReplyPhones(),
+            $this->apiIgnoredReplyPhones(),
+        )));
     }
 
     public function hasReplyPhoneIgnoreList(): bool

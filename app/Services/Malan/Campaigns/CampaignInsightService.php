@@ -9,6 +9,7 @@ use App\Models\AiChatbot\ChatbotConversation;
 use App\Models\AiChatbot\ChatbotMessage;
 use App\Models\Malan\MalanCampaign;
 use App\Models\Malan\MalanCampaignContact;
+use App\Models\Malan\MalanCampaignGuardianNumber;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -30,6 +31,8 @@ class CampaignInsightService
     public const GROUP_CONTACTS = 'contacts';
 
     public const GROUP_MESSAGES = 'messages';
+
+    public const GROUP_GUARDIANS = 'guardians';
 
     /**
      * Strong rejection / negative signals in spoken Arabic / Hebrew / English.
@@ -106,6 +109,7 @@ class CampaignInsightService
         $noResponse = count($buckets[self::GROUP_NO_RESPONSE]);
         $rejected = count($buckets[self::GROUP_REJECTED]);
         $engaged = count($buckets[self::GROUP_RESPONDED]);
+        $guardians = MalanCampaignGuardianNumber::query()->where('campaign_id', $campaign->id)->count();
         $responded = $leads + $rejected + $engaged;
         $pending = max(0, $contacts - $messages);
 
@@ -117,10 +121,12 @@ class CampaignInsightService
             'no_response' => $noResponse,
             'rejected' => $rejected,
             'engaged' => $engaged,
+            'guardians' => $guardians,
             'pending' => $pending,
             'status' => (string) $campaign->status,
             'cards' => [
                 ['key' => self::GROUP_LEADS, 'count' => $leads, 'exportable' => true],
+                ['key' => self::GROUP_GUARDIANS, 'count' => $guardians, 'exportable' => true],
                 ['key' => self::GROUP_NO_RESPONSE, 'count' => $noResponse, 'exportable' => true],
                 ['key' => self::GROUP_REJECTED, 'count' => $rejected, 'exportable' => true],
                 ['key' => self::GROUP_RESPONDED, 'count' => $engaged, 'exportable' => true],
@@ -129,6 +135,7 @@ class CampaignInsightService
             ],
             'conversation_ids' => [
                 self::GROUP_LEADS => $this->conversationIdsForGroup($campaign, self::GROUP_LEADS),
+                self::GROUP_GUARDIANS => $this->conversationIdsForGroup($campaign, self::GROUP_GUARDIANS),
                 self::GROUP_NO_RESPONSE => $this->conversationIdsForGroup($campaign, self::GROUP_NO_RESPONSE),
                 self::GROUP_REJECTED => $this->conversationIdsForGroup($campaign, self::GROUP_REJECTED),
                 self::GROUP_RESPONDED => $this->conversationIdsForGroup($campaign, self::GROUP_RESPONDED),
@@ -145,6 +152,9 @@ class CampaignInsightService
     public function contactsForGroup(MalanCampaign $campaign, string $group): Collection
     {
         $group = strtolower(trim($group));
+        if ($group === self::GROUP_GUARDIANS) {
+            return collect();
+        }
         if ($group === self::GROUP_CONTACTS) {
             return $campaign->contacts()->orderBy('id')->get();
         }
@@ -176,6 +186,17 @@ class CampaignInsightService
         $group = strtolower(trim($group));
         if ($group === '' || $group === 'all') {
             return [];
+        }
+
+        if ($group === self::GROUP_GUARDIANS) {
+            return MalanCampaignGuardianNumber::query()
+                ->where('campaign_id', $campaign->id)
+                ->whereNotNull('conversation_id')
+                ->pluck('conversation_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
         }
 
         $contacts = $this->contactsForGroup($campaign, $group);
@@ -266,6 +287,7 @@ class CampaignInsightService
 
         return in_array($group, [
             self::GROUP_LEADS,
+            self::GROUP_GUARDIANS,
             self::GROUP_NO_RESPONSE,
             self::GROUP_REJECTED,
             self::GROUP_RESPONDED,
@@ -282,6 +304,7 @@ class CampaignInsightService
         }
         $allowed = [
             self::GROUP_LEADS,
+            self::GROUP_GUARDIANS,
             self::GROUP_NO_RESPONSE,
             self::GROUP_REJECTED,
             self::GROUP_RESPONDED,
@@ -290,6 +313,10 @@ class CampaignInsightService
         ];
         if (! in_array($group, $allowed, true)) {
             abort(404);
+        }
+
+        if ($group === self::GROUP_GUARDIANS) {
+            return $this->exportGuardianNumbers($campaign);
         }
 
         $rows = $this->contactsForGroup($campaign, $group);
@@ -338,10 +365,53 @@ class CampaignInsightService
         ]);
     }
 
+    private function exportGuardianNumbers(MalanCampaign $campaign): StreamedResponse
+    {
+        $rows = MalanCampaignGuardianNumber::query()
+            ->where('campaign_id', $campaign->id)
+            ->orderBy('id')
+            ->get();
+        $groupLabel = $this->localizedGroupLabel(self::GROUP_GUARDIANS);
+        $filename = sprintf(
+            'campaign-%d-guardians-%s-%s.csv',
+            $campaign->id,
+            app()->getLocale(),
+            now()->format('Ymd-His')
+        );
+
+        $headers = [
+            __('chatbot.workspace.campaigns.export_col_guardian_phone'),
+            __('chatbot.workspace.campaigns.export_col_source_name'),
+            __('chatbot.workspace.campaigns.export_col_source_phone'),
+            __('chatbot.workspace.campaigns.export_col_group'),
+        ];
+
+        return response()->streamDownload(function () use ($rows, $groupLabel, $headers): void {
+            $out = fopen('php://output', 'wb');
+            if ($out === false) {
+                return;
+            }
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, $headers);
+            foreach ($rows as $row) {
+                fputcsv($out, [
+                    (string) ($row->phone_normalized ?: $row->phone),
+                    (string) ($row->source_name ?? ''),
+                    (string) ($row->source_phone ?? ''),
+                    $groupLabel,
+                ]);
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
     private function localizedGroupLabel(string $group): string
     {
         $key = match ($group) {
             self::GROUP_LEADS => 'stat_leads',
+            self::GROUP_GUARDIANS => 'stat_guardians',
             self::GROUP_NO_RESPONSE => 'stat_no_response',
             self::GROUP_REJECTED => 'stat_rejected',
             self::GROUP_RESPONDED => 'stat_engaged',

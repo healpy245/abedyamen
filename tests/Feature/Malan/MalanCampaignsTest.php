@@ -272,10 +272,11 @@ class MalanCampaignsTest extends TestCase
         $this->assertStringContainsString('واستنّي جواب اه أو لا من الزبون', $prompt);
         $this->assertStringContainsString('# ميزات الخدمة — بس إذا سأل الزبون', $prompt);
         $this->assertStringContainsString('مرتاح مع بيزك', $prompt);
-        $this->assertStringContainsString('بقترح عليك تعطي فرصة', $prompt);
+        $this->assertStringContainsString('محاولة إقناع واحدة', $prompt);
+        $this->assertStringContainsString('ابعثيلي رقم حدا اتواصل معه', $prompt);
+        $this->assertStringContainsString('شفت انك مسجل عن طريق الانستا', $prompt);
         $this->assertStringContainsString('استغل السعر', $prompt);
         $this->assertStringContainsString('300-500', $prompt);
-        $this->assertStringContainsString('تنبسط', $prompt);
         $this->assertStringNotContainsString('رح ينبسط', $prompt);
         $this->assertStringContainsString('ونهارك سعيد', $prompt);
         $this->assertStringContainsString('قسم المبيعات', $prompt);
@@ -499,25 +500,156 @@ TEXT;
         $this->customerSays($conversation, 'لا ما بدي');
         $this->runBurst($campaign, $conversation, 2);
 
-        $this->assertDatabaseHas('ai_chatbot_messages', [
+        $this->assertDatabaseMissing('ai_chatbot_messages', [
             'conversation_id' => $conversation->id,
             'role' => 'assistant',
             'message' => \App\Jobs\ProcessCampaignConversationJob::GIVE_CHANCE_REPLY,
         ]);
-
-        $conversation->forceFill([
-            'metadata' => array_merge($conversation->fresh()->metadata ?? [], [
-                'campaign_conversation_version' => 3,
-            ]),
-        ])->save();
-
-        $this->customerSays($conversation, 'لا');
-        $this->runBurst($campaign, $conversation, 3);
-
         $this->assertDatabaseHas('ai_chatbot_messages', [
             'conversation_id' => $conversation->id,
             'role' => 'assistant',
             'message' => \App\Jobs\ProcessCampaignConversationJob::CLOSE_REPLY,
+        ]);
+    }
+
+    public function test_husband_deferral_asks_for_guardian_number_and_stores_analytics_only(): void
+    {
+        $user = $this->user();
+        $instance = $this->malanInstance($user);
+        $campaign = MalanCampaign::query()->create([
+            'chatbot_instance_id' => $instance->id,
+            'created_by_user_id' => $user->id,
+            'name' => 'Guardian',
+            'status' => MalanCampaign::STATUS_RUNNING,
+            'is_active' => true,
+            'greenapi_url' => 'https://example.com/waInstance1/sendMessage/token',
+            'opening_message' => 'hello',
+            'system_prompt' => MalanCampaign::defaultLeadSystemPrompt(),
+            'contacts_count' => 1,
+        ]);
+
+        $conversation = ChatbotConversation::query()->create([
+            'user_id' => $user->id,
+            'instance_id' => $instance->id,
+            'campaign_id' => $campaign->id,
+            'title' => 'Guardian',
+            'channel' => ChatbotConversation::CHANNEL_WHATSAPP,
+            'external_chat_id' => 'campaign:'.$campaign->id.':972500077788@c.us',
+            'bot_mode' => ChatbotConversation::BOT_MODE_ACTIVE,
+            'metadata' => [
+                'campaign_lead_bot' => true,
+                'whatsapp_chat_id' => '972500077788@c.us',
+                'campaign_conversation_version' => 1,
+            ],
+        ]);
+
+        MalanCampaignContact::query()->create([
+            'campaign_id' => $campaign->id,
+            'conversation_id' => $conversation->id,
+            'name' => 'Mona',
+            'phone' => '0500077788',
+            'phone_normalized' => '0500077788',
+            'status' => MalanCampaignContact::STATUS_RESPONDED,
+            'message_sent_at' => now()->subHour(),
+            'responded_at' => now()->subMinutes(10),
+        ]);
+
+        \Illuminate\Support\Facades\Http::fake([
+            '*' => \Illuminate\Support\Facades\Http::response(['idMessage' => 'G1'], 200),
+        ]);
+
+        $this->customerSays($conversation, 'جوزي هو الي بتصرف بهاي الامور');
+        $this->runBurst($campaign, $conversation, 1);
+
+        $this->assertDatabaseHas('ai_chatbot_messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'message' => \App\Jobs\ProcessCampaignConversationJob::GUARDIAN_NUMBER_ASK_REPLY,
+        ]);
+        $this->assertDatabaseMissing('ai_chatbot_messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'message' => \App\Jobs\ProcessCampaignConversationJob::COMPETITOR_PERSUASION_REPLY,
+        ]);
+
+        $conversation->forceFill([
+            'metadata' => array_merge($conversation->fresh()->metadata ?? [], [
+                'campaign_conversation_version' => 2,
+            ]),
+        ])->save();
+
+        $this->customerSays($conversation, '0501234567');
+        $this->runBurst($campaign, $conversation, 2);
+
+        $this->assertDatabaseHas('malan_campaign_guardian_numbers', [
+            'campaign_id' => $campaign->id,
+            'phone_normalized' => '0501234567',
+            'source_name' => 'Mona',
+        ]);
+        $this->assertDatabaseHas('ai_chatbot_messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'message' => \App\Jobs\ProcessCampaignConversationJob::GUARDIAN_NUMBER_STORED_REPLY,
+        ]);
+        $this->assertDatabaseMissing('ai_chatbot_messages', [
+            'conversation_id' => $conversation->id,
+            'message' => \App\Jobs\ProcessCampaignConversationJob::ASK_NAME_REPLY,
+        ]);
+        $this->assertNull(
+            MalanCampaignContact::query()->where('campaign_id', $campaign->id)->value('lead_created_at')
+        );
+
+        $summary = app(\App\Services\Malan\Campaigns\CampaignInsightService::class)->summarize($campaign);
+        $this->assertSame(1, $summary['guardians']);
+        $this->assertContains($conversation->id, $summary['conversation_ids']['guardians']);
+    }
+
+    public function test_where_did_you_get_my_number_gets_one_line_source_reply(): void
+    {
+        $user = $this->user();
+        $instance = $this->malanInstance($user);
+        $campaign = MalanCampaign::query()->create([
+            'chatbot_instance_id' => $instance->id,
+            'created_by_user_id' => $user->id,
+            'name' => 'Source',
+            'status' => MalanCampaign::STATUS_RUNNING,
+            'is_active' => true,
+            'greenapi_url' => 'https://example.com/waInstance1/sendMessage/token',
+            'opening_message' => 'hello',
+            'system_prompt' => MalanCampaign::defaultLeadSystemPrompt(),
+            'contacts_count' => 1,
+        ]);
+
+        $conversation = ChatbotConversation::query()->create([
+            'user_id' => $user->id,
+            'instance_id' => $instance->id,
+            'campaign_id' => $campaign->id,
+            'title' => 'Source',
+            'channel' => ChatbotConversation::CHANNEL_WHATSAPP,
+            'external_chat_id' => 'campaign:'.$campaign->id.':972500077788@c.us',
+            'bot_mode' => ChatbotConversation::BOT_MODE_ACTIVE,
+            'metadata' => [
+                'campaign_lead_bot' => true,
+                'whatsapp_chat_id' => '972500077788@c.us',
+                'campaign_conversation_version' => 1,
+            ],
+        ]);
+
+        \Illuminate\Support\Facades\Http::fake([
+            '*' => \Illuminate\Support\Facades\Http::response(['idMessage' => 'S1'], 200),
+        ]);
+
+        $this->customerSays($conversation, 'منين جبتي رقمي؟ انا مش مسجل بمحل وما بعرف هذه الشركة');
+        $this->runBurst($campaign, $conversation, 1);
+
+        $this->assertDatabaseHas('ai_chatbot_messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'message' => \App\Jobs\ProcessCampaignConversationJob::PHONE_SOURCE_REPLY,
+        ]);
+        $this->assertDatabaseMissing('ai_chatbot_messages', [
+            'conversation_id' => $conversation->id,
+            'message' => \App\Jobs\ProcessCampaignConversationJob::FIBER_AT_HOME_QUESTION,
         ]);
     }
 
@@ -1936,7 +2068,7 @@ TEXT;
             ->getJson(route('ai-chatbot.workspace.campaigns.analytics', [$instance, $campaign]))
             ->assertOk()
             ->assertJsonStructure(['analytics' => [
-                'leads', 'responded', 'messages', 'contacts', 'no_response', 'rejected', 'engaged',
+                'leads', 'responded', 'messages', 'contacts', 'no_response', 'rejected', 'engaged', 'guardians',
             ]]);
 
         $this->actingAs($user)

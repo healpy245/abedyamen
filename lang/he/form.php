@@ -22,6 +22,7 @@ return [
     'environment' => 'סביבה',
     'environment_rest' => 'ייצור (.kaman.rest)',
     'environment_dev' => 'בדיקות (.kaman.dev)',
+    'environment_host_hint' => 'כל התהליכים ימשיכו דרך :host',
     'login_credentials_hint' => 'אין הפעלה פעילה. הזן שם משתמש וסיסמה, ואז לחץ שוב על התחברות כדי לשמור אסימון.',
     'username' => 'שם משתמש',
     'username_placeholder' => 'לדוגמה: thex@kaman.rest',

@@ -308,8 +308,19 @@ final class KamanMenuWriter
      */
     private function likelyItemIds(array $meals, array $items): array
     {
-        $index = $this->indexItems($items);
         $ids = [];
+        if ($meals === []) {
+            foreach ($items as $item) {
+                $id = (string) ($item['id'] ?? '');
+                if ($id !== '') {
+                    $ids[$id] = $id;
+                }
+            }
+
+            return array_values($ids);
+        }
+
+        $index = $this->indexItems($items);
         foreach ($meals as $meal) {
             foreach ([(string) ($meal['name_ar'] ?? ''), (string) ($meal['name_en'] ?? '')] as $name) {
                 $key = $this->nameKey($name);
@@ -466,7 +477,7 @@ final class KamanMenuWriter
             if (is_string($matched) && $matched !== '' && $op !== 'create') {
                 $map[$meal['haat_id']] = $matched;
                 if ($op === 'update') {
-                    $ok = $this->updateMeal($baseUrl, $token, $matched, $meal, $categoryId, $label);
+                    $ok = $this->updateMeal($baseUrl, $token, $matched, $meal, $categoryId, $label, $withImages);
                     if ($ok) {
                         $report['meals']['updated'][] = ['haat_id' => $meal['haat_id'], 'id' => $matched, 'name' => $label];
                         $progress && $progress('meals', 'Updated '.$label, ['status' => 'ok', 'name' => $label]);
@@ -815,6 +826,9 @@ final class KamanMenuWriter
                 ? $this->createCashierIngredientCategory($baseUrl, $token, $category)
                 : $this->createManagerIngredientCategory($baseUrl, $token, $category);
 
+            if ($createdId === null && ($this->plan['cashier_available'] ?? false)) {
+                $createdId = $this->createManagerIngredientCategory($baseUrl, $token, $category);
+            }
             if ($createdId === null) {
                 $report['ingredient_categories']['failed'][] = ['title' => $category['title'], 'error' => 'No id in create response'];
                 continue;
@@ -927,7 +941,7 @@ final class KamanMenuWriter
     /**
      * @param  array<string, mixed>  $meal
      */
-    private function updateMeal(string $baseUrl, string $token, string $id, array $meal, string $categoryId, string $label): bool
+    private function updateMeal(string $baseUrl, string $token, string $id, array $meal, string $categoryId, string $label, bool $withImages = false): bool
     {
         $nameAr = (string) $meal['name_ar'];
         $nameEn = (string) $meal['name_en'];
@@ -948,7 +962,18 @@ final class KamanMenuWriter
         if (! ($meal['is_available'] ?? true)) {
             $body['status'] = '0';
         }
+        $imagePath = $withImages ? $this->images->download($meal['image_url'] ?? null) : null;
         $response = $this->send(fn () => $this->http()->withToken($token)->asJson()->put($baseUrl.'/items/'.$id, $body));
+        if ($imagePath && File::exists($imagePath)) {
+            $http = $this->http(90)->withToken($token);
+            $attach = [];
+            foreach ($body as $key => $value) {
+                $attach[$key] = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+            }
+            $attach['_method'] = 'PUT';
+            $response = $this->send(fn () => $http->attach('image', File::get($imagePath), basename($imagePath))->post($baseUrl.'/items/'.$id, $attach));
+            @unlink($imagePath);
+        }
         if (! $response->successful()) {
             $response = $this->send(fn () => $this->http()->withToken($token)->asForm()->post($baseUrl.'/items/'.$id, $body + ['_method' => 'PUT']));
         }

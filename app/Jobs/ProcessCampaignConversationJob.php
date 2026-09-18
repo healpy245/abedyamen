@@ -13,6 +13,7 @@ use App\Services\AiChatbot\AiChatbotService;
 use App\Services\AiChatbot\ChatbotGreenApiService;
 use App\Services\Malan\Campaigns\CampaignConversationBurstService;
 use App\Services\Malan\Campaigns\CampaignHumanDelay;
+use App\Services\Malan\Campaigns\MalanCampaignGuardianNumberService;
 use App\Services\Malan\MalanConversationContextService;
 use App\Services\Malan\MalanConversationMemoryService;
 use App\Services\Malan\MalanLeadService;
@@ -64,6 +65,12 @@ class ProcessCampaignConversationJob implements ShouldQueue
     public const SAME_NUMBER_ASK_REPLY = 'اذا حابب تنضم النا، بقدر اخلي الصبيه تتواصل معك كمان شوي تشرحلك اكثر. بدك اخليها تتواصل معك عهاذ الرقم؟';
 
     public const ASK_NAME_REPLY = 'تمام، اعطيني اسمك الكامل بس.';
+
+    public const GUARDIAN_NUMBER_ASK_REPLY = 'تمام فش مشكله، ابعثيلي رقم حدا اتواصل معه.';
+
+    public const GUARDIAN_NUMBER_STORED_REPLY = 'تمام، رح نتواصل معه.';
+
+    public const PHONE_SOURCE_REPLY = 'شفت انك مسجل عن طريق الانستا او الفيس بالفتره الماضيه.';
 
     public function __construct(
         public int $campaignId,
@@ -214,6 +221,10 @@ class ProcessCampaignConversationJob implements ShouldQueue
 
         $triggerUserMessageId = (int) $burst[array_key_last($burst)]->id;
         $lastUserText = (string) $burst[array_key_last($burst)]->message;
+        $burstText = trim(implode("\n", array_map(
+            static fn (ChatbotMessage $message): string => (string) $message->message,
+            $burst,
+        )));
 
         $fixedReply = $this->resolveDeterministicLeadHandoffReply(
             $conversation,
@@ -221,7 +232,16 @@ class ProcessCampaignConversationJob implements ShouldQueue
             $memory,
             $contextService,
             $lastUserText,
+            $burstText,
+            $campaign,
         );
+
+        if ($fixedReply === '') {
+            $burstService->markBurstProcessed($burst, $this->expectedVersion);
+            $burstService->closeBurst($conversation->fresh() ?? $conversation, $this->expectedVersion);
+
+            return [];
+        }
 
         if ($fixedReply !== null) {
             $assistantMessage = $conversation->messages()->create([
@@ -316,29 +336,87 @@ class ProcessCampaignConversationJob implements ShouldQueue
         MalanConversationMemoryService $memory,
         MalanConversationContextService $contextService,
         string $lastUserText,
+        string $burstText = '',
+        ?MalanCampaign $campaign = null,
     ): ?string {
         $context = $contextService->getActive($conversation);
+        $intentText = trim($burstText) !== '' ? $burstText : $lastUserText;
 
         $localize = static fn (string $text): string => $instance->companyProfile()->localize($text);
 
-        if ($contextService->isCampaignOptedOut($context)) {
+        if ($memory->looksLikeAsksWhereNumberFrom($intentText)) {
+            return $localize(self::PHONE_SOURCE_REPLY);
+        }
+
+        if ($memory->assistantRecentlyClosed($conversation)) {
+            return '';
+        }
+
+        if ($contextService->isCampaignOptedOut($context)
+            && ! $memory->looksLikeDecisionMakerDeferral($intentText)
+        ) {
             return $localize(self::CLOSE_REPLY);
         }
 
-        if ($memory->lastAssistantAskedFiberAtHome($conversation)) {
-            if ($memory->looksLikeNoFiberAtHome($lastUserText) || $memory->looksLikeBareNo($lastUserText)) {
+        $extractedPhone = $memory->extractWrittenCampaignPhone($intentText);
+        $awaitingGuardian = $memory->assistantRecentlyAskedGuardianNumber($conversation);
+        $isDeferral = $memory->looksLikeDecisionMakerDeferral($intentText);
+
+        if (($awaitingGuardian || $isDeferral) && $extractedPhone !== null && $campaign !== null) {
+            $stored = app(MalanCampaignGuardianNumberService::class)
+                ->store($campaign, $conversation, $extractedPhone);
+            if ($stored !== null) {
+                $contextService->mergeCampaignFlags($conversation, $instance, [
+                    'awaiting_guardian_number' => false,
+                    'guardian_number_stored' => true,
+                    'mode' => 'campaign_guardian_referral',
+                ]);
+                $contextService->markCampaignOptedOut($conversation, $instance);
+
+                return $localize(self::GUARDIAN_NUMBER_STORED_REPLY);
+            }
+        }
+
+        if ($awaitingGuardian) {
+            if ($memory->looksLikeSoftRefusal($intentText)
+                || $memory->looksLikeHardCampaignOptOut($intentText)
+                || $memory->looksLikeBareNo($intentText)
+            ) {
+                $contextService->markCampaignOptedOut($conversation, $instance);
+
+                return $localize(self::CLOSE_REPLY);
+            }
+
+            return $localize('تمام.');
+        }
+
+        if ($isDeferral) {
+            $contextService->mergeCampaignFlags($conversation, $instance, [
+                'awaiting_guardian_number' => true,
+                'mode' => 'campaign_guardian_referral',
+            ]);
+
+            return $localize(self::GUARDIAN_NUMBER_ASK_REPLY);
+        }
+
+        if ($memory->lastAssistantAskedFiberAtHome($conversation)
+            && ! $memory->looksLikeSoftRefusal($intentText)
+            && ! $memory->looksLikeHardCampaignOptOut($intentText)
+        ) {
+            if ($memory->looksLikeNoFiberAtHome($intentText) || $memory->looksLikeBareNo($intentText)) {
                 return $localize(self::NO_FIBER_INSTALL_REPLY)."\n\n".$localize(self::NO_FIBER_PRICE_REPLY)."\n\n".$localize(self::JOIN_QUESTION);
             }
 
-            if ($memory->looksLikeHasFiberAtHome($lastUserText)
-                || $memory->looksLikeBareYes($lastUserText)
-                || $memory->looksLikeJoinAffirmative($lastUserText)
+            if ($memory->looksLikeHasFiberAtHome($intentText)
+                || $memory->looksLikeBareYes($intentText)
+                || $memory->looksLikeJoinAffirmative($intentText)
+                || $memory->looksLikeCompetitorLoyalty($intentText)
             ) {
                 return $localize(self::JOIN_QUESTION);
             }
         }
 
-        if ($memory->looksLikeJoinAffirmative($lastUserText)
+        if ($memory->looksLikeJoinAffirmative($intentText)
             && $memory->assistantRecentlyAskedClosingQuestion($conversation)
         ) {
             if ($contextService->campaignPhoneConfirmed($context)) {
@@ -348,7 +426,7 @@ class ProcessCampaignConversationJob implements ShouldQueue
             return $localize(self::SAME_NUMBER_ASK_REPLY);
         }
 
-        if ($memory->looksLikeAsksAboutCustomerReviews($lastUserText)) {
+        if ($memory->looksLikeAsksAboutCustomerReviews($intentText)) {
             $turn = $memory->campaignTurnMemory($conversation);
             $hasSalesContext = ($turn['fiber_asked'] ?? false)
                 || ($turn['closing_question_asked'] ?? false)
@@ -359,9 +437,9 @@ class ProcessCampaignConversationJob implements ShouldQueue
             }
         }
 
-        if ($memory->looksLikeWantsToKeepTalking($lastUserText)
-            && ! $memory->looksLikeCompetitorLoyalty($lastUserText)
-            && ! $memory->looksLikeSoftStayObjection($lastUserText)
+        if ($memory->looksLikeWantsToKeepTalking($intentText)
+            && ! $memory->looksLikeCompetitorLoyalty($intentText)
+            && ! $memory->looksLikeSoftStayObjection($intentText)
         ) {
             $turn = $memory->campaignTurnMemory($conversation);
             $introStarted = ($turn['fiber_asked'] ?? false)
@@ -374,22 +452,21 @@ class ProcessCampaignConversationJob implements ShouldQueue
             return null;
         }
 
-        if ($memory->looksLikeHardCampaignOptOut($lastUserText)) {
+        if ($memory->looksLikeHardCampaignOptOut($intentText)) {
             return $localize(self::CLOSE_REPLY);
         }
 
-        $softNo = ! $memory->looksLikeJoinAffirmative($lastUserText)
-            && ($memory->looksLikeCompetitorLoyalty($lastUserText)
-            || $memory->looksLikeSoftStayObjection($lastUserText)
-            || $memory->looksLikeSoftRefusal($lastUserText)
-            || ($memory->assistantRecentlyAskedClosingQuestion($conversation) && $memory->looksLikeBareNo($lastUserText)));
+        $softNo = ! $memory->looksLikeJoinAffirmative($intentText)
+            && ($memory->looksLikeCompetitorLoyalty($intentText)
+            || $memory->looksLikeSoftStayObjection($intentText)
+            || $memory->looksLikeSoftRefusal($intentText)
+            || ($memory->assistantRecentlyAskedClosingQuestion($conversation) && $memory->looksLikeBareNo($intentText)));
 
         if ($softNo) {
-            if ($memory->assistantRecentlySentGiveChance($conversation)) {
+            if ($memory->assistantRecentlySentCompetitorPersuasion($conversation)
+                || $memory->assistantRecentlySentGiveChance($conversation)
+            ) {
                 return $localize(self::CLOSE_REPLY);
-            }
-            if ($memory->assistantRecentlySentCompetitorPersuasion($conversation)) {
-                return $localize(self::GIVE_CHANCE_REPLY);
             }
 
             return $localize(self::COMPETITOR_PERSUASION_REPLY);
