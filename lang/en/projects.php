@@ -16,4 +16,9 @@ return [
         'description' => 'Manage development tickets, QA testing, and APK releases.',
         'detail' => 'QA reports bugs and requests; developers implement and ship Android builds.',
     ],
+    'kaman-support' => [
+        'label' => 'POS Customer Support',
+        'description' => 'Tickets from Kaman POS cashiers — printers, kitchen routing, print logs.',
+        'detail' => 'Staff-only console. The cloud never scans restaurant LANs.',
+    ],
 ];

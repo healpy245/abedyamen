@@ -31,6 +31,7 @@ final class FormMenuAgentMemory
                 'name' => (string) ($row['name'] ?? 'file'),
                 'path' => (string) $row['path'],
                 'mime' => (string) ($row['mime'] ?? ''),
+                'kind' => ($row['kind'] ?? '') === 'meal_photo' ? 'meal_photo' : 'menu',
             ];
         }
 

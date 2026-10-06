@@ -1,0 +1,3104 @@
+{
+  "01a0c3b7": [
+    {
+      "at": "2026-09-21 14:26:37",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3b7-aa6a-7330-afa1-1885aae5b7e8/print-kitchen?lang=ar -> 200 7982b 598ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3b7-aa6a-7330-afa1-1885aae5b7e8/print-kitchen",
+        "status": 200,
+        "ms": 598
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:36",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c3b7-aa6a-7330-afa1-1885aae5b7e8/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c3b7-aa6e-72ce-8fc3-47c737636552\",\"order_item_id\":\"01a0c3b7-aa6e-72ce-8fc3-47c737636552\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c3b7-aa71-70b2-9f63-2733b233e49c\",\"order_item_id\":\"01a0c3b7-aa71-70b2-9f63-2733b233e49c\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c3b7-aa6e-72ce-8fc3-47c737636552\",\"01a0c3b7-aa71-70b2-9f63-2733b233e49c\"]} -> 200 8709b 552ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c3b7-aa6a-7330-afa1-1885aae5b7e8/send-to-kitchen",
+        "status": 200,
+        "ms": 552
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:34",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3b7-aa6a-7330-afa1-1885aae5b7e8?lang=ar -> 200 219747b 795ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3b7-aa6a-7330-afa1-1885aae5b7e8",
+        "status": 200,
+        "ms": 795
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:33",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3b7-aa6a-7330-afa1-1885aae5b7e8?lang=ar -> 200 219747b 842ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3b7-aa6a-7330-afa1-1885aae5b7e8",
+        "status": 200,
+        "ms": 842
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:30",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c3b7-84f0-73c0-94a1-560ebc2a9aa0/pay/visa -> 200 1393b 10422ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c3b7-84f0-73c0-94a1-560ebc2a9aa0/pay/visa",
+        "status": 200,
+        "ms": 10422
+      }
+    }
+  ],
+  "01a0c3ba": [
+    {
+      "at": "2026-09-21 14:35:32",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/print-invoice?lang=ar -> 200 1067b 588ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/print-invoice",
+        "status": 200,
+        "ms": 588
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:31",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/confirm -> 200 3105b 673ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/confirm",
+        "status": 200,
+        "ms": 673
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:31",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b -> 200 2516b 698ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b",
+        "status": 200,
+        "ms": 698
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:47",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/pay/visa -> 200 1363b 7535ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/pay/visa",
+        "status": 200,
+        "ms": 7535
+      }
+    }
+  ],
+  "01a0c38e": [
+    {
+      "at": "2026-09-21 14:28:46",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API DELETE https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0 body={\"reason\":\"بدون سبب\",\"password\":\"***\"} -> 200 209b 645ms",
+      "context": {
+        "method": "DELETE",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 645
+      }
+    },
+    {
+      "at": "2026-09-21 14:28:45",
+      "level": "error",
+      "source": "api",
+      "device": "gcp",
+      "message": "POST /orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/cancel -> 404 The route api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/cancel could not be found.",
+      "context": {
+        "method": "POST",
+        "path": "/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/cancel",
+        "status": 404
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:11",
+      "level": "error",
+      "source": "api",
+      "device": "gcp",
+      "message": "POST /orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/pay/visa -> 400 operation canceled by user",
+      "context": {
+        "method": "POST",
+        "path": "/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/pay/visa",
+        "status": 400
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:03",
+      "level": "error",
+      "source": "api",
+      "device": "gcp",
+      "message": "POST /orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/pay/visa -> 400 operation canceled by user",
+      "context": {
+        "method": "POST",
+        "path": "/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/pay/visa",
+        "status": 400
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:36",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 25644b 583ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 583
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:36",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items body={\"item_id\":\"9ef475eb-e7c9-4dc5-a467-d33c619cfbf4\",\"quantity\":3,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}} -> 200 13824b 566ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items",
+        "status": 200,
+        "ms": 566
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:35",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items body={\"item_id\":\"9ef67577-2f09-409b-af2d-3bda1b064a22\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"ingredients\":[]}} -> 200 13036b 578ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items",
+        "status": 200,
+        "ms": 578
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:35",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items body={\"item_id\":\"9ef49ed4-2e91-43d7-844d-61c59a5324bf\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"ingredients\":[]}} -> 200 12291b 590ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items",
+        "status": 200,
+        "ms": 590
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:34",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items body={\"item_id\":\"9ef4a37d-269f-4da1-9dd9-16bbd815af33\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"ingredients\":[]}} -> 200 11362b 738ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items",
+        "status": 200,
+        "ms": 738
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:33",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items body={\"item_id\":\"9ef474cd-4a82-47d8-86ad-508e0f34174f\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"ingredients\":[]}} -> 200 10625b 558ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items",
+        "status": 200,
+        "ms": 558
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:33",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 12867b 622ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 622
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:12",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/print-kitchen?lang=ar -> 200 2702b 580ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/print-kitchen",
+        "status": 200,
+        "ms": 580
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:12",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c38e-c949-7369-9dbf-dff54188e32c\",\"order_item_id\":\"01a0c38e-c949-7369-9dbf-dff54188e32c\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c38e-c950-724f-aa53-e9cdb125b8a3\",\"order_item_id\":\"01a0c38e-c950-724f-aa53-e9cdb125b8a3\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c38e-c955-71b1-a880-760f6eba95d4\",\"order_item_id\":\"01a0c38e-c955-71b1-a880-760f6eba95d4\",\"is_prin… -> 200 13298b 643ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/send-to-kitchen",
+        "status": 200,
+        "ms": 643
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:10",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 12868b 603ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 603
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:07",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 12868b 606ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 606
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:07",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items body={\"item_id\":\"9ef47555-ae9a-4006-bba2-67553091d029\",\"quantity\":3,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}} -> 200 9720b 592ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0/items",
+        "status": 200,
+        "ms": 592
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:06",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 10427b 581ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 581
+      }
+    },
+    {
+      "at": "2026-09-21 14:25:03",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 10427b 642ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 642
+      }
+    },
+    {
+      "at": "2026-09-21 13:46:01",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 10427b 724ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 724
+      }
+    },
+    {
+      "at": "2026-09-21 13:45:49",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 10427b 570ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 570
+      }
+    },
+    {
+      "at": "2026-09-21 13:43:28",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 20661b 550ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 550
+      }
+    },
+    {
+      "at": "2026-09-21 13:43:14",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 20661b 598ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 598
+      }
+    },
+    {
+      "at": "2026-09-21 13:42:57",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 20661b 557ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 557
+      }
+    },
+    {
+      "at": "2026-09-21 13:42:27",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 20661b 1919ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 1919
+      }
+    },
+    {
+      "at": "2026-09-21 13:41:41",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 12610b 625ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 625
+      }
+    },
+    {
+      "at": "2026-09-21 13:41:25",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0?lang=ar -> 200 12610b 547ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38e-5eed-70e8-af8c-5953b4dd3db0",
+        "status": 200,
+        "ms": 547
+      }
+    }
+  ],
+  "منتج غير مدرج": [
+    {
+      "at": "2026-09-21 14:35:44",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":85.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}},{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":117.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 5270b 639ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 639
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:37",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1177,
+        "y": 420,
+        "cart": 1,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:32",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1175,
+        "y": 428,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:38",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":100.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 648ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 648
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:24",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1196,
+        "y": 425,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:19",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":292.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 613ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 613
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:13",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1139,
+        "y": 438,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:21:53",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":227.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 616ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 616
+      }
+    },
+    {
+      "at": "2026-09-21 14:12:23",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":90.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3626b 569ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 569
+      }
+    },
+    {
+      "at": "2026-09-21 14:12:10",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":200.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 611ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 611
+      }
+    },
+    {
+      "at": "2026-09-21 14:12:03",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1147,
+        "y": 411,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:11:35",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1189,
+        "y": 410,
+        "table": "7",
+        "cart": 7,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:00:03",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1158,
+        "y": 423,
+        "table": "7",
+        "cart": 6,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 13:55:53",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":250.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 595ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 595
+      }
+    },
+    {
+      "at": "2026-09-21 13:55:48",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1157,
+        "y": 407,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 13:55:30",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":175.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 617ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 617
+      }
+    },
+    {
+      "at": "2026-09-21 13:55:26",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1197,
+        "y": 410,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 19:43:01",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "waiter/pos/cashier",
+        "x": 886,
+        "y": 329,
+        "table": "8",
+        "cart": 2,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 13:39:32",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":58.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3626b 593ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 593
+      }
+    },
+    {
+      "at": "2026-09-21 13:39:27",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1202,
+        "y": 406,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 13:34:26",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 221,
+        "y": 540,
+        "table": "2",
+        "cart": 4,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 13:23:17",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1165,
+        "y": 437,
+        "table": "2",
+        "cart": 3,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 13:23:08",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1136,
+        "y": 410,
+        "table": "2",
+        "cart": 3,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 13:22:57",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1145,
+        "y": 435,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 13:18:25",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1185,
+        "y": 410,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 12:57:28",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1121,
+        "y": 441,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:06:25",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "waiter/pos/cashier",
+        "x": 940,
+        "y": 325,
+        "table": "12",
+        "cart": 7,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 17:26:53",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "waiter/pos/cashier",
+        "x": 894,
+        "y": 328,
+        "table": "12",
+        "cart": 7,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 17:16:36",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "waiter/pos/cashier",
+        "x": 921,
+        "y": 339,
+        "table": "12",
+        "cart": 7,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 17:13:50",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "waiter/pos/cashier",
+        "x": 898,
+        "y": 334,
+        "table": "12",
+        "cart": 6,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 19:03:15",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":160.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 656ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 656
+      }
+    },
+    {
+      "at": "2026-09-20 19:03:10",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1173,
+        "y": 440,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 19:01:00",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":340.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 700ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 700
+      }
+    },
+    {
+      "at": "2026-09-20 18:55:11",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1154,
+        "y": 419,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:55:11",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 293,
+        "y": 347,
+        "cart": 1,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:55:03",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3622b 729ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 729
+      }
+    },
+    {
+      "at": "2026-09-20 18:54:57",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1171,
+        "y": 409,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:29:41",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1183,
+        "y": 425,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:26:16",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1174,
+        "y": 413,
+        "cart": 2,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:26:08",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1169,
+        "y": 439,
+        "cart": 1,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:26:03",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1146,
+        "y": 437,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:13:42",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1194,
+        "y": 423,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:13:31",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1156,
+        "y": 408,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:10:02",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1136,
+        "y": 427,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 18:06:21",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1225,
+        "y": 421,
+        "table": "9",
+        "cart": 8,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 17:32:53",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1164,
+        "y": 441,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 17:31:25",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1212,
+        "y": 415,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 17:29:03",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1170,
+        "y": 423,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 17:18:37",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1163,
+        "y": 441,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 17:08:19",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1173,
+        "y": 435,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 16:43:18",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1185,
+        "y": 410,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 16:37:27",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1169,
+        "y": 416,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 16:37:08",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1167,
+        "y": 437,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-20 16:34:12",
+      "level": "info",
+      "source": "tap",
+      "device": "gcp",
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1169,
+        "y": 417,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    }
+  ],
+  "item_price": [
+    {
+      "at": "2026-09-21 14:35:44",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":85.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}},{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":117.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 5270b 639ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 639
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:38",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":100.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 648ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 648
+      }
+    },
+    {
+      "at": "2026-09-21 14:26:19",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":292.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 613ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 613
+      }
+    },
+    {
+      "at": "2026-09-21 14:21:53",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":227.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 616ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 616
+      }
+    },
+    {
+      "at": "2026-09-21 14:19:20",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef350b1-eddd-4299-8c8e-6bccda6bfde0\",\"guest_count\":5,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"5\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_id\":\"9ef498d9-6843-445f-a9cf-d96215d6a379\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_opt… -> 200 15178b 608ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 608
+      }
+    },
+    {
+      "at": "2026-09-21 14:14:44",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35056-749b-4f25-a611-9cff9fe62f80\",\"guest_count\":4,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"4\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_id\":\"9ef4b178-1a45-4b38-a896-97dde4d76d1f\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_opt… -> 200 15096b 628ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 628
+      }
+    },
+    {
+      "at": "2026-09-21 14:12:23",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":90.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3626b 569ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 569
+      }
+    },
+    {
+      "at": "2026-09-21 14:12:10",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":200.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 611ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 611
+      }
+    },
+    {
+      "at": "2026-09-21 14:06:06",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35075-5d59-4fe3-8f2f-08034ac2915f\",\"guest_count\":3,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_id\":\"9ef4b178-1a45-4b38-a896-97dde4d76d1f\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_opt… -> 200 13075b 575ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 575
+      }
+    },
+    {
+      "at": "2026-09-21 13:55:53",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":250.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 595ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 595
+      }
+    },
+    {
+      "at": "2026-09-21 13:55:30",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":175.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3631b 617ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 617
+      }
+    },
+    {
+      "at": "2026-09-21 13:41:21",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef3509d-11b3-4123-bb26-1e0a6a3cfec6\",\"guest_count\":3,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_id\":\"9ef474cd-4a82-47d8-86ad-508e0f34174f\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_opt… -> 200 10594b 580ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 580
+      }
+    },
+    {
+      "at": "2026-09-21 13:39:32",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":58.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3626b 593ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 593
+      }
+    },
+    {
+      "at": "2026-09-21 13:22:03",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35056-749b-4f25-a611-9cff9fe62f80\",\"guest_count\":3,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_id\":\"9ef49191-4f5e-4512-846a-d20d3df85ec6\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_opt… -> 200 11040b 605ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 605
+      }
+    },
+    {
+      "at": "2026-09-21 13:18:31",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"ةا\",\"item_price\":38.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3513b 730ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 730
+      }
+    },
+    {
+      "at": "2026-09-21 12:57:42",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35075-5d59-4fe3-8f2f-08034ac2915f\",\"guest_count\":3,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_id\":\"9ef66f7d-f80b-456c-80fe-bab937fdf666\",\"quantity\":2,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_opt… -> 200 15061b 587ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 587
+      }
+    },
+    {
+      "at": "2026-09-21 12:55:06",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35043-4b30-41a7-a951-4cf1790b5d88\",\"guest_count\":3,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_id\":\"9ef474cd-4a82-47d8-86ad-508e0f34174f\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_opt… -> 200 12247b 577ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 577
+      }
+    },
+    {
+      "at": "2026-09-20 19:03:15",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":160.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 656ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 656
+      }
+    },
+    {
+      "at": "2026-09-20 19:01:00",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":340.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 700ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 700
+      }
+    },
+    {
+      "at": "2026-09-20 18:55:03",
+      "level": "debug",
+      "source": "api",
+      "device": "gcp",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3622b 729ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 729
+      }
+    }
+  ],
+  "unlisted": [],
+  "device14_all": [
+    {
+      "at": "2026-09-21 14:36:24",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 633ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 633
+      }
+    },
+    {
+      "at": "2026-09-21 14:36:24",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 631ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 631
+      }
+    },
+    {
+      "at": "2026-09-21 14:36:24",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 630ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 630
+      }
+    },
+    {
+      "at": "2026-09-21 14:36:24",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 629ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 629
+      }
+    },
+    {
+      "at": "2026-09-21 14:36:24",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 583ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 583
+      }
+    },
+    {
+      "at": "2026-09-21 14:36:23",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 576ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 576
+      }
+    },
+    {
+      "at": "2026-09-21 14:36:22",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 645ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 645
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 717ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 717
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 714ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 714
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 711ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 711
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 706ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 706
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 690ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 690
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:53",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 596ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 596
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:52",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 680ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 680
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 620ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 620
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 619ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 619
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 615ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 615
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 606ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 606
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 539ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 539
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:48",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 723ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 723
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:47",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 747ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 747
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:46",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c3c0-2492-7137-b1bb-71684eee35ba/pay/cash -> 200 57b 700ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c3c0-2492-7137-b1bb-71684eee35ba/pay/cash",
+        "status": 200,
+        "ms": 700
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:46",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped تنبيه",
+      "context": {
+        "kind": "button",
+        "screen": "pos/cashier",
+        "x": 469,
+        "y": 669,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:44",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":85.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}},{\"item_id\":null,\"item_name\":\"منتج غير مدرج\",\"item_price\":117.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 5270b 639ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 639
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:42",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped 7",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 533,
+        "y": 532,
+        "cart": 1,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:41",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped 1",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 531,
+        "y": 384,
+        "cart": 1,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:41",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped 1",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 519,
+        "y": 369,
+        "cart": 1,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:40",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped text field",
+      "context": {
+        "kind": "field",
+        "screen": "pos/cashier",
+        "x": 475,
+        "y": 190,
+        "cart": 1,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:37",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1177,
+        "y": 420,
+        "cart": 1,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:34",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped text field",
+      "context": {
+        "kind": "field",
+        "screen": "pos/cashier",
+        "x": 980,
+        "y": 173,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:33",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped text field",
+      "context": {
+        "kind": "field",
+        "screen": "pos/cashier",
+        "x": 491,
+        "y": 185,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:32",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped منتج غير مدرج",
+      "context": {
+        "kind": "control",
+        "screen": "pos/cashier",
+        "x": 1175,
+        "y": 428,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:32",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/print-invoice?lang=ar -> 200 1067b 588ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/print-invoice",
+        "status": 200,
+        "ms": 588
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:31",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/confirm -> 200 3105b 673ms",
+      "context": {
+        "method": "POST",
+        "path": "/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b/confirm",
+        "status": 200,
+        "ms": 673
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:31",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b -> 200 2516b 698ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3ba-8fc4-7387-ba39-600b558ff93b",
+        "status": 200,
+        "ms": 698
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:30",
+      "level": "info",
+      "source": "tap",
+      "device": null,
+      "message": "tapped تم الاستلام",
+      "context": {
+        "kind": "button",
+        "screen": "pos/cashier",
+        "x": 1044,
+        "y": 566,
+        "cart": 0,
+        "orderType": "dineIn"
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 684ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 684
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 683ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 683
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 681ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 681
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 678ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 678
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 656ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 656
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:23",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 587ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 587
+      }
+    },
+    {
+      "at": "2026-09-21 14:35:22",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 650ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 650
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 757ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 757
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 753ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 753
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 708ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 708
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 705ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 705
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 685ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 685
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:53",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 625ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 625
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:52",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 680ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 680
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 786ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 786
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 753ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 753
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 729ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 729
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 726ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 726
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 670ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 670
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:23",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 618ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 618
+      }
+    },
+    {
+      "at": "2026-09-21 14:34:22",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 766ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 766
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 745ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 745
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 743ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 743
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 742ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 742
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 738ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 738
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 714ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 714
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:53",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 646ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 646
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:52",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 661ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 661
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 785ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 785
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 734ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 734
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 731ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 731
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 727ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 727
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 710ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 710
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:23",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 620ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 620
+      }
+    },
+    {
+      "at": "2026-09-21 14:33:22",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 634ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 634
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 743ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 743
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 741ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 741
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 739ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 739
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 710ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 710
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 689ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 689
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:53",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 658ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 658
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:52",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 633ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 633
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 743ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 743
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 741ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 741
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 737ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 737
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 735ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 735
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 719ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 719
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:23",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 646ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 646
+      }
+    },
+    {
+      "at": "2026-09-21 14:32:22",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 634ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 634
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 771ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 771
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199?lang=ar -> 200 9509b 769ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c3bc-5a42-70ae-852b-59928f986199",
+        "status": 200,
+        "ms": 769
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 720ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 720
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 718ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 718
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:55",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 697ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 697
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:53",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6922b 602ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 602
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:52",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 627ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 627
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 738ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 738
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 735ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 735
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 732ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 732
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 710ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 710
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:23",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6186b 682ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 682
+      }
+    },
+    {
+      "at": "2026-09-21 14:31:22",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 632ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 632
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:54",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 660ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 660
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:54",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 658ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 658
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:54",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 599ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 599
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:54",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 581ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 581
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:53",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6186b 655ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 655
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:52",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 653ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 653
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 752ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 752
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 709ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 709
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 707ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 707
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:25",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 680ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 680
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:23",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6186b 596ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 596
+      }
+    },
+    {
+      "at": "2026-09-21 14:30:22",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 746ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 746
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:54",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 665ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 665
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:54",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 651ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 651
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:54",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 628ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 628
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:54",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 581ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 581
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:53",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=tables_orders&lang=ar -> 200 6186b 623ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 623
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:52",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders?type=pending_orders&lang=ar -> 200 2640b 724ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders",
+        "status": 200,
+        "ms": 724
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3?lang=ar -> 200 17498b 754ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c390-0c80-71f4-b54b-3f4e9e847ce3",
+        "status": 200,
+        "ms": 754
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e?lang=ar -> 200 17958b 710ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c38c-049a-733e-9b31-51f6dec6eb4e",
+        "status": 200,
+        "ms": 710
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22?lang=ar -> 200 6323b 708ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37c-a3ad-71d1-89a3-beb60680fc22",
+        "status": 200,
+        "ms": 708
+      }
+    },
+    {
+      "at": "2026-09-21 14:29:50",
+      "level": "debug",
+      "source": "api",
+      "device": null,
+      "message": "API GET https://gcp.kaman.rest/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3?lang=ar -> 200 9658b 687ms",
+      "context": {
+        "method": "GET",
+        "path": "/api/cashier/orders/01a0c37d-9812-7009-9ab7-3077a13f1ba3",
+        "status": 200,
+        "ms": 687
+      }
+    }
+  ]
+}

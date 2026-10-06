@@ -18,29 +18,45 @@ final class HaatImageDownloader
         }
 
         try {
-            $http = Http::timeout(20);
+            $http = Http::timeout(30)->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Accept' => 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+                'Referer' => 'https://wolt.com/',
+            ]);
             if (! config('services.haat.ssl_verify', config('services.kaman.ssl_verify', false))) {
                 $http = $http->withoutVerifying();
             }
 
             $response = $http->get($url);
             if (! $response->successful()) {
+                Log::warning('Menu image download failed', [
+                    'url' => $url,
+                    'status' => $response->status(),
+                ]);
+
                 return null;
             }
 
             $body = $response->body();
-            if ($body === '') {
+            if ($body === '' || @getimagesizefromstring($body) === false) {
+                Log::warning('Menu image download was not an image', [
+                    'url' => $url,
+                    'type' => $response->header('Content-Type'),
+                    'bytes' => strlen($body),
+                ]);
+
                 return null;
             }
 
-            $extension = $this->extensionFromUrl($url, $response->header('Content-Type'));
             $dir = storage_path('app/haat-images');
             if (! is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
 
-            $path = $dir.DIRECTORY_SEPARATOR.Str::uuid()->toString().'.'.$extension;
-            if (file_put_contents($path, $body) === false) {
+            $jpeg = $this->asJpeg($body);
+            $bytes = $jpeg ?? $body;
+            $path = $dir.DIRECTORY_SEPARATOR.Str::uuid()->toString().($jpeg !== null ? '.jpg' : '.img');
+            if (file_put_contents($path, $bytes) === false) {
                 return null;
             }
 
@@ -72,6 +88,23 @@ final class HaatImageDownloader
         }
 
         return $base.'/'.ltrim($value, '/');
+    }
+
+    private function asJpeg(string $body): ?string
+    {
+        if (! function_exists('imagecreatefromstring') || ! function_exists('imagejpeg')) {
+            return $body;
+        }
+        $image = @imagecreatefromstring($body);
+        if ($image === false) {
+            return null;
+        }
+        ob_start();
+        $ok = imagejpeg($image, null, 85);
+        imagedestroy($image);
+        $jpeg = ob_get_clean();
+
+        return $ok && is_string($jpeg) && $jpeg !== '' ? $jpeg : null;
     }
 
     private function extensionFromUrl(string $url, ?string $contentType): string

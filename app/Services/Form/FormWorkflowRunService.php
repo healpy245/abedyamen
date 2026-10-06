@@ -8,6 +8,7 @@ use App\Models\FormWorkflowRun;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 final class FormWorkflowRunService
 {
@@ -297,6 +298,46 @@ final class FormWorkflowRunService
     public function releaseWorker(FormWorkflowRun $run): void
     {
         Cache::forget($this->busyKey($run->id));
+    }
+
+    public function startDetached(FormWorkflowRun $run): bool
+    {
+        if (app()->environment('testing') || \PHP_OS_FAMILY === 'Windows') {
+            return false;
+        }
+
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        if (in_array('exec', $disabled, true)) {
+            return false;
+        }
+
+        $php = 'php';
+        foreach (['/usr/local/bin/php', '/usr/bin/php', PHP_BINARY, 'php'] as $bin) {
+            $bin = (string) $bin;
+            if ($bin === '' || str_contains(strtolower($bin), 'cgi')) {
+                continue;
+            }
+            if ($bin === 'php' || is_executable($bin)) {
+                $php = $bin;
+                break;
+            }
+        }
+
+        $log = storage_path('logs/form-workflow-'.$run->id.'.log');
+        $cmd = sprintf(
+            'nohup %s %s form:workflow-run %d >> %s 2>&1 &',
+            escapeshellarg($php),
+            escapeshellarg(base_path('artisan')),
+            $run->id,
+            escapeshellarg($log)
+        );
+        exec($cmd);
+        Log::info('Detached form workflow worker', [
+            'run_id' => $run->id,
+            'php' => $php,
+        ]);
+
+        return true;
     }
 
     public function workerGeneration(FormWorkflowRun|int $run): int

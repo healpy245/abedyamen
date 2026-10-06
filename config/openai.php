@@ -67,6 +67,11 @@ return [
     */
     'default_model' => env('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini'),
     'vision_model' => env('OPENAI_VISION_MODEL', 'gpt-4o'),
-    'menu_agent_model' => env('OPENAI_MENU_AGENT_MODEL', env('OPENAI_VISION_MODEL', 'gpt-4o')),
+    // Latest model that still function-calls on Chat Completions (reasoning_effort=none).
+    // GPT-6 Astra is stronger, but tool calling on that model requires the Responses API.
+    'malan_chat_model' => env('OPENAI_MALAN_CHAT_MODEL', 'gpt-6-sol'),
+    // GPT-5.6 is the strongest model that still tool-calls through Chat Completions.
+    // GPT-6 Astra is stronger, and it requires the Responses API.
+    'menu_agent_model' => env('OPENAI_MENU_AGENT_MODEL', 'gpt-5.6'),
     'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-1'),
 ];

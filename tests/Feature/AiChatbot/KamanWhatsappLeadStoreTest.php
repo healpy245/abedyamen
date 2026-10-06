@@ -43,6 +43,13 @@ class KamanWhatsappLeadStoreTest extends TestCase
 
         Http::fake([
             '7107.api.greenapi.com/*' => Http::response(['idMessage' => 'thanks-lead'], 200),
+            'api.openai.com/*' => Http::response([
+                'choices' => [[
+                    'message' => ['content' => '{"fullName":"Yamen","restName":"unknown","city":"unknown","notes":"الزبون سلّم المحادثة."}'],
+                ]],
+            ], 200),
+            'kamanagents-production.up.railway.app/api/auth/login' => Http::response(['accessToken' => 'lead-token'], 200),
+            'kamanagents-production.up.railway.app/api/leads*' => Http::response(['id' => 'lead-closed'], 201),
         ]);
 
         (new ProcessKamanConversationJob(
@@ -56,10 +63,9 @@ class KamanWhatsappLeadStoreTest extends TestCase
             app(\App\Services\AiChatbot\KamanConversationBurstService::class),
         );
 
-        Queue::assertPushed(StoreKamanWhatsappLeadJob::class, function (StoreKamanWhatsappLeadJob $job) use ($conversation): bool {
-            return $job->conversationId === (int) $conversation->id
-                && $job->reason === KamanWhatsappLeadStoreService::REASON_CLOSED;
-        });
+        $conversation->refresh();
+        $this->assertNotEmpty($conversation->metadata['kaman_agents_lead']['posted_at'] ?? null);
+        Queue::assertNotPushed(StoreKamanWhatsappLeadJob::class);
     }
 
     public function test_regular_reply_queues_idle_lead_store(): void
@@ -96,10 +102,9 @@ class KamanWhatsappLeadStoreTest extends TestCase
             app(\App\Services\AiChatbot\KamanConversationBurstService::class),
         );
 
-        Queue::assertPushed(StoreKamanWhatsappLeadJob::class, function (StoreKamanWhatsappLeadJob $job) use ($conversation): bool {
-            return $job->conversationId === (int) $conversation->id
-                && $job->reason === KamanWhatsappLeadStoreService::REASON_IDLE;
-        });
+        $conversation->refresh();
+        $this->assertEmpty($conversation->metadata['kaman_agents_lead']['posted_at'] ?? null);
+        Queue::assertNotPushed(StoreKamanWhatsappLeadJob::class);
     }
 
     public function test_stores_lead_with_extracted_fields_and_arabic_notes(): void
@@ -176,6 +181,70 @@ class KamanWhatsappLeadStoreTest extends TestCase
         });
     }
 
+    public function test_voice_transcript_is_sent_for_the_summary_and_unclear_audio_is_marked(): void
+    {
+        $conversation = $this->makeConversation($this->makeInstance(), [
+            'contact_phone' => '972525026825',
+            'contact_name' => 'مجد الكروم',
+        ]);
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message' => 'بدي افتح food truck مطبخ ايطالي',
+            'metadata' => [
+                'whatsapp_voice' => true,
+                'voice_unclear' => false,
+                'transcript' => 'بدي افتح food truck مطبخ ايطالي',
+            ],
+        ]);
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message' => 'رسالة صوتية (غير واضحة)',
+            'metadata' => [
+                'whatsapp_voice' => true,
+                'voice_unclear' => true,
+                'voice_best_guess' => 'مدفست بونيم',
+            ],
+        ]);
+
+        Http::fake([
+            'api.openai.com/*' => Http::response([
+                'choices' => [[
+                    'message' => [
+                        'content' => json_encode([
+                            'fullName' => 'مجد الكروم',
+                            'restName' => 'unknown',
+                            'city' => 'unknown',
+                            'notes' => 'مهتم يفتح فود ترك بمطبخ إيطالي.',
+                        ], JSON_UNESCAPED_UNICODE),
+                    ],
+                ]],
+            ], 200),
+            'kamanagents-production.up.railway.app/api/auth/login' => Http::response(['accessToken' => 'lead-token'], 200),
+            'kamanagents-production.up.railway.app/api/leads*' => Http::response(['id' => 'lead-voice'], 201),
+        ]);
+
+        $result = app(KamanWhatsappLeadStoreService::class)
+            ->storeFromConversation($conversation, KamanWhatsappLeadStoreService::REASON_CLOSED);
+
+        $this->assertTrue($result['stored']);
+        Http::assertSent(function ($request): bool {
+            if (! str_contains($request->url(), 'api.openai.com')) {
+                return false;
+            }
+            $content = (string) ($request['messages'][0]['content'] ?? '');
+            $user = (string) ($request['messages'][1]['content'] ?? '');
+            $this->assertStringContainsString('لا تكرر في notes الاسم', $content);
+            $this->assertStringContainsString('[رسالة صوتية] بدي افتح food truck مطبخ ايطالي', $user);
+            $this->assertStringContainsString('[رسالة صوتية غير واضحة] مدفست بونيم', $user);
+
+            return true;
+        });
+    }
+
     public function test_unknown_fields_are_sent_as_unknown_when_missing(): void
     {
         $conversation = $this->makeConversation($this->makeInstance(), [
@@ -212,7 +281,8 @@ class KamanWhatsappLeadStoreTest extends TestCase
             $this->assertSame('unknown', $request['phoneNumber']);
             $this->assertSame('whatsapp', $request['source']);
             $this->assertNotSame('unknown', $request['notes']);
-            $this->assertStringContainsString('واتساب', (string) $request['notes']);
+            $this->assertStringNotContainsString('053', (string) $request['notes']);
+            $this->assertStringContainsString('طلب واضح', (string) $request['notes']);
 
             return true;
         });

@@ -351,6 +351,11 @@
             transform: translateY(-1px);
             border-color: #f47a2e;
         }
+        .menu-agent__pending-chip.is-meal {
+            background: #fff1e6;
+            border-color: #f7c4a0;
+            color: #9a3412;
+        }
         .menu-agent__row {
             display: flex;
             flex-wrap: wrap;
@@ -1579,6 +1584,10 @@
                             <label class="kaman-button-ghost shrink-0 cursor-pointer">
                                 <input id="menuAgentFiles" type="file" class="hidden" multiple accept="image/*,application/pdf,.json,.txt,.csv">
                                 {{ __('form.agent_attach') }}
+                            </label>
+                            <label class="kaman-button-ghost shrink-0 cursor-pointer" title="{{ __('form.agent_meal_photos_hint') }}">
+                                <input id="menuAgentMealFiles" type="file" class="hidden" multiple accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp">
+                                {{ __('form.agent_meal_photos') }}
                             </label>
                             <textarea
                                 id="menuAgentInput"
@@ -3707,6 +3716,7 @@
             const inputEl = document.getElementById('menuAgentInput');
             const sendBtn = document.getElementById('menuAgentSend');
             const filesEl = document.getElementById('menuAgentFiles');
+            const mealFilesEl = document.getElementById('menuAgentMealFiles');
             const pendingEl = document.getElementById('menuAgentPending');
             const loginHint = document.getElementById('menuAgentLoginHint');
             const panelEl = document.getElementById('menuAgentPanel');
@@ -3720,6 +3730,8 @@
                 thinking: @json(__('form.agent_thinking')),
                 error: @json(__('form.agent_error')),
                 empty: @json(__('form.agent_empty')),
+                mealChip: @json(__('form.agent_meal_chip')),
+                mealPrompt: @json(__('form.agent_meal_prompt')),
             };
 
             const history = [];
@@ -3796,6 +3808,9 @@
                 inputEl.disabled = !on || sending;
                 sendBtn.disabled = !on || sending;
                 filesEl.disabled = !on || sending;
+                if (mealFilesEl) {
+                    mealFilesEl.disabled = !on || sending;
+                }
                 loginHint.hidden = on;
             }
 
@@ -3857,11 +3872,12 @@
                     return;
                 }
                 pendingEl.hidden = false;
-                pendingFiles.forEach((file, index) => {
+                pendingFiles.forEach((entry, index) => {
+                    const file = entry.file || entry;
                     const chip = document.createElement('button');
                     chip.type = 'button';
-                    chip.className = 'menu-agent__pending-chip';
-                    chip.textContent = file.name + ' ×';
+                    chip.className = 'menu-agent__pending-chip' + (entry.role === 'meal_photo' ? ' is-meal' : '');
+                    chip.textContent = (entry.role === 'meal_photo' ? i18n.mealChip + ' · ' : '') + file.name + ' ×';
                     chip.addEventListener('click', () => {
                         pendingFiles.splice(index, 1);
                         renderPending();
@@ -3924,15 +3940,23 @@
                 }
             }
 
-            function addPendingFiles(list) {
-                pendingFiles = pendingFiles.concat(Array.from(list || [])).slice(0, 20);
+            function addPendingFiles(list, role) {
+                const next = Array.from(list || []).map((file) => ({ file: file, role: role || 'menu' }));
+                pendingFiles = pendingFiles.concat(next).slice(0, 50);
                 renderPending();
             }
 
             filesEl.addEventListener('change', () => {
-                addPendingFiles(filesEl.files || []);
+                addPendingFiles(filesEl.files || [], 'menu');
                 filesEl.value = '';
             });
+
+            if (mealFilesEl) {
+                mealFilesEl.addEventListener('change', () => {
+                    addPendingFiles(mealFilesEl.files || [], 'meal_photo');
+                    mealFilesEl.value = '';
+                });
+            }
 
             if (panelEl) {
                 ['dragenter', 'dragover'].forEach((type) => {
@@ -3953,7 +3977,7 @@
                 panelEl.addEventListener('drop', (event) => {
                     const files = event.dataTransfer && event.dataTransfer.files;
                     if (files && files.length) {
-                        addPendingFiles(files);
+                        addPendingFiles(files, 'menu');
                     }
                 });
             }
@@ -3979,8 +4003,14 @@
                 if (sending || !window.__kamanRestaurantAuthenticated) {
                     return;
                 }
-                const text = inputEl.value.trim();
-                const files = pendingFiles.slice();
+                const entries = pendingFiles.slice();
+                const files = entries.map((entry) => entry.file || entry);
+                const hasMeal = entries.some((entry) => entry.role === 'meal_photo');
+                const hasMenu = entries.some((entry) => entry.role !== 'meal_photo');
+                let text = inputEl.value.trim();
+                if (!text && hasMeal && !hasMenu) {
+                    text = i18n.mealPrompt;
+                }
                 if (!text && files.length === 0) {
                     return;
                 }
@@ -4003,7 +4033,11 @@
                     body.append('messages[' + index + '][role]', row.role);
                     body.append('messages[' + index + '][content]', row.content);
                 });
-                files.forEach((file) => body.append('attachments[]', file, file.name));
+                entries.forEach((entry) => {
+                    const file = entry.file || entry;
+                    body.append('attachments[]', file, file.name);
+                    body.append('attachment_roles[]', entry.role === 'meal_photo' ? 'meal_photo' : 'menu');
+                });
 
                 let assistantText = '';
                 try {
@@ -4051,6 +4085,7 @@
                             }
                             if (ev.event === 'error') {
                                 assistantText = friendlyAgentText(ev.message || i18n.error);
+                                appendBubble('assistant', assistantText);
                                 return;
                             }
                             if (ev.event === 'done' && !sawMessage && ev.reply) {
@@ -4071,8 +4106,10 @@
                     }
                 } catch (err) {
                     statusEl.remove();
-                    assistantText = i18n.error;
-                    appendBubble('assistant', assistantText);
+                    if (!assistantText) {
+                        assistantText = i18n.error;
+                        appendBubble('assistant', assistantText);
+                    }
                 }
 
                 if (assistantText) {

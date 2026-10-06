@@ -85,6 +85,10 @@ class MalanConversationMemoryService
                 return $this->contextService->beginCampaignSales($conversation, $instance);
             }
 
+            if ($this->assistantRecentlyStoredLead($conversation)) {
+                return $existing ?? $this->contextService->beginCampaignLeadCollection($conversation, $instance);
+            }
+
             if ($this->lastAssistantAskedFiberAtHome($conversation)) {
                 if ($this->looksLikeNoFiberAtHome($text) || $this->looksLikeBareNo($text)) {
                     $this->contextService->rememberCampaignFiber($conversation, $instance, false);
@@ -100,8 +104,30 @@ class MalanConversationMemoryService
                 return $this->contextService->resumeCampaignSalesForQuestions($conversation, $instance);
             }
 
-            if ($this->assistantRecentlyAskedClosingQuestion($conversation)
-                && $this->looksLikeJoinAffirmative($text)
+            // Soft handoff may happen while still in sales mode (e.g. voice transcript).
+            // Affirmative after "عهاذ/عهاد الرقم؟" must lock the number and move to name — never re-ask.
+            // This must run before the join-question branch: «اه بنفع» also looks like a join yes.
+            if ($this->assistantRecentlyAskedSameNumber($conversation)
+                || $this->assistantRecentlyAskedForFullName($conversation)
+            ) {
+                $writtenPhone = $this->extractWrittenCampaignPhone($text);
+                if ($writtenPhone !== null) {
+                    return $this->contextService->rememberCampaignLeadPhone($conversation, $instance, $writtenPhone);
+                }
+            }
+
+            if ($this->assistantRecentlyAskedSameNumber($conversation)
+                && $this->looksLikeSameNumberAffirmative($text)
+            ) {
+                $this->contextService->beginCampaignLeadCollection($conversation, $instance);
+
+                return $this->contextService->markContactOnCurrentNumber($conversation, $instance);
+            }
+
+            if ($this->looksLikeJoinAffirmative($text)
+                && ($this->assistantRecentlyAskedClosingQuestion($conversation)
+                    || $this->assistantRecentlySentCompetitorPersuasion($conversation)
+                    || $this->assistantRecentlySentGiveChance($conversation))
             ) {
                 return $this->contextService->beginCampaignLeadCollection($conversation, $instance);
             }
@@ -129,25 +155,6 @@ class MalanConversationMemoryService
 
             if ($this->contextService->isCampaignOptedOut($existing)) {
                 return $existing;
-            }
-
-            // Soft handoff may happen while still in sales mode (e.g. voice transcript).
-            // Affirmative after "عهاذ/عهاد الرقم؟" must lock the number and move to name — never re-ask.
-            if ($this->assistantRecentlyAskedSameNumber($conversation)
-                || $this->assistantRecentlyAskedForFullName($conversation)
-            ) {
-                $writtenPhone = $this->extractWrittenCampaignPhone($text);
-                if ($writtenPhone !== null) {
-                    return $this->contextService->rememberCampaignLeadPhone($conversation, $instance, $writtenPhone);
-                }
-            }
-
-            if ($this->assistantRecentlyAskedSameNumber($conversation)
-                && $this->looksLikeSameNumberAffirmative($text)
-            ) {
-                $this->contextService->beginCampaignLeadCollection($conversation, $instance);
-
-                return $this->contextService->markContactOnCurrentNumber($conversation, $instance);
             }
 
             if ($this->looksLikeCampaignConversionIntent($text)) {
@@ -628,6 +635,11 @@ class MalanConversationMemoryService
             return false;
         }
 
+        // «خلص ماشي تمام» is agreement after a pitch, not «خلص / خلص باي».
+        if ($this->looksLikeOkayAgreement($text)) {
+            return false;
+        }
+
         return (bool) preg_match(
             '/('.
             'حلي\s*عني|خلي\s*عني|'.
@@ -728,6 +740,32 @@ class MalanConversationMemoryService
     }
 
     /**
+     * Spoken okay after a pitch — «خلص ماشي تمام» means they accepted, not «I'm done».
+     * Bare «خلص» / «خلص باي» stay opt-out.
+     */
+    public function looksLikeOkayAgreement(string $text): bool
+    {
+        $normalized = $this->normalizeCampaignUtterance($text);
+        if ($normalized === '') {
+            return false;
+        }
+
+        if (preg_match('/^خلص(\s*باي)?$/u', $normalized)) {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/('.
+            'ماشي\s*تمام|تمام\s*ماشي|'.
+            'خلص\s+(ماشي|تمام|اوك|اوكي|ok|okay|يلا|بنفع|اه)|'.
+            'يلا\s+(ماشي|تمام)|'.
+            'اوك(ي)?\s*تمام'.
+            ')/u',
+            $normalized,
+        );
+    }
+
+    /**
      * Yes to joining / the offer — including rhetorical «ليش لا» (why not = I will).
      */
     public function looksLikeJoinAffirmative(string $text): bool
@@ -735,6 +773,10 @@ class MalanConversationMemoryService
         $normalized = $this->normalizeCampaignUtterance($text);
         if ($normalized === '') {
             return false;
+        }
+
+        if ($this->looksLikeOkayAgreement($normalized)) {
+            return true;
         }
 
         if ($this->looksLikeHardCampaignOptOut($normalized)
@@ -754,12 +796,12 @@ class MalanConversationMemoryService
         if (in_array($normalized, [
             'اه', 'اها', 'ايوه', 'ايه', 'نعم', 'yes', 'yep', 'يب',
             'يلا', 'اكيد', 'تمام', 'ماشي', 'بدي', 'اوك', 'ok', 'okay',
-            'خلينا', 'انضم', 'طبعا', 'اوكي',
+            'خلينا', 'انضم', 'طبعا', 'اوكي', 'بنفع',
         ], true)) {
             return true;
         }
 
-        return (bool) preg_match('/^(اه+|ايوه|يلا|اكيد|تمام|ماشي|اه\s*بدي|خلينا|طبعا)/u', $normalized);
+        return (bool) preg_match('/^(اه+|ايوه|يلا|اكيد|تمام|ماشي|اه\s*بدي|اه\s*بنفع|خلينا|طبعا|بنفع)/u', $normalized);
     }
 
     public function looksLikeHasFiberAtHome(string $text): bool
@@ -896,7 +938,7 @@ class MalanConversationMemoryService
     /**
      * Explicit clock time in the customer message (16:00, الساعة 4, 4 المسا…).
      */
-    public function extractPreferredCallTime(string $text): ?string
+    public function extractPreferredCallTime(string $text, bool $allowBareHour = false): ?string
     {
         $normalized = $this->normalizeCampaignUtterance($text);
         if ($normalized === '') {
@@ -920,7 +962,65 @@ class MalanConversationMemoryService
             return $this->formatCallClock((int) $match[1], 0, 'pm');
         }
 
+        if ($allowBareHour && preg_match('/^(\d{1,2})$/', $normalized, $match)) {
+            $hour = (int) $match[1];
+            if ($hour >= 1 && $hour <= 6) {
+                return $this->formatCallClock($hour, 0, 'pm');
+            }
+
+            return $this->formatCallClock($hour, 0, $normalized);
+        }
+
         return null;
+    }
+
+    public function looksLikeWeekendCallRequest(string $text): bool
+    {
+        $normalized = $this->normalizeCampaignUtterance($text);
+        if ($normalized === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/(الجمعة|جمعه|السبت|\bسبت\b)/u', $normalized);
+    }
+
+    public function preferredCallTimeIsWithinSalesHours(?string $clock): bool
+    {
+        if ($clock === null || ! preg_match('/^(\d{2}):(\d{2})$/', $clock, $match)) {
+            return false;
+        }
+
+        $minutes = ((int) $match[1] * 60) + (int) $match[2];
+
+        return $minutes >= 9 * 60 && $minutes <= 18 * 60;
+    }
+
+    public function offHoursPreferredCallReply(string $text): ?string
+    {
+        $time = $this->extractPreferredCallTime($text, true);
+        $weekend = $this->looksLikeWeekendCallRequest($text);
+        if (! $weekend && $time === null) {
+            return null;
+        }
+
+        if ($weekend || ($time !== null && ! $this->preferredCallTimeIsWithinSalesHours($time))) {
+            return 'هالوقت مش ضمن دوام المبيعات، الصبيه بتتواصل من الأحد للخميس من 9 ل 6.';
+        }
+
+        return null;
+    }
+
+    public function assistantRecentlyStoredLead(ChatbotConversation $conversation): bool
+    {
+        return $this->recentAssistantMatches(
+            $conversation,
+            function (string $text): bool {
+                $normalized = $this->normalizeCampaignUtterance($text);
+
+                return str_contains($normalized, 'الصبيه رح تتواصل معك')
+                    && ! str_contains($normalized, 'بساعه محدده');
+            },
+        );
     }
 
     public function looksLikeWantsLaterCall(string $text): bool
@@ -1122,13 +1222,19 @@ class MalanConversationMemoryService
             if (count($recentAssistant) < 24) {
                 $recentAssistant[] = mb_substr($text, 0, 220);
             }
-            if (str_contains($text, 'اكيد بتعرفنا')) {
+            if (str_contains($text, 'اكيد بتعرفنا')
+                || str_contains($text, 'معك سالي من ملان')
+                || str_contains($text, 'كفر قاسم')
+                || str_contains($text, 'شركة نت بالطيبة')
+            ) {
                 $flags['intro_asked'] = true;
             }
             if (str_contains($text, 'نجاح رهيب')) {
                 $flags['company_pitch_sent'] = true;
             }
-            if (str_contains($text, 'حابب تكون جزء من نجاحنا')) {
+            if (str_contains($text, 'حابب تكون جزء من نجاحنا')
+                || str_contains($text, 'تشرحلك')
+            ) {
                 $flags['closing_question_asked'] = true;
             }
             if ($this->assistantMessageLooksLikeCallbackOffer($text)) {
@@ -1306,7 +1412,9 @@ class MalanConversationMemoryService
             ->pluck('message');
 
         foreach ($recent as $message) {
-            if (str_contains((string) $message, 'حابب تكون جزء من نجاحنا')) {
+            if (str_contains((string) $message, 'حابب تكون جزء من نجاحنا')
+                || str_contains((string) $message, 'تشرحلك')
+            ) {
                 return true;
             }
         }
@@ -1411,6 +1519,10 @@ class MalanConversationMemoryService
         $normalized = $this->normalizeCampaignUtterance($text);
         if ($normalized === '') {
             return false;
+        }
+
+        if ($this->looksLikeOkayAgreement($normalized)) {
+            return true;
         }
 
         if ($this->looksLikeCampaignOptOut($normalized)) {
@@ -1550,6 +1662,7 @@ class MalanConversationMemoryService
         }
 
         return str_contains($normalized, 'عهاذ الرقم')
+            || str_contains($normalized, 'عهالرقم')
             || str_contains($normalized, 'عهاد الرقم')
             || str_contains($normalized, 'عنفس الرقم')
             || str_contains($normalized, 'نفس الرقم')

@@ -126,7 +126,7 @@ class MalanCampaignService
             }
         }
         if (array_key_exists('system_prompt', $data)) {
-            $prompt = trim((string) $data['system_prompt']);
+            $prompt = trim(str_replace(["\r\n", "\r"], "\n", (string) $data['system_prompt']));
             $campaign->system_prompt = $prompt !== ''
                 ? $prompt
                 : MalanCampaign::defaultLeadSystemPrompt($campaign->instance);
@@ -723,7 +723,7 @@ class MalanCampaignService
 
     public function defaultOpeningMessage(?\App\Models\AiChatbot\ChatbotInstance $instance = null): string
     {
-        $base = "أهلين 🌟\nأنا سالي من ملان إنترنت.\nحبّينا نفحص إذا مهتم/ة باشتراك إنترنت جديد — بتجاوبني بجملة قصيرة ونكمّل مع بعض؟";
+        $base = "اهلين، معك سالي من ملان. ملان بلشت من كفر قاسم، واليوم تقريباً بـ80% من البيوت والمصالح هناك.\nهالفترة الحملة وصلت للطيبة: تركيب סיב אופטי مجاناً لأول 200 بيت، وأول 3 شهور 29 شيكل.\nعندكم نت بالبيت هلق؟";
 
         return \App\Support\InternetCompanyProfile::forInstance($instance)->localize($base);
     }

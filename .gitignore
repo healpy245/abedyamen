@@ -12,6 +12,7 @@
 /.vscode
 /.zed
 /auth.json
+.kaman-support.env
 /node_modules
 /public/build
 /public/hot

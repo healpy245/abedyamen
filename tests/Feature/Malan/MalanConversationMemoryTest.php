@@ -259,5 +259,25 @@ class MalanConversationMemoryTest extends TestCase
         $this->assertFalse($memory->looksLikeHasFiberAtHome('اه لا شكرا الولد مشترك بشركه'));
         $this->assertFalse($memory->looksLikeAsksAboutCustomerReviews('تسلمي عنا ومبسوطين مش حابين نغير'));
         $this->assertFalse($memory->looksLikeWantsToKeepTalking('بس اسال جوزي ان شاء الله وبقلك'));
+
+        $this->assertTrue($memory->looksLikeJoinAffirmative('بنفع'));
+        $this->assertTrue($memory->looksLikeJoinAffirmative('اه بنفع'));
+        $this->assertTrue($memory->looksLikeSameNumberAffirmative('اه بنفع'));
+        $this->assertTrue($memory->looksLikeSameNumberAffirmative('بنفع'));
+
+        $this->assertTrue($memory->looksLikeOkayAgreement('خلص ماشي تمام'));
+        $this->assertTrue($memory->looksLikeOkayAgreement('ماشي تمام'));
+        $this->assertTrue($memory->looksLikeJoinAffirmative('خلص ماشي تمام'));
+        $this->assertTrue($memory->looksLikeSameNumberAffirmative('خلص ماشي تمام'));
+        $this->assertFalse($memory->looksLikeHardCampaignOptOut('خلص ماشي تمام'));
+        $this->assertFalse($memory->looksLikeOkayAgreement('خلص'));
+        $this->assertFalse($memory->looksLikeOkayAgreement('خلص باي'));
+        $this->assertTrue($memory->looksLikeHardCampaignOptOut('خلص'));
+        $this->assertTrue($memory->looksLikeHardCampaignOptOut('خلص باي'));
+
+        $this->assertSame('16:00', $memory->extractPreferredCallTime('الساعة 4 المسا'));
+        $this->assertSame('16:00', $memory->extractPreferredCallTime('4', true));
+        $this->assertTrue($memory->looksLikeNoPreferredHour('عادي متى ما بدكم'));
+        $this->assertFalse($memory->looksLikeNoPreferredHour('الساعة 4'));
     }
 }

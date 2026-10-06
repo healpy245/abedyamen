@@ -156,7 +156,7 @@ class KamanWhatsappLeadStoreService
             'source' => $this->sourceValue(),
             'city' => $this->guessCity($customerText),
             'phoneNumber' => $this->phoneOrUnknown($conversation->contact_phone),
-            'notes' => $this->fallbackNotes($conversation, $customerText),
+            'notes' => $this->fallbackNotes($conversation),
         ];
     }
 
@@ -196,8 +196,12 @@ class KamanWhatsappLeadStoreService
                             'استخرج بيانات ليد من محادثة واتساب لمبيعات نظام كمان للمطاعم.',
                             'أرجع JSON فقط بالمفاتيح: fullName, restName, city, notes.',
                             'إذا الحقل غير معروف استخدم بالضبط unknown.',
-                            'notes يجب أن تكون فقرة عربية تلخص: احتياجات الزبون، شو مستني، وشو هدفه من النظام.',
                             'لا تختلق اسم أو مدينة أو مطعم إذا الزبون ما ذكرهم.',
+                            'notes فقرة عربية قصيرة: ماذا طلب الزبون بوضوح، وما الذي يهتم فيه.',
+                            'لا تكرر في notes الاسم أو المدينة أو الهاتف أو اسم المطعم. هذه حقول منفصلة.',
+                            'اعتمد كلام الزبون فقط. إذا البوت فسّر جملة مشوّهة كمنتج، لا تنسخ تفسير البوت.',
+                            'لا تنسب طلباً لم يقله الزبون بوضوح. الجملة غير المفهومة ليست طلباً.',
+                            'الرسائل المعلّمة [رسالة صوتية] كلام الزبون. [رسالة صوتية غير واضحة] تفريغ غير مؤكد ولا يُحسب طلباً.',
                         ]),
                     ],
                     [
@@ -355,10 +359,10 @@ class KamanWhatsappLeadStoreService
         $lines = [];
         $messages = $conversation->messages()
             ->orderBy('id')
-            ->get(['role', 'message']);
+            ->get(['role', 'message', 'metadata']);
 
         foreach ($messages as $message) {
-            $text = trim((string) $message->message);
+            $text = $this->transcriptLine($message->role, (string) $message->message, $message->metadata);
             if ($text === '') {
                 continue;
             }
@@ -369,41 +373,76 @@ class KamanWhatsappLeadStoreService
         return implode("\n", $lines);
     }
 
-    private function fallbackNotes(ChatbotConversation $conversation, string $customerText): string
+    /**
+     * @param  array<string, mixed>|null  $metadata
+     */
+    private function transcriptLine(string $role, string $message, mixed $metadata): string
     {
-        $needs = [];
-        if (preg_match('/سعر|تكلفة|شهري|299/u', $customerText) === 1) {
-            $needs[] = 'يسأل عن السعر أو التكلفة';
-        }
-        if (preg_match('/ديمو|مندوب|يتواصل|demo/iu', $customerText) === 1) {
-            $needs[] = 'طالب تواصل أو ديمو من مندوب';
-        }
-        if (preg_match('/كاشير|كوباه|نظام|قائمة|منيو|توصيل|تيك اوي|تيك أوي/u', $customerText) === 1) {
-            $needs[] = 'مهتم بنظام كاشير/إدارة للمطعم';
-        }
-        if (preg_match('/هات|haat|توصيل/iu', $customerText) === 1) {
-            $needs[] = 'عنده اهتمام بتوصيل أو هات';
+        $text = trim($message);
+        $meta = is_array($metadata) ? $metadata : [];
+        if ($role !== 'user' || ($meta['whatsapp_voice'] ?? false) !== true) {
+            return $text;
         }
 
-        $snippets = $conversation->messages()
+        $spoken = trim((string) ($meta['transcript'] ?? ''));
+        if (($meta['voice_unclear'] ?? false) === true || $spoken === '') {
+            $guess = trim((string) ($meta['voice_best_guess'] ?? $spoken));
+
+            return $guess !== ''
+                ? '[رسالة صوتية غير واضحة] '.$guess
+                : '[رسالة صوتية غير واضحة]';
+        }
+
+        return '[رسالة صوتية] '.$spoken;
+    }
+
+    private function fallbackNotes(ChatbotConversation $conversation): string
+    {
+        $clear = $this->clearCustomerText($conversation);
+        $needs = [];
+        if (preg_match('/سعر|تكلفة|شهري|299/u', $clear) === 1) {
+            $needs[] = 'يسأل عن السعر';
+        }
+        if (preg_match('/ديمو|مندوب|demo/iu', $clear) === 1) {
+            $needs[] = 'طلب تواصل مندوب أو ديمو';
+        }
+        if (preg_match('/كاشير|كوباه|كوبا|قائمة|منيو/u', $clear) === 1) {
+            $needs[] = 'مهتم بنظام كاشير';
+        }
+        if (preg_match('/food\s*truck|فود\s*ترك|مطبخ/iu', $clear) === 1) {
+            $needs[] = 'مهتم يفتح مطبخ أو فود ترك';
+        }
+        if (preg_match('/هات|haat/iu', $clear) === 1) {
+            $needs[] = 'عنده اهتمام بتوصيل هات';
+        }
+
+        if ($needs === []) {
+            return 'ما في طلب واضح غير متابعة المحادثة.';
+        }
+
+        return implode('، ', $needs).'.';
+    }
+
+    private function clearCustomerText(ChatbotConversation $conversation): string
+    {
+        $lines = [];
+        $messages = $conversation->messages()
             ->where('role', 'user')
             ->orderBy('id')
-            ->pluck('message')
-            ->map(static fn ($text): string => trim((string) $text))
-            ->filter()
-            ->take(8)
-            ->implode(' | ');
+            ->get(['message', 'metadata']);
 
-        $parts = ['الزبون تواصل عبر واتساب مع بوت كمان.'];
-        if ($needs !== []) {
-            $parts[] = 'احتياجاته: '.implode('، ', $needs).'.';
+        foreach ($messages as $message) {
+            $meta = is_array($message->metadata) ? $message->metadata : [];
+            if (($meta['whatsapp_voice'] ?? false) === true && ($meta['voice_unclear'] ?? false) === true) {
+                continue;
+            }
+            $line = $this->transcriptLine('user', (string) $message->message, $meta);
+            $line = preg_replace('/^\[رسالة صوتية\]\s*/u', '', $line) ?? $line;
+            if (trim($line) !== '') {
+                $lines[] = trim($line);
+            }
         }
-        if ($snippets !== '') {
-            $parts[] = 'ملخص الرسائل: '.$snippets;
-        }
 
-        $notes = trim(implode(' ', $parts));
-
-        return $notes !== '' ? $notes : self::UNKNOWN;
+        return implode("\n", $lines);
     }
 }

@@ -1,0 +1,91 @@
+==== DEVICES ====
+id=14 deviceId=a6e9f018-a9b6-4edd-bbb1-2c4366307aca cashier=Koba role=cashier online=True v=1.3.26+49 platform=android lastSeen=2026-09-21T18:19:02+00:00 hostname=localhost
+id=15 deviceId=87ab0044-a8d4-4802-a59f-115ccadf2a95 cashier=حمودي role=waiter online=False v=1.3.26+49 platform=android lastSeen=2026-09-21T16:18:24+00:00 hostname=localhost
+id=16 deviceId=aa9ea976-8899-472d-9b34-d26f48a0e201 cashier=حمودي role=waiter online=False v=1.3.26+49 platform=android lastSeen=2026-09-21T16:14:38+00:00 hostname=localhost
+
+==== SEARCH LOGS ====
+
+-- DEVICE 14 Koba cashier logs=120 --
+levels {'debug': 106, 'info': 14}
+sources {'api': 106, 'tap': 14}
+HIT 2026-09-21 21:15:46 info tap tapped رفض
+  ctx {"kind": "control", "screen": "pos/cashier/tables", "x": 1229, "y": 451, "cart": 0, "orderType": "dineIn"}
+HIT 2026-09-21 21:15:42 info tap tapped رفض
+  ctx {"kind": "control", "screen": "pos/cashier/tables", "x": 1240, "y": 508, "cart": 0, "orderType": "dineIn"}
+HIT 2026-09-21 21:15:34 info tap tapped رفض
+  ctx {"kind": "control", "screen": "pos/cashier/tables", "x": 1216, "y": 587, "cart": 0, "orderType": "dineIn"}
+HIT 2026-09-21 21:15:30 info tap tapped رفض
+  ctx {"kind": "control", "screen": "pos/cashier/tables", "x": 1262, "y": 653, "cart": 0, "orderType": "dineIn"}
+HIT 2026-09-21 21:15:05 info tap tapped طلبية 114
+  ctx {"kind": "control", "screen": "pos/cashier/tables", "x": 1213, "y": 564, "cart": 0, "orderType": "dineIn"}
+HIT 2026-09-21 21:14:50 info tap tapped تم الاستلام
+  ctx {"kind": "button", "screen": "pos/cashier/tables", "x": 1004, "y": 692, "cart": 0, "orderType": "dineIn"}
+HIT 2026-09-21 21:14:48 info tap tapped تنبيه
+  ctx {"kind": "button", "screen": "pos/cashier/tables", "x": 455, "y": 682, "cart": 0, "orderType": "dineIn"}
+HIT 2026-09-21 21:14:32 info tap tapped المجموع : ₪353
+  ctx {"kind": "control", "screen": "pos/cashier/tables", "x": 1051, "y": 633, "cart": 0, "orderType": "dineIn"}
+
+-- DEVICE 15 حمودي waiter logs=0 --
+levels {}
+sources {}
+
+-- DEVICE 16 حمودي waiter logs=0 --
+levels {}
+sources {}
+
+hits=8
+
+==== LAST LOGS PER DEVICE ====
+
+-- DEVICE 14 last 40 --
+2026-09-21 21:13:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c509-079f-736f-857a-044b0e15fd38?lang=ar -> 200 26337b 711ms
+2026-09-21 21:13:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 707ms
+2026-09-21 21:13:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c522-5377-73bb-9dcb-7e8b0d0836a3?lang=ar -> 200 17463b 704ms
+2026-09-21 21:13:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c518-d217-73b9-bce7-edaadcc7122d?lang=ar -> 200 17207b 679ms
+2026-09-21 21:12:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c518-d217-73b9-bce7-edaadcc7122d?lang=ar -> 200 17207b 772ms
+2026-09-21 21:12:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c522-5377-73bb-9dcb-7e8b0d0836a3?lang=ar -> 200 17463b 770ms
+2026-09-21 21:12:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c510-ab47-7144-99c4-f565d8bcf4b0?lang=ar -> 200 12240b 768ms
+2026-09-21 21:12:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 766ms
+2026-09-21 21:12:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-638b-715f-88c3-d1842333fd61?lang=ar -> 200 25214b 764ms
+2026-09-21 21:12:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c509-079f-736f-857a-044b0e15fd38?lang=ar -> 200 26337b 752ms
+2026-09-21 21:12:34 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4de-bfdc-71b1-afef-f4ece9e8ebaf/print-invoice?lang=ar -> 200 4216b 702ms
+2026-09-21 21:12:33 debug api API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4de-bfdc-71b1-afef-f4ece9e8ebaf/confirm -> 200 18396b 692ms
+2026-09-21 21:12:32 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4de-bfdc-71b1-afef-f4ece9e8ebaf -> 200 34422b 567ms
+2026-09-21 21:12:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 800ms
+2026-09-21 21:12:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-638b-715f-88c3-d1842333fd61?lang=ar -> 200 25214b 797ms
+2026-09-21 21:12:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c518-d217-73b9-bce7-edaadcc7122d?lang=ar -> 200 17207b 796ms
+2026-09-21 21:12:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c510-ab47-7144-99c4-f565d8bcf4b0?lang=ar -> 200 12240b 794ms
+2026-09-21 21:12:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c509-079f-736f-857a-044b0e15fd38?lang=ar -> 200 26337b 792ms
+2026-09-21 21:12:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c522-5377-73bb-9dcb-7e8b0d0836a3?lang=ar -> 200 17463b 770ms
+2026-09-21 21:11:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c518-d217-73b9-bce7-edaadcc7122d?lang=ar -> 200 17207b 658ms
+2026-09-21 21:11:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 651ms
+2026-09-21 21:11:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c509-079f-736f-857a-044b0e15fd38?lang=ar -> 200 26337b 648ms
+2026-09-21 21:11:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c510-ab47-7144-99c4-f565d8bcf4b0?lang=ar -> 200 12240b 647ms
+2026-09-21 21:11:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-638b-715f-88c3-d1842333fd61?lang=ar -> 200 25214b 638ms
+2026-09-21 21:11:59 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c522-5377-73bb-9dcb-7e8b0d0836a3?lang=ar -> 200 17463b 582ms
+2026-09-21 21:11:37 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 643ms
+2026-09-21 21:11:37 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c509-079f-736f-857a-044b0e15fd38?lang=ar -> 200 26337b 640ms
+2026-09-21 21:11:37 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c518-d217-73b9-bce7-edaadcc7122d?lang=ar -> 200 17207b 638ms
+2026-09-21 21:11:37 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-638b-715f-88c3-d1842333fd61?lang=ar -> 200 25214b 636ms
+2026-09-21 21:11:37 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c522-5377-73bb-9dcb-7e8b0d0836a3?lang=ar -> 200 17463b 615ms
+2026-09-21 21:11:37 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c510-ab47-7144-99c4-f565d8bcf4b0?lang=ar -> 200 12240b 576ms
+2026-09-21 21:11:34 debug api API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4de-bfdc-71b1-afef-f4ece9e8ebaf/pay/cash body={"amount":271.0} -> 200 57b 767ms
+2026-09-21 21:11:33 info tap tapped تنبيه
+2026-09-21 21:11:31 info tap tapped توصيل
+2026-09-21 21:11:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-638b-715f-88c3-d1842333fd61?lang=ar -> 200 25214b 754ms
+2026-09-21 21:11:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 752ms
+2026-09-21 21:11:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c509-079f-736f-857a-044b0e15fd38?lang=ar -> 200 26337b 678ms
+2026-09-21 21:11:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c518-d217-73b9-bce7-edaadcc7122d?lang=ar -> 200 17207b 676ms
+2026-09-21 21:11:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c522-5377-73bb-9dcb-7e8b0d0836a3?lang=ar -> 200 17463b 673ms
+2026-09-21 21:11:29 debug api API GET https://gcp.kaman.rest/api/cashier/orders/01a0c510-ab47-7144-99c4-f565d8bcf4b0?lang=ar -> 200 12240b 629ms
+
+-- DEVICE 15 last 40 --
+
+-- DEVICE 16 last 40 --
+
+==== FEED LOGS matching ====
+feed_gcp logs 120
+HIT feed_gcp 2026-09-21 21:15:05 info tap tapped طلبية 114
+  ctx {"kind": "control", "screen": "pos/cashier/tables", "x": 1213, "y": 564, "cart": 0, "orderType": "dineIn"}
+feed_bugs logs 120
+feed_api logs 120

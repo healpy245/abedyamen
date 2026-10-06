@@ -1,0 +1,34 @@
+==== 4f6 mentions (28) ====
+2026-09-21 20:24:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 667ms
+2026-09-21 20:24:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 721ms
+2026-09-21 20:23:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 735ms
+2026-09-21 20:23:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 719ms
+2026-09-21 20:22:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 609ms
+2026-09-21 20:22:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 603ms
+2026-09-21 20:22:20 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 742ms
+2026-09-21 20:21:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 825ms
+2026-09-21 20:21:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 764ms
+2026-09-21 20:20:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 619ms
+2026-09-21 20:20:31 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 670ms
+2026-09-21 20:20:13 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 663ms
+2026-09-21 20:19:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 619ms
+2026-09-21 20:19:35 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 711ms
+2026-09-21 20:19:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 655ms
+2026-09-21 20:18:36 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 658ms
+2026-09-21 20:18:31 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 624ms
+2026-09-21 20:18:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 626ms
+2026-09-21 20:18:20 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 658ms
+2026-09-21 20:17:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 644ms
+2026-09-21 20:17:32 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 645ms
+2026-09-21 20:17:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 610ms
+2026-09-21 20:17:12 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 648ms
+2026-09-21 20:16:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 581ms
+2026-09-21 20:16:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 640ms
+2026-09-21 20:15:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 657ms
+2026-09-21 20:15:29 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 686ms
+2026-09-21 20:14:59 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c?lang=ar -> 200 20243b 637ms
+
+==== non-poll 20:14 (3) ====
+2026-09-21 20:15:35 info Koba tapped 
+2026-09-21 20:14:03 debug Koba API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f5-7602-7115-82eb-b9c00c1686e6/confirm -> 200 3106b 597ms
+2026-09-21 20:14:02 debug Koba API GET https://gcp.kaman.rest/api/cashier/orders/01a0c4f5-7602-7115-82eb-b9c00c1686e6 -> 200 2517b 576ms

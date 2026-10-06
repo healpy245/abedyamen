@@ -73,6 +73,9 @@ class KamanDesignTest extends TestCase
             'form' => ['form.index'],
             'chatbot settings' => ['ai-chatbot.admin.settings.edit'],
             'app development' => ['app-development.index'],
+            'kaman support' => ['kaman-support.index'],
+            'kaman support live' => ['kaman-support.live'],
+            'kaman support failed' => ['kaman-support.failed'],
         ];
     }
 
@@ -85,6 +88,19 @@ class KamanDesignTest extends TestCase
             ->assertSee(self::KAMAN_STYLESHEET)
             ->assertSee('data-kaman-theme-toggle', false)
             ->assertDontSee(self::DARK_THEME_MARKER);
+    }
+
+    public function test_dark_mode_remaps_pastel_status_surfaces(): void
+    {
+        $css = file_get_contents(public_path('css/kaman.css'));
+
+        $this->assertNotFalse($css);
+        $this->assertStringContainsString('html.dark .bg-rose-50', $css);
+        $this->assertStringContainsString('html.dark .text-rose-800', $css);
+        $this->assertStringContainsString('html.dark .border-rose-200', $css);
+        $this->assertStringContainsString('html.dark .bg-emerald-50', $css);
+        $this->assertStringContainsString('html.dark .kaman-chip--danger', $css);
+        $this->assertStringContainsString('--kaman-rose-bg:', $css);
     }
 
     public function test_workspace_pages_offer_theme_toggle_and_boot_splash(): void
@@ -147,6 +163,7 @@ class KamanDesignTest extends TestCase
             route('ai-chatbot.index'),
             route('ai-chatbot.instances.show', $this->chatbotInstance()),
             route('app-development.index'),
+            route('kaman-support.index'),
         ];
 
         foreach ($pages as $url) {

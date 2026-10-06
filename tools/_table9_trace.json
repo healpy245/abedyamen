@@ -1,0 +1,887 @@
+{
+  "taps": [],
+  "mutation_count": 176,
+  "mutations": [
+    {
+      "at": "2026-09-21 19:48:57",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4de-bfdc-71b1-afef-f4ece9e8ebaf/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4de-bfe1-737a-8384-f524adbab8fc\",\"order_item_id\":\"01a0c4de-bfe1-737a-8384-f524adbab8fc\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c4de-bfe4-720f-8ab1-04711a8903e3\",\"order_item_id\":\"01a0c4de-bfe4-720f-8ab1-04711a8903e3\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c4de-bfe6-725c-a840-b734c574be81\",\"order_item_id\":\"01a0c4de-bfe6-725c-a840-b734c574be81\",\"is_prin… -> 200 18277b 562ms"
+    },
+    {
+      "at": "2026-09-21 19:46:55",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4dc-f859-7239-98cf-dbb9bd41c32b/confirm -> 200 3106b 608ms"
+    },
+    {
+      "at": "2026-09-21 19:46:53",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4dc-f859-7239-98cf-dbb9bd41c32b/pay/cash body={\"amount\":500.0} -> 200 57b 1597ms"
+    },
+    {
+      "at": "2026-09-21 19:46:50",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":500.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 735ms"
+    },
+    {
+      "at": "2026-09-21 19:42:11",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4d8-9b10-73e0-a745-176bc38920c5/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4d8-9b15-727b-bcf3-db1d3b3d566d\",\"order_item_id\":\"01a0c4d8-9b15-727b-bcf3-db1d3b3d566d\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c4d8-9b18-7275-a820-3ed59eead0eb\",\"order_item_id\":\"01a0c4d8-9b18-7275-a820-3ed59eead0eb\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c4d8-9b15-727b-bcf3-db1d3b3d566d\",\"01a0c4d8-9b18-7275-a820-3ed59eead0eb\"]} -> 200 8535b 609ms"
+    },
+    {
+      "at": "2026-09-21 19:42:01",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4d8-7631-7336-9c29-b026dbfa13b5/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4d8-7637-72e1-aaba-2bca382a0893\",\"order_item_id\":\"01a0c4d8-7637-72e1-aaba-2bca382a0893\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c4d8-7637-72e1-aaba-2bca382a0893\"]} -> 200 8432b 591ms"
+    },
+    {
+      "at": "2026-09-21 19:40:08",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c48d-8782-70c6-8b67-11acb284f063/confirm -> 200 13536b 603ms"
+    },
+    {
+      "at": "2026-09-21 19:40:04",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c48d-8782-70c6-8b67-11acb284f063/pay/cash body={\"amount\":201.0} -> 200 57b 680ms"
+    },
+    {
+      "at": "2026-09-21 19:57:41",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4e6-d180-7086-bcb3-ce4fb3066cc8/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4e6-d185-71b7-9b74-82884ed88c7f\",\"order_item_id\":\"01a0c4e6-d185-71b7-9b74-82884ed88c7f\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c4e6-d188-72f6-b4ce-9668d3c495fc\",\"order_item_id\":\"01a0c4e6-d188-72f6-b4ce-9668d3c495fc\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c4e6-d18a-71f4-b5fc-d1080ed1157f\",\"order_item_id\":\"01a0c4e6-d18a-71f4-b5fc-d1080ed1157f\",\"is_prin… -> 200 16170b 591ms"
+    },
+    {
+      "at": "2026-09-21 19:51:46",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4e1-5647-70da-8de5-b221b736bb30/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4e1-564d-736e-ad59-080d244bc888\",\"order_item_id\":\"01a0c4e1-564d-736e-ad59-080d244bc888\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c4e1-564d-736e-ad59-080d244bc888\"]} -> 200 5845b 610ms"
+    },
+    {
+      "at": "2026-09-21 19:50:51",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4e0-7ead-7142-b5ee-025b39b99028/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4e0-7eb2-73ca-a059-97d6259d06ff\",\"order_item_id\":\"01a0c4e0-7eb2-73ca-a059-97d6259d06ff\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c4e0-7eb2-73ca-a059-97d6259d06ff\"]} -> 200 5699b 556ms"
+    },
+    {
+      "at": "2026-09-21 19:50:26",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4e0-28ee-719c-9331-d98d4fcd5fc3/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4e0-28f2-72ce-834d-51c1c65aa4da\",\"order_item_id\":\"01a0c4e0-28f2-72ce-834d-51c1c65aa4da\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c4e0-28f5-7198-be76-83ae75f3b50f\",\"order_item_id\":\"01a0c4e0-28f5-7198-be76-83ae75f3b50f\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c4e0-28f2-72ce-834d-51c1c65aa4da\",\"01a0c4e0-28f5-7198-be76-83ae75f3b50f\"]} -> 200 7799b 573ms"
+    },
+    {
+      "at": "2026-09-21 20:04:18",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4e9-bf85-71f5-b45c-4fdcd38c4d41/confirm -> 200 3100b 603ms"
+    },
+    {
+      "at": "2026-09-21 20:03:01",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4eb-af6e-73a8-ac34-409ae8b8b22f/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4eb-af74-7050-811e-b141aec66ba8\",\"order_item_id\":\"01a0c4eb-af74-7050-811e-b141aec66ba8\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c4eb-af77-7347-8091-b0742ec2ab59\",\"order_item_id\":\"01a0c4eb-af77-7347-8091-b0742ec2ab59\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c4eb-af74-7050-811e-b141aec66ba8\",\"01a0c4eb-af77-7347-8091-b0742ec2ab59\"]} -> 200 10180b 600ms"
+    },
+    {
+      "at": "2026-09-21 20:00:57",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4e9-bf85-71f5-b45c-4fdcd38c4d41/pay/visa body={\"amount\":50.0} -> 200 1368b 5915ms"
+    },
+    {
+      "at": "2026-09-21 20:00:48",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":50.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3627b 579ms"
+    },
+    {
+      "at": "2026-09-21 20:19:57",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c481-a575-7398-b296-16da4f8b91a2/confirm -> 200 5276b 545ms"
+    },
+    {
+      "at": "2026-09-21 20:19:31",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c481-a575-7398-b296-16da4f8b91a2/pay/cash body={\"amount\":58.0} -> 200 57b 632ms"
+    },
+    {
+      "at": "2026-09-21 20:19:19",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c464-c3e0-7251-93a6-2089fe27cbef/confirm -> 200 12539b 717ms"
+    },
+    {
+      "at": "2026-09-21 20:18:40",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c461-db37-715f-9179-178ad4233013/confirm -> 200 15078b 567ms"
+    },
+    {
+      "at": "2026-09-21 20:18:38",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c461-db37-715f-9179-178ad4233013/pay/cash body={\"amount\":227.0} -> 200 57b 558ms"
+    },
+    {
+      "at": "2026-09-21 20:18:35",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c457-bab3-714f-940c-58bcc4558daa/confirm -> 200 17168b 592ms"
+    },
+    {
+      "at": "2026-09-21 20:18:33",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c457-bab3-714f-940c-58bcc4558daa/pay/cash body={\"amount\":201.0} -> 200 57b 599ms"
+    },
+    {
+      "at": "2026-09-21 20:18:29",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c44c-72b7-7019-bc57-863c7c4ecbfc/confirm -> 200 12333b 581ms"
+    },
+    {
+      "at": "2026-09-21 20:18:27",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c44c-72b7-7019-bc57-863c7c4ecbfc/pay/cash body={\"amount\":145.0} -> 200 57b 584ms"
+    },
+    {
+      "at": "2026-09-21 20:18:22",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c428-01b3-710e-97be-f926e411d87f/confirm -> 200 9085b 569ms"
+    },
+    {
+      "at": "2026-09-21 20:18:18",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c417-f65f-72bd-9e68-c478bc587432/confirm -> 200 10045b 583ms"
+    },
+    {
+      "at": "2026-09-21 20:18:16",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c417-f65f-72bd-9e68-c478bc587432/pay/cash body={\"amount\":120.0} -> 200 57b 607ms"
+    },
+    {
+      "at": "2026-09-21 20:18:02",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c411-5e36-7236-be2d-964d2a1b95e9/confirm -> 200 6066b 599ms"
+    },
+    {
+      "at": "2026-09-21 20:17:57",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c405-1faa-72a7-a296-3f310b423e8d/confirm -> 200 7832b 572ms"
+    },
+    {
+      "at": "2026-09-21 20:17:28",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c405-1faa-72a7-a296-3f310b423e8d/installments/01a0c4f8-feb2-7048-9a44-8f615f37558b/pay-cash -> 200 35803b 598ms"
+    },
+    {
+      "at": "2026-09-21 20:17:27",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c405-1faa-72a7-a296-3f310b423e8d/installments body={\"amount\":116.0,\"payment_method\":\"cash\",\"paid_amount\":116.0,\"status\":\"paid\"} -> 200 348b 564ms"
+    },
+    {
+      "at": "2026-09-21 20:16:41",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f8-292a-7029-8ee1-41384a360a76/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4f8-292f-72b4-8467-770ca2f4c265\",\"order_item_id\":\"01a0c4f8-292f-72b4-8467-770ca2f4c265\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c4f8-2932-72f8-8e55-e3208500bf9e\",\"order_item_id\":\"01a0c4f8-2932-72f8-8e55-e3208500bf9e\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c4f8-292f-72b4-8467-770ca2f4c265\",\"01a0c4f8-2932-72f8-8e55-e3208500bf9e\"]} -> 200 11435b 613ms"
+    },
+    {
+      "at": "2026-09-21 20:27:45",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4c2-47fc-7382-9a18-3f9e003b1835/confirm -> 200 10791b 720ms"
+    },
+    {
+      "at": "2026-09-21 20:27:30",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4c2-47fc-7382-9a18-3f9e003b1835/installments/01a0c502-3045-719b-b1c8-5e6e5ac30c25/pay-cash -> 200 12843b 609ms"
+    },
+    {
+      "at": "2026-09-21 20:27:29",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4c2-47fc-7382-9a18-3f9e003b1835/installments body={\"amount\":78.0,\"payment_method\":\"cash\",\"paid_amount\":78.0,\"status\":\"paid\"} -> 200 347b 563ms"
+    },
+    {
+      "at": "2026-09-21 20:27:23",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4c2-47fc-7382-9a18-3f9e003b1835/installments/01a0c502-0211-732b-bdef-1e395ad93049/pay-visa -> 200 14124b 5100ms"
+    },
+    {
+      "at": "2026-09-21 20:27:18",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4c2-47fc-7382-9a18-3f9e003b1835/installments body={\"amount\":79.0,\"payment_method\":\"visa\",\"paid_amount\":0,\"status\":\"pending\"} -> 200 347b 604ms"
+    },
+    {
+      "at": "2026-09-21 20:27:17",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4c2-47fc-7382-9a18-3f9e003b1835/pay/installments -> 200 6204b 732ms"
+    },
+    {
+      "at": "2026-09-21 20:23:30",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-771c-72c6-8feb-34efe2f43924/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c4fe-7721-7119-be0c-b9e9794a5586\",\"order_item_id\":\"01a0c4fe-7721-7119-be0c-b9e9794a5586\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c4fe-7721-7119-be0c-b9e9794a5586\"]} -> 200 5191b 594ms"
+    },
+    {
+      "at": "2026-09-21 20:22:20",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4cf-96fe-72f3-8ee5-165c6178c744/confirm -> 200 11067b 665ms"
+    },
+    {
+      "at": "2026-09-21 20:22:17",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4cf-96fe-72f3-8ee5-165c6178c744/pay/visa body={\"amount\":204.0} -> 200 1364b 6653ms"
+    },
+    {
+      "at": "2026-09-21 20:38:47",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4db-d813-7118-88e5-ceb0df356c2e/pay/cash body={\"amount\":231.0} -> 200 57b 638ms"
+    },
+    {
+      "at": "2026-09-21 20:37:51",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c508-d955-7041-908e-6afd7cca28ca/confirm -> 200 3100b 734ms"
+    },
+    {
+      "at": "2026-09-21 20:37:46",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c508-d955-7041-908e-6afd7cca28ca/pay/visa body={\"amount\":53.0} -> 200 1370b 7456ms"
+    },
+    {
+      "at": "2026-09-21 20:37:11",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c50a-f2c4-72bd-9f24-e127a090b4b1/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c50a-f2ca-71bb-91af-b164260bc102\",\"order_item_id\":\"01a0c50a-f2ca-71bb-91af-b164260bc102\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c50a-f2cd-7105-a64f-942e0814a27e\",\"order_item_id\":\"01a0c50a-f2cd-7105-a64f-942e0814a27e\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c50a-f2ca-71bb-91af-b164260bc102\",\"01a0c50a-f2cd-7105-a64f-942e0814a27e\"]} -> 200 10719b 612ms"
+    },
+    {
+      "at": "2026-09-21 20:34:46",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":53.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3627b 796ms"
+    },
+    {
+      "at": "2026-09-21 20:33:43",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"تت\",\"item_price\":226.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3520b 696ms"
+    },
+    {
+      "at": "2026-09-21 20:44:43",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c511-c484-7102-b498-33c2e1eeac10/confirm -> 200 3106b 633ms"
+    },
+    {
+      "at": "2026-09-21 20:44:36",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c511-c484-7102-b498-33c2e1eeac10/pay/visa body={\"amount\":140.0} -> 200 1371b 4258ms"
+    },
+    {
+      "at": "2026-09-21 20:44:30",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":140.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 735ms"
+    },
+    {
+      "at": "2026-09-21 20:44:26",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c511-434d-7082-a69e-ecbcfc922033/confirm -> 200 3100b 695ms"
+    },
+    {
+      "at": "2026-09-21 20:44:04",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c511-434d-7082-a69e-ecbcfc922033/pay/visa body={\"amount\":60.0} -> 200 1393b 5838ms"
+    },
+    {
+      "at": "2026-09-21 20:43:57",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":60.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3627b 598ms"
+    },
+    {
+      "at": "2026-09-21 20:43:41",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f2-6eca-7098-8b15-ae615e19cae2/confirm -> 200 11405b 587ms"
+    },
+    {
+      "at": "2026-09-21 20:43:38",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f2-6eca-7098-8b15-ae615e19cae2/pay/visa body={\"amount\":205.0} -> 200 1369b 4392ms"
+    },
+    {
+      "at": "2026-09-21 20:42:58",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4db-d813-7118-88e5-ceb0df356c2e/confirm -> 200 10896b 614ms"
+    },
+    {
+      "at": "2026-09-21 20:56:22",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4cb-7dc3-73f8-a79e-f53f262622f8/confirm -> 200 9871b 606ms"
+    },
+    {
+      "at": "2026-09-21 20:56:19",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4cb-7dc3-73f8-a79e-f53f262622f8/pay/cash body={\"amount\":199.0} -> 200 57b 704ms"
+    },
+    {
+      "at": "2026-09-21 20:56:15",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c519-4722-73af-8ac6-7e9389ee749a/confirm -> 200 3106b 682ms"
+    },
+    {
+      "at": "2026-09-21 20:56:02",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c51c-3be5-7261-9257-f878c64d6a74/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c51c-3bea-7258-a225-da5f335c73de\",\"order_item_id\":\"01a0c51c-3bea-7258-a225-da5f335c73de\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c51c-3bed-71cc-b7bd-b79fd96f3d80\",\"order_item_id\":\"01a0c51c-3bed-71cc-b7bd-b79fd96f3d80\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c51c-3bef-713e-8415-6896cf17928c\",\"order_item_id\":\"01a0c51c-3bef-713e-8415-6896cf17928c\",\"is_prin… -> 200 14344b 577ms"
+    },
+    {
+      "at": "2026-09-21 20:52:51",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c519-4722-73af-8ac6-7e9389ee749a/pay/visa body={\"amount\":130.0} -> 200 1371b 7450ms"
+    },
+    {
+      "at": "2026-09-21 20:52:43",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":130.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 572ms"
+    },
+    {
+      "at": "2026-09-21 21:08:11",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c526-a099-7094-a4cd-d3286cf8b70a/confirm -> 200 3106b 604ms"
+    },
+    {
+      "at": "2026-09-21 21:08:08",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c526-a099-7094-a4cd-d3286cf8b70a/pay/visa body={\"amount\":265.0} -> 200 1364b 5981ms"
+    },
+    {
+      "at": "2026-09-21 21:07:18",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":265.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 740ms"
+    },
+    {
+      "at": "2026-09-21 21:03:36",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c523-2780-7263-b069-0834c63624b6/pay/visa body={\"amount\":92.0} -> 200 1393b 4978ms"
+    },
+    {
+      "at": "2026-09-21 21:03:30",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":92.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3627b 589ms"
+    },
+    {
+      "at": "2026-09-21 21:14:51",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c509-079f-736f-857a-044b0e15fd38/confirm -> 200 17797b 629ms"
+    },
+    {
+      "at": "2026-09-21 21:14:49",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c509-079f-736f-857a-044b0e15fd38/pay/cash body={\"amount\":372.0} -> 200 57b 776ms"
+    },
+    {
+      "at": "2026-09-21 21:14:34",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-638b-715f-88c3-d1842333fd61/confirm -> 200 18276b 575ms"
+    },
+    {
+      "at": "2026-09-21 21:14:30",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-638b-715f-88c3-d1842333fd61/pay/visa body={\"amount\":353.0} -> 200 1368b 48896ms"
+    },
+    {
+      "at": "2026-09-21 21:12:33",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4de-bfdc-71b1-afef-f4ece9e8ebaf/confirm -> 200 18396b 692ms"
+    },
+    {
+      "at": "2026-09-21 21:11:34",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4de-bfdc-71b1-afef-f4ece9e8ebaf/pay/cash body={\"amount\":271.0} -> 200 57b 767ms"
+    },
+    {
+      "at": "2026-09-21 21:11:26",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4d8-9b10-73e0-a745-176bc38920c5/confirm -> 200 8580b 631ms"
+    },
+    {
+      "at": "2026-09-21 21:11:17",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4d8-7631-7336-9c29-b026dbfa13b5/confirm -> 200 8511b 667ms"
+    },
+    {
+      "at": "2026-09-21 21:29:20",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c53a-b6f2-71d1-8f65-d6d8d8e978a4/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c53a-b6f9-738c-a3bd-632ada49c40b\",\"order_item_id\":\"01a0c53a-b6f9-738c-a3bd-632ada49c40b\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c53a-b6f9-738c-a3bd-632ada49c40b\"]} -> 200 7394b 607ms"
+    },
+    {
+      "at": "2026-09-21 21:27:35",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c539-143c-7087-bbcb-0f918885128f/confirm -> 200 3106b 603ms"
+    },
+    {
+      "at": "2026-09-21 21:27:33",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c539-143c-7087-bbcb-0f918885128f/pay/visa body={\"amount\":100.0} -> 200 1364b 5245ms"
+    },
+    {
+      "at": "2026-09-21 21:27:27",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":100.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 780ms"
+    },
+    {
+      "at": "2026-09-21 21:22:29",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c510-ab47-7144-99c4-f565d8bcf4b0/confirm -> 200 9499b 644ms"
+    },
+    {
+      "at": "2026-09-21 21:22:23",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c510-ab47-7144-99c4-f565d8bcf4b0/pay/visa body={\"amount\":256.0} -> 200 1394b 8247ms"
+    },
+    {
+      "at": "2026-09-21 21:37:28",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c518-d217-73b9-bce7-edaadcc7122d/confirm -> 200 16314b 644ms"
+    },
+    {
+      "at": "2026-09-21 21:37:09",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c518-d217-73b9-bce7-edaadcc7122d/pay/visa body={\"amount\":247.0} -> 200 1516b 36974ms"
+    },
+    {
+      "at": "2026-09-21 21:35:49",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c540-7ea7-720b-a257-8cb5538bc210/confirm -> 200 4739b 685ms"
+    },
+    {
+      "at": "2026-09-21 21:35:42",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c540-7ea7-720b-a257-8cb5538bc210/pay/visa body={\"amount\":77.0} -> 200 1393b 8971ms"
+    },
+    {
+      "at": "2026-09-21 21:35:33",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":55.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}},{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":22.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 5266b 668ms"
+    },
+    {
+      "at": "2026-09-21 21:35:09",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/confirm -> 200 15204b 642ms"
+    },
+    {
+      "at": "2026-09-21 21:35:04",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/installments/01a0c53f-ea53-731f-b0b5-73b0bc9ee29f/pay-visa -> 200 16937b 8974ms"
+    },
+    {
+      "at": "2026-09-21 21:34:55",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/installments body={\"amount\":68.0,\"payment_method\":\"visa\",\"paid_amount\":0,\"status\":\"pending\"} -> 200 347b 709ms"
+    },
+    {
+      "at": "2026-09-21 21:34:52",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/installments/01a0c53f-c630-70ac-9db7-885a89a58771/pay-visa -> 200 16906b 6542ms"
+    },
+    {
+      "at": "2026-09-21 21:34:46",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/installments body={\"amount\":69.0,\"payment_method\":\"visa\",\"paid_amount\":0,\"status\":\"pending\"} -> 200 347b 624ms"
+    },
+    {
+      "at": "2026-09-21 21:34:40",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/installments/01a0c53f-99dd-720a-b857-84f22f12ab24/pay-visa -> 200 16905b 5956ms"
+    },
+    {
+      "at": "2026-09-21 21:34:34",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/installments body={\"amount\":69.0,\"payment_method\":\"visa\",\"paid_amount\":0,\"status\":\"pending\"} -> 200 347b 637ms"
+    },
+    {
+      "at": "2026-09-21 21:34:30",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/installments/01a0c53f-6f14-71f3-9edb-a38902ec9975/pay-visa -> 200 16903b 6683ms"
+    },
+    {
+      "at": "2026-09-21 21:34:23",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/installments body={\"amount\":69.0,\"payment_method\":\"visa\",\"paid_amount\":0,\"status\":\"pending\"} -> 200 347b 658ms"
+    },
+    {
+      "at": "2026-09-21 21:34:23",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f6-5f46-70c2-9d93-142647302f7c/pay/installments -> 200 7597b 632ms"
+    },
+    {
+      "at": "2026-09-21 21:49:33",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"تت\",\"item_price\":55.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3515b 713ms"
+    },
+    {
+      "at": "2026-09-21 21:45:05",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c522-5377-73bb-9dcb-7e8b0d0836a3/confirm -> 200 13244b 717ms"
+    },
+    {
+      "at": "2026-09-21 21:40:56",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c522-5377-73bb-9dcb-7e8b0d0836a3/pay/visa body={\"amount\":287.0} -> 200 1364b 6704ms"
+    },
+    {
+      "at": "2026-09-21 21:57:53",
+      "cashier": "Koba",
+      "message": "API DELETE https://gcp.kaman.rest/api/cashier/orders/01a0c507-e1bd-7177-bcb9-6c9216c58131 body={\"reason\":\"بدون سبب\",\"password\":\"***\"} -> 200 210b 642ms"
+    },
+    {
+      "at": "2026-09-21 21:57:42",
+      "cashier": "Koba",
+      "message": "API DELETE https://gcp.kaman.rest/api/cashier/orders/01a0c54d-5189-7231-ac9b-d355f573cc75 body={\"reason\":\"بدون سبب\",\"password\":\"***\"} -> 200 210b 625ms"
+    },
+    {
+      "at": "2026-09-21 21:57:37",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c523-2780-7263-b069-0834c63624b6/confirm -> 200 3100b 612ms"
+    },
+    {
+      "at": "2026-09-21 21:57:34",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c491-2ff6-704f-9a7c-dad1a91f5d0d/confirm -> 200 3105b 720ms"
+    },
+    {
+      "at": "2026-09-21 21:57:31",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c427-4798-734c-901b-7d695877d5bb/confirm -> 200 3035b 572ms"
+    },
+    {
+      "at": "2026-09-21 21:57:27",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c415-b15d-70e0-935e-db3fb5acf7f4/confirm -> 200 5755b 602ms"
+    },
+    {
+      "at": "2026-09-21 21:57:24",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c3b7-84f0-73c0-94a1-560ebc2a9aa0/confirm -> 200 3105b 664ms"
+    },
+    {
+      "at": "2026-09-21 21:57:20",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c38c-b299-7147-b3ce-6ac6dcdfbb06/confirm -> 200 3099b 588ms"
+    },
+    {
+      "at": "2026-09-21 21:57:16",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c34d-7ee0-70f6-8f75-b8beb84b85ee/confirm -> 200 3018b 638ms"
+    },
+    {
+      "at": "2026-09-21 21:56:55",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c54e-9abc-71f1-91a4-e4c7fcc1c982/confirm -> 200 3107b 686ms"
+    },
+    {
+      "at": "2026-09-21 21:56:09",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c552-0c5f-706d-834d-188627f34f02/confirm -> 200 8374b 631ms"
+    },
+    {
+      "at": "2026-09-21 21:56:06",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c54f-4542-71e2-a49e-73a99d11a5ad/confirm -> 200 8010b 600ms"
+    },
+    {
+      "at": "2026-09-21 21:56:03",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c54f-4542-71e2-a49e-73a99d11a5ad/pay/cash body={\"amount\":116.0} -> 200 57b 551ms"
+    },
+    {
+      "at": "2026-09-21 21:56:00",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c53a-b6f2-71d1-8f65-d6d8d8e978a4/confirm -> 200 7426b 610ms"
+    },
+    {
+      "at": "2026-09-21 21:55:56",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c51c-3be5-7261-9257-f878c64d6a74/confirm -> 200 14463b 576ms"
+    },
+    {
+      "at": "2026-09-21 21:55:54",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c51c-3be5-7261-9257-f878c64d6a74/pay/cash body={\"amount\":140.0} -> 200 57b 700ms"
+    },
+    {
+      "at": "2026-09-21 21:55:51",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c50f-7324-7182-ac22-4360895d8bfb/confirm -> 200 12666b 581ms"
+    },
+    {
+      "at": "2026-09-21 21:55:47",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c50a-f2c4-72bd-9f24-e127a090b4b1/confirm -> 200 10812b 642ms"
+    },
+    {
+      "at": "2026-09-21 21:55:45",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c50a-f2c4-72bd-9f24-e127a090b4b1/pay/cash body={\"amount\":104.0} -> 200 57b 657ms"
+    },
+    {
+      "at": "2026-09-21 21:55:40",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c507-8e01-7307-888c-91da11d524d9/confirm -> 200 6016b 647ms"
+    },
+    {
+      "at": "2026-09-21 21:55:03",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c552-0c5f-706d-834d-188627f34f02/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c552-0c66-70c8-8857-c2de087d32c6\",\"order_item_id\":\"01a0c552-0c66-70c8-8857-c2de087d32c6\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c552-0c69-7005-be8d-433b1e3c822a\",\"order_item_id\":\"01a0c552-0c69-7005-be8d-433b1e3c822a\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c552-0c66-70c8-8857-c2de087d32c6\",\"01a0c552-0c69-7005-be8d-433b1e3c822a\"]} -> 200 8329b 603ms"
+    },
+    {
+      "at": "2026-09-21 21:54:36",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c507-8e01-7307-888c-91da11d524d9/pay/cash body={\"amount\":78.0} -> 200 57b 657ms"
+    },
+    {
+      "at": "2026-09-21 21:54:30",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-771c-72c6-8feb-34efe2f43924/confirm -> 200 5270b 630ms"
+    },
+    {
+      "at": "2026-09-21 21:54:28",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4fe-771c-72c6-8feb-34efe2f43924/pay/cash body={\"amount\":58.0} -> 200 57b 652ms"
+    },
+    {
+      "at": "2026-09-21 21:54:16",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4f8-292a-7029-8ee1-41384a360a76/confirm -> 200 11480b 599ms"
+    },
+    {
+      "at": "2026-09-21 21:54:13",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4eb-af6e-73a8-ac34-409ae8b8b22f/confirm -> 200 10225b 554ms"
+    },
+    {
+      "at": "2026-09-21 21:54:10",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4e6-d180-7086-bcb3-ce4fb3066cc8/confirm -> 200 16302b 592ms"
+    },
+    {
+      "at": "2026-09-21 21:54:09",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c4e6-d180-7086-bcb3-ce4fb3066cc8/pay/cash body={\"amount\":226.0} -> 200 57b 584ms"
+    },
+    {
+      "at": "2026-09-21 22:07:36",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c55d-b308-7119-9eca-c5f03d6f3a0e/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c55d-b313-7304-bf88-229b2a1072b0\",\"order_item_id\":\"01a0c55d-b313-7304-bf88-229b2a1072b0\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c55d-b317-7211-b289-ebbce26929c4\",\"order_item_id\":\"01a0c55d-b317-7211-b289-ebbce26929c4\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c55d-b31c-73d2-9426-d310ee105ed8\",\"order_item_id\":\"01a0c55d-b31c-73d2-9426-d310ee105ed8\",\"is_prin… -> 200 29938b 1633ms"
+    },
+    {
+      "at": "2026-09-21 22:07:34",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c55d-b308-7119-9eca-c5f03d6f3a0e/items body={\"item_type\":\"dynamic\",\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}} -> 200 15869b 671ms"
+    },
+    {
+      "at": "2026-09-21 22:07:33",
+      "cashier": "حمودي",
+      "message": "API PUT https://gcp.kaman.rest/api/cashier/orders/01a0c55d-b308-7119-9eca-c5f03d6f3a0e body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35092-adec-4af8-bf7c-3375bd76af26\",\"guest_count\":3,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"id\":\"01a0c55d-b313-7304-bf88-229b2a1072b0\",\"order_item_id\":\"01a0c55d-b313-7304-bf88-229b2a1072b0\",\"item_t… -> 200 14639b 817ms"
+    },
+    {
+      "at": "2026-09-21 22:07:28",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35092-adec-4af8-bf7c-3375bd76af26\",\"guest_count\":3,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_type\":\"regular\",\"item_id\":\"9ef473f4-4a36-4f83-aadc-21562bb79076\",\"quantity\":1,\"type\":\"dine_in\",\"is_e… -> 200 32465b 639ms"
+    },
+    {
+      "at": "2026-09-21 22:07:26",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35092-adec-4af8-bf7c-3375bd76af26\",\"guest_count\":3,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"3\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_type\":\"regular\",\"item_id\":\"9ef473f4-4a36-4f83-aadc-21562bb79076\",\"quantity\":1,\"type\":\"dine_in\",\"is_e… -> 200 17483b 744ms"
+    },
+    {
+      "at": "2026-09-21 22:06:00",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c538-c84f-71b0-8e66-42e9f42bfb1a/confirm -> 200 9595b 598ms"
+    },
+    {
+      "at": "2026-09-21 22:05:57",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c538-c84f-71b0-8e66-42e9f42bfb1a/pay/visa body={\"amount\":167.0} -> 200 1369b 5829ms"
+    },
+    {
+      "at": "2026-09-21 22:03:34",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c55a-0825-70c9-9d4d-44d17540779d/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c55a-082d-71dc-9780-df37ccede148\",\"order_item_id\":\"01a0c55a-082d-71dc-9780-df37ccede148\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c55a-0833-7077-a237-61d9ef111ea2\",\"order_item_id\":\"01a0c55a-0833-7077-a237-61d9ef111ea2\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c55a-0839-7292-9e8c-7e8e4c65adcc\",\"order_item_id\":\"01a0c55a-0839-7292-9e8c-7e8e4c65adcc\",\"is_prin… -> 200 15998b 567ms"
+    },
+    {
+      "at": "2026-09-21 22:03:33",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c55a-0825-70c9-9d4d-44d17540779d/items body={\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}} -> 200 9035b 585ms"
+    },
+    {
+      "at": "2026-09-21 22:03:32",
+      "cashier": "حمودي",
+      "message": "API PUT https://gcp.kaman.rest/api/cashier/orders/01a0c55a-0825-70c9-9d4d-44d17540779d body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35062-c5fe-4a6d-9ad8-12f8b31d9034\",\"guest_count\":2,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"id\":\"01a0c55a-082d-71dc-9780-df37ccede148\",\"order_item_id\":\"01a0c55a-082d-71dc-9780-df37ccede148\",\"item_t… -> 200 7805b 597ms"
+    },
+    {
+      "at": "2026-09-21 22:03:28",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35062-c5fe-4a6d-9ad8-12f8b31d9034\",\"guest_count\":2,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_type\":\"regular\",\"item_id\":\"9ef491dd-69cc-4511-a57e-85333b2f081b\",\"quantity\":1,\"type\":\"dine_in\",\"is_e… -> 200 15977b 923ms"
+    },
+    {
+      "at": "2026-09-21 22:03:26",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35062-c5fe-4a6d-9ad8-12f8b31d9034\",\"guest_count\":2,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_type\":\"regular\",\"item_id\":\"9ef491dd-69cc-4511-a57e-85333b2f081b\",\"quantity\":1,\"type\":\"dine_in\",\"is_e… -> 200 9240b 593ms"
+    },
+    {
+      "at": "2026-09-21 22:03:22",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c53a-807c-7245-8705-a512cf40658f/confirm -> 200 4659b 623ms"
+    },
+    {
+      "at": "2026-09-21 22:03:18",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c53a-807c-7245-8705-a512cf40658f/pay/visa body={\"amount\":95.0} -> 200 1370b 7497ms"
+    },
+    {
+      "at": "2026-09-21 22:03:08",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c53a-807c-7245-8705-a512cf40658f/items body={\"item_type\":\"regular\",\"item_id\":\"9ef475eb-e7c9-4dc5-a467-d33c619cfbf4\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}} -> 200 3554b 633ms"
+    },
+    {
+      "at": "2026-09-21 22:17:16",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c556-c623-73f7-87ba-9ed96857ade9/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c556-c627-735a-8590-f8e9898bdf50\",\"order_item_id\":\"01a0c556-c627-735a-8590-f8e9898bdf50\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c556-c62a-72b7-a4dc-173e463eaafb\",\"order_item_id\":\"01a0c556-c62a-72b7-a4dc-173e463eaafb\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c556-c62e-718e-b396-c1e673046656\",\"order_item_id\":\"01a0c556-c62e-718e-b396-c1e673046656\",\"is_prin… -> 200 12610b 590ms"
+    },
+    {
+      "at": "2026-09-21 22:17:10",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c556-c623-73f7-87ba-9ed96857ade9/items body={\"item_type\":\"regular\",\"item_id\":\"9ef4783c-59f9-4acd-be17-dfd8d5ce5048\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}} -> 200 7574b 601ms"
+    },
+    {
+      "at": "2026-09-21 22:16:50",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c566-2ef7-706d-b079-1c75f318d080/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c566-2f01-7267-b1ee-a7e75f1fa335\",\"order_item_id\":\"01a0c566-2f01-7267-b1ee-a7e75f1fa335\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c566-2f04-73c3-983d-84c0e6ed2146\",\"order_item_id\":\"01a0c566-2f04-73c3-983d-84c0e6ed2146\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c566-2f08-7383-9d29-8adcba819d05\",\"order_item_id\":\"01a0c566-2f08-7383-9d29-8adcba819d05\",\"is_prin… -> 200 26918b 611ms"
+    },
+    {
+      "at": "2026-09-21 22:16:49",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c566-2ef7-706d-b079-1c75f318d080/items body={\"item_type\":\"dynamic\",\"item_name\":\"4\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}} -> 200 14393b 593ms"
+    },
+    {
+      "at": "2026-09-21 22:16:48",
+      "cashier": "حمودي",
+      "message": "API PUT https://gcp.kaman.rest/api/cashier/orders/01a0c566-2ef7-706d-b079-1c75f318d080 body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef3507c-8753-4e05-ab43-706d750b6f21\",\"guest_count\":4,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"4\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"id\":\"01a0c566-2f01-7267-b1ee-a7e75f1fa335\",\"order_item_id\":\"01a0c566-2f01-7267-b1ee-a7e75f1fa335\",\"item_t… -> 200 13163b 587ms"
+    },
+    {
+      "at": "2026-09-21 22:16:44",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef3507c-8753-4e05-ab43-706d750b6f21\",\"guest_count\":4,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"4\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_type\":\"regular\",\"item_id\":\"9ef4783c-59f9-4acd-be17-dfd8d5ce5048\",\"quantity\":1,\"type\":\"dine_in\",\"is_e… -> 200 28126b 632ms"
+    },
+    {
+      "at": "2026-09-21 22:16:42",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef3507c-8753-4e05-ab43-706d750b6f21\",\"guest_count\":4,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"4\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_type\":\"regular\",\"item_id\":\"9ef4783c-59f9-4acd-be17-dfd8d5ce5048\",\"quantity\":1,\"type\":\"dine_in\",\"is_e… -> 200 15314b 691ms"
+    },
+    {
+      "at": "2026-09-21 22:14:17",
+      "cashier": "Koba",
+      "message": "API DELETE https://gcp.kaman.rest/api/cashier/orders/01a0c563-dd00-7224-9c8f-aeab4e71164d body={\"reason\":\"بدون سبب\",\"password\":\"***\"} -> 200 210b 583ms"
+    },
+    {
+      "at": "2026-09-21 22:14:11",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"منتج غير مدرج\",\"item_price\":300.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}}]} -> 200 3632b 734ms"
+    },
+    {
+      "at": "2026-09-21 22:26:08",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c569-7bd3-707c-b77b-5af18dd3f231\",\"order_item_id\":\"01a0c569-7bd3-707c-b77b-5af18dd3f231\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c569-7bda-70e5-b97d-d4b04ffce200\",\"order_item_id\":\"01a0c569-7bda-70e5-b97d-d4b04ffce200\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c569-7bdd-7009-9cc6-ea20c30f81dc\",\"order_item_id\":\"01a0c569-7bdd-7009-9cc6-ea20c30f81dc\",\"is_prin… -> 200 18260b 760ms"
+    },
+    {
+      "at": "2026-09-21 22:26:04",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97/items body={\"item_type\":\"regular\",\"item_id\":\"9ef47cf8-7fc9-4882-8ea4-9d16a71d2ebd\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[{\"id\":\"9eff199a-efd4-4adb-af9c-a028a5019d39\",\"name\":\"تشيبس\",\"quantity\":1,\"extraFee\":0.0,\"extra_fee\":0.0},{\"id\":\"9eeee491-bdb8-4dbb-ae33-3f49e7b2f4d6\",\"name\":\"فطر\",\"quantity\":1,\"extraFee\":5.0,\"extra_fee\":5.0}]}} -> 200 11082b 677ms"
+    },
+    {
+      "at": "2026-09-21 22:22:43",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c566-2ef7-706d-b079-1c75f318d080/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c566-2f01-7267-b1ee-a7e75f1fa335\",\"order_item_id\":\"01a0c566-2f01-7267-b1ee-a7e75f1fa335\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c566-2f04-73c3-983d-84c0e6ed2146\",\"order_item_id\":\"01a0c566-2f04-73c3-983d-84c0e6ed2146\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c566-2f08-7383-9d29-8adcba819d05\",\"order_item_id\":\"01a0c566-2f08-7383-9d29-8adcba819d05\",\"is_prin… -> 200 30584b 661ms"
+    },
+    {
+      "at": "2026-09-21 22:22:35",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c566-2ef7-706d-b079-1c75f318d080/items body={\"item_type\":\"regular\",\"item_id\":\"9ef487cd-7eb8-4319-85e2-237015109b0d\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"notes\":\"برقلي مستوي عل اخير\",\"ingredients\":[{\"id\":\"9f610747-3f67-4466-b366-65edb6b367dc\",\"name\":\"سلطة/تشيبس\",\"quantity\":1,\"extraFee\":0.0,\"extra_fee\":0.0}]}} -> 200 17009b 656ms"
+    },
+    {
+      "at": "2026-09-21 22:22:35",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c566-2ef7-706d-b079-1c75f318d080/items body={\"item_type\":\"regular\",\"item_id\":\"9ef48da5-3aee-4633-9bb0-3137fd4dc87d\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"notes\":\"وجبه\",\"ingredients\":[]}} -> 200 15613b 560ms"
+    },
+    {
+      "at": "2026-09-21 22:22:34",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c56b-71d9-731f-8cb9-5d97f0bfc1fd/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c56b-71df-730a-b9aa-b9670d4ed21a\",\"order_item_id\":\"01a0c56b-71df-730a-b9aa-b9670d4ed21a\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c56b-71e2-718c-ae77-c81fdbf51aa2\",\"order_item_id\":\"01a0c56b-71e2-718c-ae77-c81fdbf51aa2\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c56b-71e5-7069-863e-a4cb0abbdb80\",\"order_item_id\":\"01a0c56b-71e5-7069-863e-a4cb0abbdb80\",\"is_prin… -> 200 14203b 552ms"
+    },
+    {
+      "at": "2026-09-21 22:22:08",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c56b-1045-7068-9269-7c8e569211b8/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c56b-104a-7144-8652-590f4a8eb6bb\",\"order_item_id\":\"01a0c56b-104a-7144-8652-590f4a8eb6bb\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true}],\"item_ids\":[\"01a0c56b-104a-7144-8652-590f4a8eb6bb\"]} -> 200 6320b 596ms"
+    },
+    {
+      "at": "2026-09-21 22:20:26",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c569-7bd3-707c-b77b-5af18dd3f231\",\"order_item_id\":\"01a0c569-7bd3-707c-b77b-5af18dd3f231\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c569-7bda-70e5-b97d-d4b04ffce200\",\"order_item_id\":\"01a0c569-7bda-70e5-b97d-d4b04ffce200\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c569-7bdd-7009-9cc6-ea20c30f81dc\",\"order_item_id\":\"01a0c569-7bdd-7009-9cc6-ea20c30f81dc\",\"is_prin… -> 200 16566b 731ms"
+    },
+    {
+      "at": "2026-09-21 22:20:25",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97/items body={\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}} -> 200 9319b 598ms"
+    },
+    {
+      "at": "2026-09-21 22:20:24",
+      "cashier": "حمودي",
+      "message": "API PUT https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97 body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef3509d-11b3-4123-bb26-1e0a6a3cfec6\",\"guest_count\":2,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"id\":\"01a0c569-7bd3-707c-b77b-5af18dd3f231\",\"order_item_id\":\"01a0c569-7bd3-707c-b77b-5af18dd3f231\",\"item_t… -> 200 8089b 686ms"
+    },
+    {
+      "at": "2026-09-21 22:20:21",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef3509d-11b3-4123-bb26-1e0a6a3cfec6\",\"guest_count\":2,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_type\":\"regular\",\"item_id\":\"9ef481e5-39cc-456f-b04c-c9423ef9db39\",\"quantity\":1,\"type\":\"dine_in\",\"is_e… -> 200 17225b 643ms"
+    },
+    {
+      "at": "2026-09-21 22:20:18",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef3509d-11b3-4123-bb26-1e0a6a3cfec6\",\"guest_count\":2,\"customer_id\":null,\"customer\":{},\"items\":[{\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"item_options\":{\"special_name\":\"table_guests\",\"ingredients\":[]}},{\"item_type\":\"regular\",\"item_id\":\"9ef481e5-39cc-456f-b04c-c9423ef9db39\",\"quantity\":1,\"type\":\"dine_in\",\"is_e… -> 200 9863b 600ms"
+    },
+    {
+      "at": "2026-09-21 22:35:07",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c556-c623-73f7-87ba-9ed96857ade9/confirm -> 200 15386b 696ms"
+    },
+    {
+      "at": "2026-09-21 22:34:53",
+      "cashier": "Koba",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c556-c623-73f7-87ba-9ed96857ade9/pay/cash body={\"amount\":373.0} -> 200 57b 720ms"
+    },
+    {
+      "at": "2026-09-21 22:34:06",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c556-c623-73f7-87ba-9ed96857ade9/send-to-kitchen body={\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true,\"lang\":\"ar\",\"items\":[{\"id\":\"01a0c556-c627-735a-8590-f8e9898bdf50\",\"order_item_id\":\"01a0c556-c627-735a-8590-f8e9898bdf50\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c556-c62a-72b7-a4dc-173e463eaafb\",\"order_item_id\":\"01a0c556-c62a-72b7-a4dc-173e463eaafb\",\"is_printed\":true,\"sent_to_kitchen\":true,\"printed\":true},{\"id\":\"01a0c556-c62e-718e-b396-c1e673046656\",\"order_item_id\":\"01a0c556-c62e-718e-b396-c1e673046656\",\"is_prin… -> 200 14232b 599ms"
+    },
+    {
+      "at": "2026-09-21 22:34:00",
+      "cashier": "حمودي",
+      "message": "API PUT https://gcp.kaman.rest/api/cashier/orders/01a0c556-c623-73f7-87ba-9ed96857ade9/items/01a0c575-f9f5-736c-8990-f33362a9bb53 body={\"quantity\":4} -> 200 25566b 643ms"
+    },
+    {
+      "at": "2026-09-21 22:33:57",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c556-c623-73f7-87ba-9ed96857ade9/items body={\"item_type\":\"regular\",\"item_id\":\"9ef475eb-e7c9-4dc5-a467-d33c619cfbf4\",\"quantity\":3,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}} -> 200 8356b 569ms"
+    },
+    {
+      "at": "2026-09-21 22:32:44",
+      "cashier": "Koba",
+      "message": "API DELETE https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97/items/01a0c569-8607-737d-8361-955c723e5b3b/cancel body={\"reason\":\"بدون سبب\",\"cancel_reason\":\"بدون سبب\",\"password\":\"***\"} -> 200 25296b 712ms"
+    },
+    {
+      "at": "2026-09-21 22:32:44",
+      "cashier": "Koba",
+      "message": "API DELETE https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97/items/01a0c569-860e-714b-a989-e914f5b92efa/cancel body={\"reason\":\"بدون سبب\",\"cancel_reason\":\"بدون سبب\",\"password\":\"***\"} -> 200 27914b 719ms"
+    },
+    {
+      "at": "2026-09-21 22:32:43",
+      "cashier": "Koba",
+      "message": "API DELETE https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97/items/01a0c569-8612-72fc-acfc-084bb82c6d67/cancel body={\"reason\":\"بدون سبب\",\"cancel_reason\":\"بدون سبب\",\"password\":\"***\"} -> 200 29867b 747ms"
+    },
+    {
+      "at": "2026-09-21 22:32:42",
+      "cashier": "Koba",
+      "message": "API PUT https://gcp.kaman.rest/api/cashier/orders/01a0c569-7bc9-7196-afb3-16e924499d97 body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef3509d-11b3-4123-bb26-1e0a6a3cfec6\",\"guest_count\":2,\"customer_id\":null,\"customer\":{},\"items\":[{\"id\":\"01a0c569-8612-72fc-acfc-084bb82c6d67\",\"order_item_id\":\"01a0c569-8612-72fc-acfc-084bb82c6d67\"},{\"id\":\"01a0c569-860e-714b-a989-e914f5b92efa\",\"order_item_id\":\"01a0c569-860e-714b-a989-e914f5b92efa\"},{\"id\":\"01a0c569-8607-737d-8361-955c723e5b3b\",\"order_item_id\":\"01a0c569-8607-737d-8361-955c723e5b3b\"},{\"id\":\"01a0c569-7bce-718b-98f3-c7e3b… -> 200 9870b 708ms"
+    },
+    {
+      "at": "2026-09-21 22:32:38",
+      "cashier": "حمودي",
+      "message": "API DELETE https://gcp.kaman.rest/api/cashier/orders/01a0c55a-0825-70c9-9d4d-44d17540779d/items/01a0c55a-113e-702a-80e9-9d47ca0ff2cd/cancel body={\"reason\":\"بدون سبب\",\"cancel_reason\":\"بدون سبب\",\"password\":\"***\"} -> 200 27452b 648ms"
+    },
+    {
+      "at": "2026-09-21 22:32:37",
+      "cashier": "حمودي",
+      "message": "API POST https://gcp.kaman.rest/api/cashier/orders/01a0c55a-0825-70c9-9d4d-44d17540779d/items body={\"item_type\":\"regular\",\"item_id\":\"9ef49f1e-de06-448e-9440-ff7fdef8c451\",\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"item_options\":{\"ingredients\":[]}} -> 200 10009b 641ms"
+    },
+    {
+      "at": "2026-09-21 22:32:37",
+      "cashier": "حمودي",
+      "message": "API PUT https://gcp.kaman.rest/api/cashier/orders/01a0c55a-0825-70c9-9d4d-44d17540779d body={\"order_method\":\"eat_here\",\"payment_method\":\"unpaid\",\"table_id\":\"9ef35062-c5fe-4a6d-9ad8-12f8b31d9034\",\"guest_count\":2,\"customer_id\":null,\"customer\":{},\"items\":[{\"id\":\"01a0c55a-113e-702a-80e9-9d47ca0ff2cd\",\"order_item_id\":\"01a0c55a-113e-702a-80e9-9d47ca0ff2cd\"},{\"id\":\"01a0c55a-082a-71fb-984f-885b7362eb92\",\"order_item_id\":\"01a0c55a-082a-71fb-984f-885b7362eb92\",\"item_type\":\"dynamic\",\"item_name\":\"2\",\"item_price\":0.0,\"quantity\":1,\"type\":\"dine_in\",\"is_employee_meal\":false,\"is_printed\":true,\"sent_to_k… -> 200 8739b 583ms"
+    }
+  ],
+  "prints": []
+}

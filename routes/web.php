@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\SignIn;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LocaleController;
@@ -12,22 +13,11 @@ Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
-Route::post('/login', function (Illuminate\Http\Request $request) {
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required', 'string'],
-    ]);
+Route::post('/login', SignIn::class);
 
-    if (Auth::attempt($credentials, $request->boolean('remember'))) {
-        $request->session()->regenerate();
-
-        return redirect()->intended(route('home'));
-    }
-
-    return back()
-        ->withErrors(['email' => __('auth.failed')])
-        ->onlyInput('email');
-});
+Route::get('/csrf-token', function () {
+    return response()->json(['token' => csrf_token()]);
+})->name('csrf.token');
 
 Route::post('/logout', function (Illuminate\Http\Request $request) {
     Auth::logout();
@@ -38,10 +28,74 @@ Route::post('/logout', function (Illuminate\Http\Request $request) {
     return redirect()->route('login');
 })->name('logout');
 
+Route::get('/privacy', function () {
+    return view('privacy', ['focus' => 'policy']);
+})->name('privacy');
+
+Route::get('/privacy-choices', function () {
+    return view('privacy', ['focus' => 'choices']);
+})->name('privacy.choices');
+
+Route::get('/cart/{code}', function (string $code) {
+    if (! preg_match('/^[a-z0-9]{6,32}$/', $code)) {
+        abort(404);
+    }
+
+    $intent = 'intent://cart/'.$code.'#Intent;scheme=kaman;package=com.kaman.user;end';
+    $safe = e($code);
+    $open = e($intent);
+    $openJson = json_encode($intent, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    $html = <<<HTML
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kaman</title>
+</head>
+<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#161412;color:#F5EAD8;font-family:sans-serif">
+<div style="text-align:center;padding:24px;max-width:360px">
+<h1 style="font-size:22px;margin:0 0 8px">Kaman</h1>
+<p style="margin:0 0 8px">Open this shared cart in the app.</p>
+<p style="letter-spacing:2px;font-weight:700;margin:0 0 18px">{$safe}</p>
+<a href="{$open}" style="display:inline-block;background:#C67139;color:#fff;text-decoration:none;padding:14px 22px;border-radius:999px;font-weight:700">Open in Kaman</a>
+</div>
+<script>setTimeout(function(){location.href={$openJson};},300);</script>
+</body>
+</html>
+HTML;
+
+    return response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+})->where('code', '[a-z0-9]{6,32}')->name('kaman-cart.open');
+
+Route::get('/', function () {
+    return view('welcome');
+})->name('home');
+
 Route::middleware('auth')->group(function () {
-    Route::get('/', function () {
-        return view('welcome');
-    })->name('home');
+    Route::get('/downloads/kaman-support', function () {
+        $path = (string) config('kaman-support.apk_path');
+        abort_unless(is_file($path), 404);
+
+        return response()->download($path, 'KamanSupport-1.0.10.apk', [
+            'Content-Type' => 'application/vnd.android.package-archive',
+        ]);
+    })->name('downloads.kaman-support');
+
+    Route::get('/downloads/kaman-app', function () {
+        $user = auth()->user();
+        abort_unless(
+            $user !== null && strcasecmp((string) $user->email, (string) config('kaman-app.allowed_email')) === 0,
+            403,
+        );
+
+        $path = (string) config('kaman-app.apk_path');
+        abort_unless(is_file($path), 404);
+
+        return response()->download($path, (string) config('kaman-app.download_name'), [
+            'Content-Type' => 'application/vnd.android.package-archive',
+        ]);
+    })->name('downloads.kaman-app');
 });
 
 Route::get('/ops/clear/483275634', function () {
@@ -130,6 +184,7 @@ Route::get('/ops/seed/483275636', function () {
             \Database\Seeders\SpeedcomChatbotInstanceSeeder::class,
             \Database\Seeders\KamanWhatsappChatbotInstanceSeeder::class,
             \Database\Seeders\KamanCompanyMemberSeeder::class,
+            \Database\Seeders\KamanSupportWorkerSeeder::class,
         ] as $seeder) {
             $exitCode = Artisan::call('db:seed', [
                 '--class' => $seeder,

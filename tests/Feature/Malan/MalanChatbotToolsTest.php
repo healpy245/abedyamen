@@ -533,6 +533,71 @@ class MalanChatbotToolsTest extends TestCase
         });
     }
 
+    public function test_preferred_hour_on_a_duplicate_lead_still_posts_create_lead_note(): void
+    {
+        config([
+            'malan.leads.default_source_id' => 7,
+            'malan.leads.campaign_source_id' => 66,
+        ]);
+
+        $user = $this->user();
+        $instance = $this->malanInstance($user);
+        $conversation = ChatbotConversation::query()->create([
+            'user_id' => $user->id,
+            'instance_id' => $instance->id,
+            'channel' => ChatbotConversation::CHANNEL_TEST,
+            'contact_phone' => '0533046830',
+            'metadata' => ['campaign_lead_bot' => true],
+        ]);
+
+        Http::fake([
+            'www.malan.app/apiClient/createLead' => Http::response([
+                'result' => true,
+                'data' => ['lead_id' => 6013, 'leads_sources_id' => 66, 'statuses_id' => 4],
+            ], 201),
+            'www.malan.app/apiClient/createLeadNote' => Http::response(['result' => true], 201),
+        ]);
+
+        $executor = app(ChatbotToolExecutor::class);
+        $first = $executor->execute($instance, $conversation, 'create_malan_lead', [
+            'full_name' => 'يامن وليد العصور',
+            'phone' => '0533046830',
+            'city_name' => 'الطيبة',
+            'with_fiber' => 0,
+            'confirmed_by_customer' => true,
+        ], 'test');
+        $this->assertTrue($first['success']);
+
+        \App\Models\AiChatbot\ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'reply_source' => \App\Models\AiChatbot\ChatbotMessage::REPLY_SOURCE_CUSTOMER,
+            'message_type' => 'text',
+            'message' => 'خليها تحكي معي العصريات الساعه 5 تقريبا بعد الشغل احسن',
+        ]);
+
+        $second = $executor->execute($instance, $conversation, 'create_malan_lead', [
+            'full_name' => 'يامن وليد العصور',
+            'phone' => '0533046830',
+            'city_name' => 'الطيبة',
+            'with_fiber' => 0,
+            'note' => 'يفضل التواصل بالعصريات حوالي الساعة 17:00 بعد الشغل، من الأحد للخميس',
+            'confirmed_by_customer' => true,
+        ], 'test');
+
+        $this->assertTrue($second['success']);
+        $this->assertTrue($second['duplicate']);
+
+        Http::assertSentCount(2);
+        Http::assertSent(function ($request) {
+            return str_ends_with($request->url(), '/apiClient/createLeadNote')
+                && (int) $request['lead_id'] === 6013
+                && str_contains((string) $request['note'], '17:00')
+                && str_contains((string) $request['note'], 'بعد الشغل');
+        });
+    }
+
     public function test_campaign_create_malan_lead_resolves_whatsapp_chat_phone_and_forces_taybee_city(): void
     {
         config([

@@ -50,7 +50,7 @@ class ProcessCampaignConversationJob implements ShouldQueue
 
     public const FIBER_AT_HOME_QUESTION = 'عندكم סיב אופטי بالبيت ولا لسه؟';
 
-    public const JOIN_QUESTION = 'حابب تكون جزء من نجاحنا بالطيبة؟';
+    public const JOIN_QUESTION = 'بدك الصبية تحكي معك عهالرقم وتشرحلك؟';
 
     public const COMPETITOR_PERSUASION_REPLY = 'فاهمك. استغل السعر الي عاملينه، أول 3 شهور بس 29 شيقل، وהתקנת סיב אופטי المجانية، بالآخر بعد وقت لو ما عجبتك الخدمة فيك تبدل شركة على نفس התשתית تبعنا. واحنا بنعطي خدمة طول الأسبوع حتى الجمعة والسبت، ولو صار مشكلة بنحلها بنفس اليوم كحد أقصى ثاني يوم.';
 
@@ -66,11 +66,17 @@ class ProcessCampaignConversationJob implements ShouldQueue
 
     public const ASK_NAME_REPLY = 'تمام، اعطيني اسمك الكامل بس.';
 
+    public const LEAD_STORED_REPLY = 'الصبيه رح تتواصل معك.';
+
+    public const PREFERRED_HOUR_ACK_REPLY = 'تمام.';
+
+    public const OFF_HOURS_CALL_REPLY = 'هالوقت مش ضمن دوام المبيعات، الصبيه بتتواصل من الأحد للخميس من 9 ل 6.';
+
     public const GUARDIAN_NUMBER_ASK_REPLY = 'تمام فش مشكله، ابعثيلي رقم حدا اتواصل معه.';
 
     public const GUARDIAN_NUMBER_STORED_REPLY = 'تمام، رح نتواصل معه.';
 
-    public const PHONE_SOURCE_REPLY = 'شفت انك مسجل عن طريق الانستا او الفيس بالفتره الماضيه.';
+    public const PHONE_SOURCE_REPLY = 'يمكن شفتك بالفترة الماضية مسجل عن طريق الفيس او الإنستغرام.';
 
     public function __construct(
         public int $campaignId,
@@ -344,8 +350,32 @@ class ProcessCampaignConversationJob implements ShouldQueue
 
         $localize = static fn (string $text): string => $instance->companyProfile()->localize($text);
 
+        if ($this->looksLikeHebrewTurn($intentText)) {
+            return null;
+        }
+
         if ($memory->looksLikeAsksWhereNumberFrom($intentText)) {
-            return $localize(self::PHONE_SOURCE_REPLY);
+            $reply = $localize(self::PHONE_SOURCE_REPLY);
+            $next = $this->continueAfterPhoneSourceQuestion($conversation, $memory, $contextService);
+
+            return $next === '' ? $reply : $reply."\n\n".$next;
+        }
+
+        if ($memory->assistantRecentlyStoredLead($conversation)
+            && ($memory->extractPreferredCallTime($intentText, true) !== null
+                || $memory->looksLikeWeekendCallRequest($intentText))
+        ) {
+            $offHours = $memory->offHoursPreferredCallReply($intentText);
+            if ($offHours !== null) {
+                return $localize($offHours);
+            }
+
+            $preferred = $memory->extractPreferredCallTime($intentText, true);
+            if ($preferred !== null) {
+                app(MalanLeadService::class)->attachPreferredCallTimeNote($conversation, $preferred);
+
+                return $localize(self::PREFERRED_HOUR_ACK_REPLY);
+            }
         }
 
         if ($memory->assistantRecentlyClosed($conversation)) {
@@ -416,8 +446,20 @@ class ProcessCampaignConversationJob implements ShouldQueue
             }
         }
 
+        // «اه بنفع» after عهاذ الرقم is a same-number yes, even if the join question
+        // is still in recent history (looksLikeJoinAffirmative matches اه+).
+        if ($memory->assistantRecentlyAskedSameNumber($conversation)
+            && $memory->looksLikeSameNumberAffirmative($intentText)
+        ) {
+            $contextService->markContactOnCurrentNumber($conversation, $instance);
+
+            return self::ASK_NAME_REPLY;
+        }
+
         if ($memory->looksLikeJoinAffirmative($intentText)
-            && $memory->assistantRecentlyAskedClosingQuestion($conversation)
+            && ($memory->assistantRecentlyAskedClosingQuestion($conversation)
+                || $memory->assistantRecentlySentCompetitorPersuasion($conversation)
+                || $memory->assistantRecentlySentGiveChance($conversation))
         ) {
             if ($contextService->campaignPhoneConfirmed($context)) {
                 return self::ASK_NAME_REPLY;
@@ -525,7 +567,18 @@ class ProcessCampaignConversationJob implements ShouldQueue
             $parts = preg_split('/\s+/u', $fullName) ?: [];
             $firstName = trim((string) ($parts[0] ?? $fullName));
 
-            return 'تمام '.$firstName.'، رح تتواصل معك الصبيه كمان شوي 👍';
+            $close = self::leadStoredReply($firstName);
+            $offHours = $memory->offHoursPreferredCallReply($burstText);
+            if ($offHours !== null) {
+                return $close."\n\n".$offHours;
+            }
+
+            $preferred = $memory->extractPreferredCallTime($burstText, true);
+            if ($preferred !== null) {
+                app(MalanLeadService::class)->attachPreferredCallTimeNote($conversation, $preferred);
+            }
+
+            return $close;
         }
 
         // Affirmative after same-number ask → ask for name.
@@ -536,6 +589,32 @@ class ProcessCampaignConversationJob implements ShouldQueue
 
         // Stale contact_on_current_number without a fresh name ask (e.g. after re-trigger) → let AI sell.
         return null;
+    }
+
+    private function looksLikeHebrewTurn(string $text): bool
+    {
+        $hebrew = preg_match_all('/\p{Hebrew}/u', $text) ?: 0;
+        $arabic = preg_match_all('/\p{Arabic}/u', $text) ?: 0;
+
+        return $hebrew >= 2 && $hebrew > $arabic;
+    }
+
+    private function continueAfterPhoneSourceQuestion(
+        ChatbotConversation $conversation,
+        MalanConversationMemoryService $memory,
+        MalanConversationContextService $contextService,
+    ): string {
+        $context = $contextService->getActive($conversation);
+        if ($contextService->campaignPhoneConfirmed($context)) {
+            return self::ASK_NAME_REPLY;
+        }
+
+        $fiber = $memory->inferCampaignHasFiber($conversation);
+        if ($fiber === true || $fiber === false) {
+            return self::JOIN_QUESTION;
+        }
+
+        return 'عندكم نت بالبيت هلق؟';
     }
 
     private function resolveCampaignWhatsAppPhone(
@@ -574,6 +653,13 @@ class ProcessCampaignConversationJob implements ShouldQueue
         }
 
         return null;
+    }
+
+    public static function leadStoredReply(string $firstName): string
+    {
+        $name = trim($firstName);
+
+        return ($name !== '' ? 'تمام '.$name.'، ' : 'تمام، ').self::LEAD_STORED_REPLY;
     }
 
     /**

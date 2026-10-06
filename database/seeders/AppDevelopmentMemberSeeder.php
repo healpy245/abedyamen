@@ -59,11 +59,6 @@ class AppDevelopmentMemberSeeder extends Seeder
             'phone' => '0546452973',
             'notify' => true,
         ],
-        'moaz@kaman.rest' => [
-            'role' => AppDevelopmentRole::Developer,
-            'phone' => '+972523211175',
-            'notify' => true,
-        ],
     ];
 
     public function run(): void

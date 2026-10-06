@@ -6,6 +6,7 @@ namespace Tests\Feature\Form;
 
 use App\Models\FormWorkflowRun;
 use App\Models\User;
+use App\Support\KamanUrl;
 use Database\Seeders\WorkspaceUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -26,6 +27,8 @@ final class FormMenuAgentTest extends TestCase
             ->assertOk()
             ->assertSee(__('form.agent_title'), false)
             ->assertSee('id="menuAgentForm"', false)
+            ->assertSee('id="menuAgentMealFiles"', false)
+            ->assertSee(__('form.agent_meal_photos'), false)
             ->assertSee('id="workflowDebugContent"', false)
             ->assertSee(__('form.debug_title'), false)
             ->assertSee('HAAT Menu Copy', false)
@@ -262,6 +265,125 @@ final class FormMenuAgentTest extends TestCase
 
         $response->assertOk();
         $this->assertStringContainsString('I read the photo', $response->streamedContent());
+    }
+
+    public function test_agent_matches_meal_photos_by_file_name_and_uploads_them(): void
+    {
+        config(['openai.api_key' => 'test-key']);
+        $user = $this->formUser();
+
+        Http::fake(function ($request) {
+            $url = $request->url();
+            if (str_contains($url, 'chat/completions')) {
+                return Http::response(['error' => 'vision should not run for a clear file name'], 500);
+            }
+            if (str_contains($url, '/items') && $request->method() === 'GET') {
+                return Http::response(['data' => [[
+                    'id' => 5,
+                    'category_id' => 2,
+                    'name_en' => 'Lamb Head',
+                    'name_ar' => 'راس خاروف',
+                    'name_he' => 'ראש כבש',
+                    'price' => '100.00',
+                    'description_en' => 'Lamb head',
+                    'description_ar' => '',
+                    'description_he' => '',
+                ]]]);
+            }
+            if (str_contains($url, '/items/5') && $request->method() === 'POST') {
+                return Http::response(['id' => 5], 200);
+            }
+
+            return Http::response(['data' => []], 200);
+        });
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'kaman-token',
+                'full_ai_kaman_base_url' => 'https://alarishe.kaman.rest/api/manager',
+            ])
+            ->post(route('form.menu-agent.chat'), [
+                'messages' => [
+                    ['role' => 'user', 'content' => 'Match these meal photos to the meals and upload them.'],
+                ],
+                'attachments' => [
+                    UploadedFile::fake()->image('lamb-head.jpg', 40, 40),
+                ],
+                'attachment_roles' => ['meal_photo'],
+            ]);
+
+        $response->assertOk();
+        $body = $response->streamedContent();
+        $this->assertStringContainsString('By file name', $body);
+        $this->assertStringContainsString('lamb-head.jpg → Lamb Head', $body);
+        $this->assertStringNotContainsString('vision should not run', $body);
+        Http::assertSent(fn ($request) => $request->method() === 'POST'
+            && str_contains($request->url(), '/items/5'));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'chat/completions'));
+    }
+
+    public function test_agent_matches_unnamed_meal_photos_by_looking_at_them(): void
+    {
+        config(['openai.api_key' => 'test-key']);
+        $user = $this->formUser();
+
+        Http::fake(function ($request) {
+            $url = $request->url();
+            if (str_contains($url, 'chat/completions')) {
+                return Http::response([
+                    'choices' => [[
+                        'message' => [
+                            'content' => json_encode([
+                                'matches' => [
+                                    ['file' => 'plate-photo.jpg', 'item_id' => '9'],
+                                ],
+                            ]),
+                        ],
+                    ]],
+                ]);
+            }
+            if (str_contains($url, '/items') && $request->method() === 'GET') {
+                return Http::response(['data' => [[
+                    'id' => 9,
+                    'category_id' => 3,
+                    'name_en' => 'Caesar Salad',
+                    'name_ar' => 'سلطة سيزر',
+                    'name_he' => 'סלט קיסר',
+                    'price' => '42.00',
+                    'description_en' => 'Romaine, parmesan, croutons',
+                    'description_ar' => '',
+                    'description_he' => '',
+                ]]]);
+            }
+            if (str_contains($url, '/items/9') && $request->method() === 'POST') {
+                return Http::response(['id' => 9], 200);
+            }
+
+            return Http::response(['data' => []], 200);
+        });
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'kaman-token',
+                'full_ai_kaman_base_url' => 'https://alarishe.kaman.rest/api/manager',
+            ])
+            ->post(route('form.menu-agent.chat'), [
+                'messages' => [
+                    ['role' => 'user', 'content' => 'Match these meal photos to the meals and upload them.'],
+                ],
+                'attachments' => [
+                    UploadedFile::fake()->image('plate-photo.jpg', 40, 40),
+                ],
+                'attachment_roles' => ['meal_photo'],
+            ]);
+
+        $response->assertOk();
+        $body = $response->streamedContent();
+        $this->assertStringContainsString('By looking at the photo', $body);
+        $this->assertStringContainsString('plate-photo.jpg → Caesar Salad', $body);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'chat/completions'));
+        Http::assertSent(fn ($request) => $request->method() === 'POST'
+            && str_contains($request->url(), '/items/9'));
     }
 
     public function test_agent_stores_every_extracted_meal_from_photos(): void
@@ -845,6 +967,56 @@ final class FormMenuAgentTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request->url(), 'chat/completions'), 2);
     }
 
+    public function test_gpt56_tool_calls_send_reasoning_effort_none(): void
+    {
+        config([
+            'openai.api_key' => 'test-key',
+            'openai.menu_agent_model' => 'gpt-5.6',
+        ]);
+        $user = $this->formUser();
+
+        Http::fake([
+            '*chat/completions*' => function ($request) {
+                $data = $request->data();
+                if (($data['reasoning_effort'] ?? null) !== 'none' || ($data['model'] ?? null) !== 'gpt-5.6') {
+                    return Http::response([
+                        'error' => [
+                            'message' => "Function tools with reasoning_effort are not supported for gpt-5.6 in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.",
+                        ],
+                    ], 400);
+                }
+
+                return Http::response([
+                    'choices' => [[
+                        'message' => [
+                            'content' => 'There are 9 categories on the dashboard.',
+                        ],
+                    ]],
+                ]);
+            },
+            'https://alarishe.kaman.rest/*' => Http::response(['data' => []], 200),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'kaman-token',
+                'full_ai_kaman_base_url' => 'https://alarishe.kaman.rest/api/manager',
+            ])
+            ->post(route('form.menu-agent.chat'), [
+                'messages' => [
+                    ['role' => 'user', 'content' => 'How many categories are on the dashboard?'],
+                ],
+            ]);
+
+        $response->assertOk();
+        $body = $response->streamedContent();
+        $this->assertStringContainsString('There are 9 categories', $body);
+        $this->assertStringNotContainsString('temporary OpenAI error', $body);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'chat/completions')
+            && $request['reasoning_effort'] === 'none'
+            && $request['model'] === 'gpt-5.6');
+    }
+
     public function test_inspect_returns_stored_conversation_and_reuses_the_same_run(): void
     {
         config(['openai.api_key' => 'test-key']);
@@ -938,6 +1110,475 @@ final class FormMenuAgentTest extends TestCase
             ->assertJsonPath('conversation.id', '22222222-2222-4222-8222-222222222222')
             ->assertJsonPath('conversation.messages.0.role', 'assistant')
             ->assertJsonPath('conversation.messages.0.content', 'Stored 6 meals.');
+    }
+
+    public function test_agent_edits_live_menu_names_from_chat(): void
+    {
+        config(['openai.api_key' => 'test-key']);
+        $user = $this->formUser();
+
+        Http::fake([
+            '*chat/completions*' => Http::sequence()
+                ->push([
+                    'choices' => [[
+                        'message' => [
+                            'content' => null,
+                            'tool_calls' => [[
+                                'id' => 'call_edit',
+                                'type' => 'function',
+                                'function' => [
+                                    'name' => 'edit_menu',
+                                    'arguments' => json_encode([
+                                        'operations' => [[
+                                            'target' => 'items',
+                                            'match' => 'زجاجة زجاج',
+                                            'remove_text' => 'زجاجة زجاج',
+                                            'fields' => ['name_ar'],
+                                        ]],
+                                    ], JSON_UNESCAPED_UNICODE),
+                                ],
+                            ]],
+                        ],
+                    ]],
+                ])
+                ->push([
+                    'choices' => [[
+                        'message' => [
+                            'content' => 'Removed زجاجة زجاج from the Arabic drink name.',
+                        ],
+                    ]],
+                ]),
+            'https://alarishe.kaman.rest/*' => function ($request) {
+                if ($request->method() === 'GET' && str_contains($request->url(), '/items')) {
+                    return Http::response(['data' => [[
+                        'id' => '9',
+                        'name_ar' => 'شويبس غازي عنب، زجاجة زجاج',
+                        'name_en' => 'Schweppes grape soda, glass bottle',
+                        'name_he' => 'שוופס גזוז ענבים',
+                        'description_ar' => '0.33 لتر',
+                        'description_en' => '0.33 L',
+                        'description_he' => '0.33 ל׳',
+                        'price' => 12,
+                        'status' => 1,
+                        'category' => ['id' => '3'],
+                    ]]], 200);
+                }
+
+                return Http::response(['data' => ['id' => '9']], 200);
+            },
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'kaman-token',
+                'full_ai_kaman_base_url' => 'https://alarishe.kaman.rest/api/manager',
+            ])
+            ->post(route('form.menu-agent.chat'), [
+                'messages' => [
+                    ['role' => 'user', 'content' => 'في المشروبات شيل زجاجة زجاج من الاسم العربي'],
+                ],
+            ]);
+
+        $response->assertOk();
+        $body = $response->streamedContent();
+        $this->assertStringContainsString('Removed زجاجة زجاج', $body);
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'PUT'
+                && $request->url() === 'https://alarishe.kaman.rest/api/manager/items/9'
+                && $request['name_ar'] === 'شويبس غازي عنب'
+                && $request['name_en'] === 'Schweppes grape soda, glass bottle'
+                && $request['name_he'] === 'שוופס גזוז ענבים'
+                && $request['description_ar'] === '0.33 لتر';
+        });
+    }
+
+    public function test_large_arabic_menu_can_still_raise_prices_from_chat(): void
+    {
+        config([
+            'openai.api_key' => 'test-key',
+            'openai.menu_agent_model' => 'gpt-5.6',
+        ]);
+        $user = $this->formUser();
+        $filler = str_repeat('مشروب غازي لذيذ، ', 40);
+        $items = [];
+        for ($i = 1; $i <= 70; $i++) {
+            $items[] = [
+                'id' => (string) $i,
+                'name_ar' => 'وجبة '.$i.' '.$filler,
+                'name_en' => 'Meal '.$i,
+                'name_he' => 'מנה '.$i,
+                'description_ar' => $filler,
+                'description_en' => 'long description '.$i,
+                'description_he' => 'תיאור '.$filler,
+                'price' => 10,
+                'status' => 1,
+                'category' => ['id' => '3'],
+            ];
+        }
+        $items[] = [
+            'id' => '501',
+            'name_en' => 'crispe dubai',
+            'name_ar' => 'كريسبي دبي',
+            'name_he' => 'קריספי דובאי',
+            'description_ar' => $filler,
+            'price' => 80,
+            'status' => 1,
+            'category' => ['id' => '8'],
+        ];
+        $items[] = [
+            'id' => '502',
+            'name_en' => 'waffle healthy',
+            'name_ar' => 'وافل صحي',
+            'name_he' => 'וופל בריא',
+            'description_ar' => $filler,
+            'price' => 70,
+            'status' => 1,
+            'category' => ['id' => '8'],
+        ];
+
+        Http::fake([
+            '*chat/completions*' => Http::sequence()
+                ->push([
+                    'choices' => [[
+                        'message' => [
+                            'content' => null,
+                            'tool_calls' => [[
+                                'id' => 'call_read',
+                                'type' => 'function',
+                                'function' => [
+                                    'name' => 'read_menu',
+                                    'arguments' => '{}',
+                                ],
+                            ]],
+                        ],
+                    ]],
+                ])
+                ->push([
+                    'choices' => [[
+                        'message' => [
+                            'content' => null,
+                            'tool_calls' => [[
+                                'id' => 'call_price',
+                                'type' => 'function',
+                                'function' => [
+                                    'name' => 'edit_menu',
+                                    'arguments' => json_encode([
+                                        'operations' => [
+                                            ['target' => 'items', 'match' => 'crispe dubai', 'set' => ['price' => '90']],
+                                            ['target' => 'items', 'match' => 'waffle healthy', 'set' => ['price' => '80']],
+                                        ],
+                                    ]),
+                                ],
+                            ]],
+                        ],
+                    ]],
+                ])
+                ->push([
+                    'choices' => [[
+                        'message' => [
+                            'content' => 'Raised crispe dubai to 90 and waffle healthy to 80.',
+                        ],
+                    ]],
+                ]),
+            'https://alarishe.kaman.rest/*' => function ($request) use ($items) {
+                if ($request->method() === 'GET' && str_contains($request->url(), '/items')) {
+                    return Http::response(['data' => $items], 200);
+                }
+                if ($request->method() === 'GET') {
+                    return Http::response(['data' => []], 200);
+                }
+
+                return Http::response(['data' => ['id' => '501']], 200);
+            },
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'kaman-token',
+                'full_ai_kaman_base_url' => 'https://alarishe.kaman.rest/api/manager',
+            ])
+            ->post(route('form.menu-agent.chat'), [
+                'messages' => [
+                    ['role' => 'assistant', 'content' => "Created category happpy sweets with 2 meals:\n- crispe dubai — 80.00\n- waffle healthy — 70.00"],
+                    ['role' => 'user', 'content' => 'change prices and increase them both +10'],
+                ],
+            ]);
+
+        $response->assertOk();
+        $body = $response->streamedContent();
+        $this->assertStringContainsString('Raised crispe dubai to 90', $body);
+        $this->assertStringNotContainsString('Malformed UTF-8', $body);
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'PUT'
+                && str_ends_with($request->url(), '/items/501')
+                && $request['price'] === '90.00'
+                && $request['name_en'] === 'crispe dubai';
+        });
+        Http::assertSent(function ($request) {
+            return $request->method() === 'PUT'
+                && str_ends_with($request->url(), '/items/502')
+                && $request['price'] === '80.00'
+                && $request['name_en'] === 'waffle healthy';
+        });
+    }
+
+    public function test_agent_copies_wolt_menu_link_with_photo_and_translations(): void
+    {
+        config([
+            'openai.api_key' => 'test-key',
+            'openai.menu_agent_model' => 'gpt-5.6',
+        ]);
+        $user = $this->formUser();
+        $menu = [
+            'mutations' => [],
+            'queries' => [[
+                'queryKey' => ['venue-assortment', 'category-listing', 'demo', null, null, 'he', 'no-user'],
+                'state' => ['data' => [
+                    'primary_language' => 'he',
+                    'categories' => [[
+                        'id' => 'cat1',
+                        'name' => 'מנות',
+                        'description' => '',
+                        'item_ids' => ['item1'],
+                    ]],
+                    'items' => [[
+                        'id' => 'item1',
+                        'name' => 'שווארמה',
+                        'description' => 'עם סלט',
+                        'price' => 5500,
+                        'images' => [[
+                            'url' => 'https://wolt-menu-images-cdn.wolt.com/menu-images/demo/shawarma.jpeg',
+                        ]],
+                        'options' => [[
+                            'option_id' => 'opt1',
+                            'name' => 'לחם',
+                            'multi_choice_config' => ['total_range' => ['min' => 1, 'max' => 1]],
+                        ]],
+                    ]],
+                    'options' => [[
+                        'id' => 'opt1',
+                        'name' => 'לחם',
+                        'type' => 'multi_choice',
+                        'default_value' => 'v1',
+                        'values' => [
+                            ['id' => 'v1', 'name' => 'פיתה', 'price' => 0],
+                            ['id' => 'v2', 'name' => 'בגט', 'price' => 500],
+                        ],
+                    ]],
+                ]],
+            ]],
+        ];
+        $html = '<html><script>'.json_encode($menu, JSON_UNESCAPED_UNICODE).'</script></html>';
+        $jpeg = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=');
+
+        Http::fake(function ($request) use ($html, $jpeg) {
+            $url = $request->url();
+            if (str_contains($url, 'wolt.com') && str_contains($url, '/restaurant/')) {
+                return Http::response($html, 200, ['Content-Type' => 'text/html']);
+            }
+            if (str_contains($url, 'wolt-menu-images')) {
+                return Http::response($jpeg, 200, ['Content-Type' => 'image/png']);
+            }
+            if (str_contains($url, 'chat/completions')) {
+                return Http::response([
+                    'choices' => [[
+                        'message' => [
+                            'content' => json_encode([
+                                'rows' => [
+                                    ['id' => 'categories:cat1', 'name_ar' => 'وجبات', 'name_en' => 'Meals', 'name_he' => 'מנות'],
+                                    ['id' => 'meals:item1', 'name_ar' => 'شاورما', 'name_en' => 'Shawarma', 'name_he' => 'שווארמה', 'description_ar' => 'مع سلطة', 'description_en' => 'With salad', 'description_he' => 'עם סלט'],
+                                    ['id' => 'unique_ingredient_categories:opt1:1:1', 'name_ar' => 'خبز', 'name_en' => 'Bread', 'name_he' => 'לחם'],
+                                    ['id' => 'unique_ingredients:v1', 'name_ar' => 'خبز بيتا', 'name_en' => 'Pita', 'name_he' => 'פיתה'],
+                                    ['id' => 'unique_ingredients:v2', 'name_ar' => 'باغيت', 'name_en' => 'Baguette', 'name_he' => 'בגט'],
+                                ],
+                            ], JSON_UNESCAPED_UNICODE),
+                        ],
+                    ]],
+                ]);
+            }
+            if (str_contains($url, '/items/bulk')) {
+                return Http::response(['message' => 'missing'], 404);
+            }
+            if ($request->method() === 'GET') {
+                return Http::response(['data' => []], 200);
+            }
+
+            return Http::response(['id' => '77'], 201);
+        });
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'kaman-token',
+                'full_ai_kaman_base_url' => 'https://alarishe.kaman.rest/api/manager',
+            ])
+            ->post(route('form.menu-agent.chat'), [
+                'messages' => [[
+                    'role' => 'user',
+                    'content' => 'here is new menu I want you to build from scratch, analyze the wolt menu and copy paste it with all details https://wolt.com/en/isr/petah-tikva/restaurant/shawarma-balev',
+                ]],
+            ]);
+
+        $response->assertOk();
+        $body = $response->streamedContent();
+        $this->assertStringContainsString('Copied the menu from the link', $body);
+        $this->assertStringContainsString('1 photos copied', $body);
+        $this->assertStringNotContainsString("can't access", $body);
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'wolt-menu-images')
+            && $request->method() === 'GET');
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && str_ends_with(rtrim($request->url(), '/'), '/items')
+                && $request->isMultipart()
+                && $this->httpField($request, 'name_en') === 'Shawarma'
+                && $this->httpField($request, 'price') === '55.00';
+        });
+    }
+
+    public function test_follow_up_translates_and_uploads_photos_from_the_earlier_wolt_link(): void
+    {
+        config([
+            'openai.api_key' => 'test-key',
+            'openai.menu_agent_model' => 'gpt-5.6',
+        ]);
+        $user = $this->formUser();
+        $this->fakeWoltMenuHttp();
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'kaman-token',
+                'full_ai_kaman_base_url' => 'https://alarishe.kaman.rest/api/manager',
+            ])
+            ->post(route('form.menu-agent.chat'), [
+                'messages' => [
+                    ['role' => 'user', 'content' => 'build this menu from scratch https://wolt.com/en/isr/petah-tikva/restaurant/shawarma-balev'],
+                    ['role' => 'assistant', 'content' => 'The agent could not finish. Try again.'],
+                    ['role' => 'user', 'content' => 'the menu is almost built, but needs to be translated to arabic english hebrew, not static hebrew, and it needs to upload images for the meals from the wolt image source link'],
+                ],
+            ]);
+
+        $response->assertOk();
+        $body = $response->streamedContent();
+        $this->assertStringContainsString('Copied the menu from the link', $body);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'wolt-menu-images') && $request->method() === 'GET');
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && str_ends_with(rtrim($request->url(), '/'), '/items')
+                && $this->httpField($request, 'name_en') === 'Shawarma'
+                && $this->httpField($request, 'name_ar') === 'شاورما'
+                && $this->httpField($request, 'name_he') === 'שווארמה';
+        });
+    }
+
+    public function test_continue_paused_menu_agent_copies_translations_and_photos(): void
+    {
+        config([
+            'openai.api_key' => 'test-key',
+            'openai.menu_agent_model' => 'gpt-5.6',
+        ]);
+        $user = $this->formUser();
+        $baseUrl = rtrim(KamanUrl::managerApi('alarishe', 'rest'), '/');
+        $run = FormWorkflowRun::query()->create([
+            'user_id' => $user->id,
+            'method_type' => 'Menu Agent',
+            'subdomain' => 'alarishe',
+            'environment' => 'rest',
+            'status' => FormWorkflowRun::STATUS_PAUSED,
+            'payload' => [
+                'subdomain' => 'alarishe',
+                'environment' => 'rest',
+                'kaman_base_url' => $baseUrl,
+                'source_url' => 'https://wolt.com/en/isr/petah-tikva/restaurant/shawarma-balev',
+                'conversation_id' => '33333333-3333-4333-8333-333333333333',
+                'title' => 'https://wolt.com/en/isr/petah-tikva/restaurant/shawarma-balev',
+                'messages' => [[
+                    'role' => 'user',
+                    'content' => 'the menu needs to be translated to arabic english hebrew and upload images from the wolt source link',
+                ]],
+            ],
+            'started_at' => now()->subHour(),
+        ]);
+        $this->fakeWoltMenuHttp();
+
+        $response = $this->actingAs($user)
+            ->withSession([
+                'full_ai_kaman_token' => 'kaman-token',
+                'full_ai_kaman_base_url' => $baseUrl,
+            ])
+            ->post(route('form.runs.continue', $run));
+
+        $response->assertOk();
+        $body = $response->streamedContent();
+        $this->assertStringNotContainsString('No AI workflow registered', $body);
+        $this->assertStringContainsString('Copied the menu from the link', $body);
+        $this->assertSame(FormWorkflowRun::STATUS_COMPLETED, $run->refresh()->status);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'wolt-menu-images') && $request->method() === 'GET');
+    }
+
+    private function fakeWoltMenuHttp(): void
+    {
+        $menu = [
+            'mutations' => [],
+            'queries' => [[
+                'queryKey' => ['venue-assortment', 'category-listing', 'demo', null, null, 'he', 'no-user'],
+                'state' => ['data' => [
+                    'primary_language' => 'he',
+                    'categories' => [[
+                        'id' => 'cat1',
+                        'name' => 'מנות',
+                        'description' => '',
+                        'item_ids' => ['item1'],
+                    ]],
+                    'items' => [[
+                        'id' => 'item1',
+                        'name' => 'שווארמה',
+                        'description' => 'עם סלט',
+                        'price' => 5500,
+                        'images' => [[
+                            'url' => 'https://wolt-menu-images-cdn.wolt.com/menu-images/demo/shawarma.jpeg',
+                        ]],
+                        'options' => [],
+                    ]],
+                    'options' => [],
+                ]],
+            ]],
+        ];
+        $html = '<html><script>'.json_encode($menu, JSON_UNESCAPED_UNICODE).'</script></html>';
+        $jpeg = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=');
+
+        Http::fake(function ($request) use ($html, $jpeg) {
+            $url = $request->url();
+            if (str_contains($url, 'wolt.com') && str_contains($url, '/restaurant/')) {
+                return Http::response($html, 200, ['Content-Type' => 'text/html']);
+            }
+            if (str_contains($url, 'wolt-menu-images')) {
+                return Http::response($jpeg, 200, ['Content-Type' => 'image/png']);
+            }
+            if (str_contains($url, 'chat/completions')) {
+                return Http::response([
+                    'choices' => [[
+                        'message' => [
+                            'content' => json_encode([
+                                'rows' => [
+                                    ['id' => 'categories:cat1', 'name_ar' => 'وجبات', 'name_en' => 'Meals', 'name_he' => 'מנות'],
+                                    ['id' => 'meals:item1', 'name_ar' => 'شاورما', 'name_en' => 'Shawarma', 'name_he' => 'שווארמה', 'description_ar' => 'مع سلطة', 'description_en' => 'With salad', 'description_he' => 'עם סלט'],
+                                ],
+                            ], JSON_UNESCAPED_UNICODE),
+                        ],
+                    ]],
+                ]);
+            }
+            if (str_contains($url, '/items/bulk')) {
+                return Http::response(['message' => 'missing'], 404);
+            }
+            if ($request->method() === 'GET') {
+                return Http::response(['data' => []], 200);
+            }
+
+            return Http::response(['id' => '77'], 201);
+        });
     }
 
     private function httpField($request, string $key): ?string

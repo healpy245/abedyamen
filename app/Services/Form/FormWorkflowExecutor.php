@@ -23,7 +23,7 @@ final class FormWorkflowExecutor
     public function run(FormWorkflowRun $run, array $payload, ?callable $onEmit = null): array
     {
         @ignore_user_abort(true);
-        @set_time_limit($run->method_type === 'HAAT Menu Copy' ? 1800 : 600);
+        @set_time_limit(in_array($run->method_type, ['HAAT Menu Copy', 'Menu Agent'], true) ? 1800 : 600);
 
         $payload['run_id'] = $run->id;
         $payload['worker_generation'] = $this->runs->workerGeneration($run);

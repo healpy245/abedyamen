@@ -33,5 +33,6 @@
         <env name="KAMAN_AGENTS_BASE_URL" value=""/>
         <env name="KAMAN_AGENTS_USERNAME" value=""/>
         <env name="KAMAN_AGENTS_PASSWORD" value=""/>
+        <env name="KAMAN_SUPPORT_API_KEY" value="testing-kaman-support-key"/>
     </php>
 </phpunit>

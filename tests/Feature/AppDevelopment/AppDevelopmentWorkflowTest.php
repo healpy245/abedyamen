@@ -447,6 +447,7 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->assertTrue($yamen->canAccessProject(Project::Form));
         $this->assertTrue($yamen->canAccessProject(Project::AiChatbot));
         $this->assertTrue($yamen->canAccessProject(Project::AppDevelopment));
+        $this->assertTrue($yamen->canAccessProject(Project::KamanSupport));
         $this->assertTrue($yamen->isQa());
         $this->assertTrue($yamen->isDeveloper());
         $this->assertTrue($yamen->isAppDevelopmentAdmin());
@@ -469,6 +470,12 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->assertTrue($ahmadEssa->canAccessProject(Project::Form));
         $this->assertTrue($ahmadEssa->canAccessProject(Project::AppDevelopment));
         $this->assertFalse($ahmadEssa->canAccessProject(Project::AiChatbot));
+
+        $moaz = User::query()->where('email', 'moaz@kaman.rest')->firstOrFail();
+        $this->assertSame(['kaman-support'], $moaz->projectKeys());
+        $this->assertTrue($moaz->posLiveLogsOnly());
+        $this->assertFalse($moaz->canAccessProject(Project::AppDevelopment));
+        $this->assertNull($moaz->appDevelopmentRole());
     }
 
     public function test_qa_queue_redirects_to_tickets_qa_tab(): void

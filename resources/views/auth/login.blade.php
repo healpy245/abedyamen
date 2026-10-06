@@ -54,6 +54,10 @@
                 </form>
             </div>
 
+            <div class="mt-6">
+                @include('partials.pos-downloads')
+            </div>
+
             <p class="mt-6 text-center text-xs text-[#a78a6c]">
                 {{ __('auth.footer') }}
             </p>

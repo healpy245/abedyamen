@@ -16,6 +16,7 @@ use App\Services\AI\Workflows\HaatMenuCopyWorkflow;
 use App\Services\AI\Workflows\IngredientsStoreWorkflow;
 use App\Services\AI\Workflows\MealStoreWithAiImagesWorkflow;
 use App\Services\AI\Workflows\MealStoreWorkflow;
+use App\Services\AI\Workflows\MenuAgentWorkflow;
 use Illuminate\Support\Facades\Log;
 
 final class FormWorkflowRunner
@@ -33,6 +34,7 @@ final class FormWorkflowRunner
         'Category and Ingredients Store' => CategoryAndIngredientsStoreWorkflow::class,
         'Drinks Store' => DrinksStoreWorkflow::class,
         'HAAT Menu Copy' => HaatMenuCopyWorkflow::class,
+        'Menu Agent' => MenuAgentWorkflow::class,
     ];
 
     /**

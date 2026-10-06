@@ -468,7 +468,15 @@ class AiChatbotService
 
         $defaultModel = (string) ($settings['chatbot_model'] ?? 'gpt-4o-mini');
         $voiceModel = trim((string) config('voice.phone.model', ''));
-        $model = ($voiceMode && $voiceModel !== '') ? $voiceModel : $defaultModel;
+        $malanModel = trim((string) config('openai.malan_chat_model', 'gpt-6-sol'));
+        $malanChat = ! $voiceMode && ($instance->hasMalanIntegration() || $conversation->isCampaignLeadBot());
+        if ($voiceMode && $voiceModel !== '') {
+            $model = $voiceModel;
+        } elseif ($malanChat && $malanModel !== '') {
+            $model = $malanModel;
+        } else {
+            $model = $defaultModel;
+        }
         $temperature = $voiceMode
             ? (float) config('voice.phone.temperature', 0.4)
             : (float) ($settings['temperature'] ?? 0.7);
@@ -815,8 +823,8 @@ class AiChatbotService
                         'mode' => 'campaign_sales',
                         'pending_flow' => 'campaign_sales_conversation',
                         'rules' => [
-                            $profile->localize('Spoken WhatsApp Arabic only — no فصحى for the whole chat. Dialect swaps: فكر بالأمر→فكر بلاشي; نعمل طول الأسبوع→بنشتغل وبنعطي خدمة طول الأسبوع; انقطاعات→تقطيعات. Hebrew term exact: מגדיل טווח. Who-am-I / first contact → "انا سالي من شركة ملان، اكيد بتعرفنا صح؟" then wait. Never use "مش رح اوخذ من وقتك".'),
-                            $profile->localize('Confident salesperson. Branch on whether they know Malan; then AUTO short 5-towns line then fiber-at-home. Instagram/solutions bubble is MID-CHAT only when they ask or want to hear more — never in the intro. No-fiber: 300-500 vs free for first 200, then 29/149, then join. Competitor/refusal: استغل السعر + can switch (تنبسط never ينبسط). Short answers for short questions.'),
+                            $profile->localize('Spoken WhatsApp Arabic only — no فصحى for the whole chat. Dialect swaps: فكر بالأمر→فكر بلاشي; نعمل طول الأسبوع→بنشتغل وبنعطي خدمة طول الأسبوع; انقطاعات→تقطيعات. Hebrew term exact: מגדיل טווח. Malan started in Kafr Qasim and is in about 80% of homes and businesses there. The Taybeh offer is an expansion, not a new company. Never send "اكيد بتعرفنا صح؟" or the 5-towns pitch. If they write Hebrew, reply in short Hebrew and keep the Kafr Qasim origin.'),
+                            $profile->localize('Have internet → "بدك الصبية تحكي معك عهالرقم وتشرحلك؟". No internet → 300-500 vs free for first 200, then 29/149, then the same question. If they pay less than 149, ask what they pay. Number source: "يمكن شفتك بالفترة الماضية مسجل عن طريق الفيس او الإنستغرام." then continue.'),
                         ],
                     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             }
@@ -867,7 +875,7 @@ class AiChatbotService
                         '# Chat contact phone (campaign '.$city.')'."\n".
                         'whatsapp_chat_phone='.$whatsappPhone."\n".
                         'city_name must always be '.$city.' — never ask for city.'."\n".
-                        'When collecting a lead: ask same-number once; on بنفع/اه set contact_on_current_number; if they write another 05 number that is phone not name — then ask full name only; create_malan_lead; close «تمام {first_name}، رح تتواصل معك الصبيه كمان شوي 👍». NEVER pass digits as full_name.'."\n".
+                        'When collecting a lead: ask same-number once; on بنفع/اه set contact_on_current_number; if they write another 05 number that is phone not name — then ask full name only; create_malan_lead; close «تمام {first_name}، الصبيه رح تتواصل معك.». NEVER كمان شوي. NEVER ask for a preferred hour. If they volunteer an hour outside Sun–Thu 9–6, tell them it is outside sales hours; otherwise pass a valid hour in note. NEVER pass digits as full_name.'."\n".
                         'If the customer means this WhatsApp number (نفس الرقم / هالرقم / عهاذ الرقم / بنفع / اه after the ask), '
                         .'call create_malan_lead with phone=whatsapp_chat_phone (server resolves). Do not invent another number and do not re-ask.');
                 } else {
@@ -970,42 +978,101 @@ class AiChatbotService
      */
     protected function callOpenAi(string $apiKey, array $payload): array
     {
-        $http = Http::timeout(45)
-            ->withToken($apiKey)
-            ->acceptJson();
-
-        $verifySsl = config('services.openai.verify_ssl', true);
-        if (! $verifySsl) {
-            $http = $http->withoutVerifying();
+        $model = (string) ($payload['model'] ?? '');
+        $newerChatModel = $this->newerChatModel($model);
+        $omitTemperature = false;
+        $useCompletionTokens = $newerChatModel;
+        $reasoningEffort = array_key_exists('reasoning_effort', $payload)
+            ? $payload['reasoning_effort']
+            : null;
+        if ($reasoningEffort === null && $newerChatModel) {
+            // Tool calls on GPT-5/6 Chat Completions only work with reasoning off.
+            $reasoningEffort = 'none';
         }
 
-        try {
-            $response = $http->post('https://api.openai.com/v1/chat/completions', $payload);
-        } catch (Throwable $e) {
-            $errorText = (string) $e->getMessage();
-
-            Log::warning('AiChatbot OpenAI request failed', [
-                'error' => $errorText,
-            ]);
-
-            if (str_contains($errorText, 'SSL certificate problem')) {
-                throw new RuntimeException(
-                    'Unable to reach the AI provider due to local SSL certificate verification (cURL error 60). For local development only, set OPENAI_VERIFY_SSL=false in .env, then run php artisan optimize:clear.'
-                );
+        $attempts = 0;
+        while ($attempts < 4) {
+            $attempts++;
+            $body = $payload;
+            if ($omitTemperature) {
+                unset($body['temperature']);
+            }
+            if ($useCompletionTokens) {
+                if (isset($body['max_tokens']) && ! isset($body['max_completion_tokens'])) {
+                    $body['max_completion_tokens'] = $body['max_tokens'];
+                }
+                unset($body['max_tokens']);
+            }
+            if ($reasoningEffort !== null && $reasoningEffort !== '') {
+                $body['reasoning_effort'] = $reasoningEffort;
+            } else {
+                unset($body['reasoning_effort']);
             }
 
-            throw new RuntimeException('Unable to reach the AI provider. Please try again later.');
-        }
+            $http = Http::timeout(45)
+                ->withToken($apiKey)
+                ->acceptJson();
 
-        if (! $response->successful()) {
-            $body = $response->json();
-            $errorMessage = is_array($body)
-                ? ($body['error']['message'] ?? $body['message'] ?? $response->body())
+            $verifySsl = config('services.openai.verify_ssl', true);
+            if (! $verifySsl) {
+                $http = $http->withoutVerifying();
+            }
+
+            try {
+                $response = $http->post('https://api.openai.com/v1/chat/completions', $body);
+            } catch (Throwable $e) {
+                $errorText = (string) $e->getMessage();
+
+                Log::warning('AiChatbot OpenAI request failed', [
+                    'model' => $model,
+                    'error' => $errorText,
+                ]);
+
+                if (str_contains($errorText, 'SSL certificate problem')) {
+                    throw new RuntimeException(
+                        'Unable to reach the AI provider due to local SSL certificate verification (cURL error 60). For local development only, set OPENAI_VERIFY_SSL=false in .env, then run php artisan optimize:clear.'
+                    );
+                }
+
+                throw new RuntimeException('Unable to reach the AI provider. Please try again later.');
+            }
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if (! is_array($data)) {
+                    throw new RuntimeException('The AI provider returned an invalid response.');
+                }
+
+                return $data;
+            }
+
+            $errorBody = $response->json();
+            $errorMessage = is_array($errorBody)
+                ? ($errorBody['error']['message'] ?? $errorBody['message'] ?? $response->body())
                 : $response->body();
+            $errorMessage = is_string($errorMessage) ? $errorMessage : (string) json_encode($errorMessage);
 
-            $errorMessage = is_string($errorMessage) ? $errorMessage : json_encode($errorMessage);
+            if (! $useCompletionTokens && str_contains($errorMessage, 'max_tokens')) {
+                $useCompletionTokens = true;
+                $attempts--;
+
+                continue;
+            }
+            if (! $omitTemperature && str_contains(strtolower($errorMessage), 'temperature')) {
+                $omitTemperature = true;
+                $attempts--;
+
+                continue;
+            }
+            if ($reasoningEffort !== 'none' && str_contains($errorMessage, 'reasoning_effort')) {
+                $reasoningEffort = 'none';
+                $attempts--;
+
+                continue;
+            }
 
             Log::warning('AiChatbot OpenAI error response', [
+                'model' => $model,
                 'status' => $response->status(),
                 'message' => $errorMessage,
             ]);
@@ -1013,12 +1080,12 @@ class AiChatbotService
             throw new RuntimeException($errorMessage ?: 'The AI provider returned an error.');
         }
 
-        $data = $response->json();
-        if (! is_array($data)) {
-            throw new RuntimeException('The AI provider returned an invalid response.');
-        }
+        throw new RuntimeException('The AI provider returned an error.');
+    }
 
-        return $data;
+    private function newerChatModel(string $model): bool
+    {
+        return preg_match('/^gpt-(?:5|6)/i', $model) === 1;
     }
 
     /**

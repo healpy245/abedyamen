@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Form;
 
+use App\Exceptions\FormWorkflowPausedException;
+use App\Services\Haat\KamanHttp;
+use App\Services\Haat\KamanMenuWriter;
+use App\Services\Haat\KamanPublicMenuScraper;
 use App\Support\KamanUrl;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -15,10 +19,28 @@ final class FormMenuAgentService
 
     public const MAX_BATCH_REQUESTS = 80;
 
-    public const MAX_ATTACHMENTS = 20;
+    public const MAX_ATTACHMENTS = 50;
+
+    /** @var callable(array<string, mixed>): void */
+    private $emit;
+
+    /** @var list<array{name: string, path: string, mime: string, kind?: string}> */
+    private array $turnAttachments = [];
+
+    private string $turnApiKey = '';
+
+    /** @var array<string, mixed>|null */
+    private ?array $turnDraft = null;
+
+    private bool $mealPhotosHandled = false;
+
+    private string $mealPhotoReport = '';
 
     public function __construct(
         private readonly FormMenuDrinkCatalog $drinks,
+        private readonly WoltMenuSource $wolt,
+        private readonly KamanPublicMenuScraper $publicMenus,
+        private readonly KamanMenuWriter $writer,
     ) {
     }
 
@@ -41,11 +63,58 @@ final class FormMenuAgentService
         if ($apiKey === '') {
             throw new \RuntimeException('OpenAI API key is not configured.');
         }
+        $this->emit = $emit;
+        $runId = isset($memory['run_id']) && is_numeric($memory['run_id']) ? (int) $memory['run_id'] : 0;
+        $generation = isset($memory['worker_generation']) && is_numeric($memory['worker_generation'])
+            ? (int) $memory['worker_generation']
+            : null;
+        if ($runId > 0) {
+            KamanHttp::bind($runId, function (string $step, string $message) use ($emit): void {
+                $emit([
+                    'event' => 'status',
+                    'message' => $message,
+                ]);
+            }, $generation);
+        }
 
+        try {
+            return $this->executeTurn($history, $newAttachments, $token, $baseUrl, $emit, $memory, $apiKey);
+        } finally {
+            KamanHttp::unbind();
+        }
+    }
+
+    /**
+     * @param  list<array{role: string, content: string}>  $history
+     * @param  list<array{name: string, path: string, mime: string}>  $newAttachments
+     * @param  array<string, mixed>  $memory
+     * @param  callable(array<string, mixed>): void  $emit
+     * @return array{reply: string, tool_calls: list<array<string, mixed>>, attachments: list<array{name: string, path: string, mime: string}>, menu_draft: ?array}
+     */
+    private function executeTurn(
+        array $history,
+        array $newAttachments,
+        string $token,
+        string $baseUrl,
+        callable $emit,
+        array $memory,
+        string $apiKey,
+    ): array {
         $attachments = $this->mergeAttachments($memory['attachments'] ?? [], $newAttachments);
         $draft = is_array($memory['menu_draft'] ?? null) ? $memory['menu_draft'] : null;
         $userText = $this->latestUserText($history);
-        $hasNewFiles = $newAttachments !== [];
+        $menuAttachments = $this->menuAttachments($attachments);
+        $hasNewMenuFiles = $this->menuAttachments($newAttachments) !== [];
+        $this->turnAttachments = $attachments;
+        $this->turnApiKey = $apiKey;
+        $this->turnDraft = $draft;
+        $this->mealPhotosHandled = false;
+        $this->mealPhotoReport = '';
+        $sourceUrl = $this->resolveMenuSource($userText, $history, $memory);
+
+        if ($sourceUrl !== null) {
+            return $this->importLinkedMenu($sourceUrl, $token, $baseUrl, $emit, $attachments, $draft);
+        }
 
         if ($this->wantsDedupe($userText)) {
             $emit([
@@ -68,14 +137,15 @@ final class FormMenuAgentService
             ];
         }
 
-        if ($attachments !== [] && ($hasNewFiles || $draft === null)) {
+        if ($menuAttachments !== [] && ($hasNewMenuFiles || $draft === null)) {
             $emit([
                 'event' => 'status',
-                'message' => 'Reading '.count($attachments).' menu file'.(count($attachments) === 1 ? '' : 's').'…',
+                'message' => 'Reading '.count($menuAttachments).' menu file'.(count($menuAttachments) === 1 ? '' : 's').'…',
             ]);
-            $extracted = $this->extractMenu($attachments, $userText, $emit);
+            $extracted = $this->extractMenu($menuAttachments, $userText, $emit);
             if ($extracted !== null) {
                 $draft = $extracted;
+                $this->turnDraft = $draft;
                 $counts = $this->draftCounts($draft);
                 $emit([
                     'event' => 'status',
@@ -84,13 +154,25 @@ final class FormMenuAgentService
             }
         }
 
-        if ($draft !== null && $this->wantsFullStore($userText, $hasNewFiles)) {
+        $photoResult = $this->matchMealPhotosIfNeeded($newAttachments, $attachments, $userText, $token, $baseUrl, $emit, $draft, $apiKey);
+        if ($photoResult !== null) {
+            $draft = $photoResult['menu_draft'];
+            $this->turnDraft = $draft;
+            $this->mealPhotosHandled = true;
+            $this->mealPhotoReport = $photoResult['reply'];
+        }
+
+        if ($draft !== null && $this->wantsFullStore($userText, $hasNewMenuFiles)) {
             $emit([
                 'event' => 'status',
                 'message' => 'Storing every category and meal…',
             ]);
             $wrote = $this->writeFullMenu($draft, $token, $baseUrl, $emit);
             $reply = $this->formatReport($draft, $wrote);
+            if ($this->mealPhotoReport !== '') {
+                $reply .= "\n\n".$this->mealPhotoReport;
+                $wrote['tool_calls'] = array_merge($photoResult['tool_calls'] ?? [], $wrote['tool_calls']);
+            }
 
             $emit([
                 'event' => 'message',
@@ -103,6 +185,15 @@ final class FormMenuAgentService
                 'attachments' => $attachments,
                 'menu_draft' => $draft,
             ];
+        }
+
+        if ($photoResult !== null && ! $this->textAsksForMoreThanPhotos($userText)) {
+            $emit([
+                'event' => 'message',
+                'reply' => $photoResult['reply'],
+            ]);
+
+            return $photoResult;
         }
 
         $messages = $this->buildMessages($history, $attachments, $baseUrl, $draft);
@@ -118,7 +209,7 @@ final class FormMenuAgentService
             ]);
 
             $choice = $this->chatCompletions($apiKey, $messages, $tools, [
-                'model' => (string) (config('openai.default_model') ?: 'gpt-4o-mini'),
+                'model' => (string) (config('openai.menu_agent_model') ?: 'gpt-5.6'),
             ], $emit);
             $toolCalls = $choice['tool_calls'] ?? null;
 
@@ -165,6 +256,9 @@ final class FormMenuAgentService
                 ]);
 
                 $result = $this->executeTool($name, $arguments, $token, $baseUrl);
+                if ($name === 'assign_meal_photos' && is_array($this->turnDraft)) {
+                    $draft = $this->turnDraft;
+                }
                 $toolCallsLog[] = [
                     'name' => $name,
                     'arguments' => $this->publicArguments($name, $arguments),
@@ -220,6 +314,7 @@ final class FormMenuAgentService
                 'name' => (string) ($row['name'] ?? 'file'),
                 'path' => $path,
                 'mime' => (string) ($row['mime'] ?? ''),
+                'kind' => ($row['kind'] ?? '') === 'meal_photo' ? 'meal_photo' : 'menu',
             ];
         }
 
@@ -238,6 +333,416 @@ final class FormMenuAgentService
         }
 
         return '';
+    }
+
+    private function menuSourceUrl(string $text): ?string
+    {
+        if (preg_match('#https?://[^\s<>"\']+#iu', $text, $match) !== 1) {
+            return null;
+        }
+        $url = rtrim($match[0], '.,);]');
+        if (str_contains($url, '…') || str_ends_with($url, '...')) {
+            return null;
+        }
+        if ($this->wolt->isWoltUrl($url)) {
+            $path = (string) parse_url($url, PHP_URL_PATH);
+            if (preg_match('#/restaurant/[^/]+#', $path) !== 1) {
+                return null;
+            }
+
+            return $url;
+        }
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        if (str_contains($host, 'kaman.') && str_contains($path, '/menu')) {
+            return $url;
+        }
+
+        return null;
+    }
+
+    private function wantsMenuImport(string $text): bool
+    {
+        return preg_match('/build|copy|paste|import|scrape|analy[sz]e|from scratch|انسخ|حلل|ابن|תעתיק|תבנה|העתק|העתקה/u', mb_strtolower($text)) === 1;
+    }
+
+    public function wantsLinkedMenuWork(string $text): bool
+    {
+        return $this->wantsMenuImport($text) || $this->wantsMenuRepair($text);
+    }
+
+    public function shouldCopyLinkedMenu(array $history, array $memory = []): bool
+    {
+        return $this->resolveMenuSource($this->latestUserText($history), $history, $memory) !== null;
+    }
+
+    /**
+     * @param  list<array{role?: string, content?: string}>  $history
+     */
+    public function findMenuUrlInHistory(array $history): ?string
+    {
+        foreach ($history as $row) {
+            if (! is_array($row) || ($row['role'] ?? '') !== 'user') {
+                continue;
+            }
+            $url = $this->menuSourceUrl((string) ($row['content'] ?? ''));
+            if ($url !== null) {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    private function wantsMenuRepair(string $text): bool
+    {
+        $text = mb_strtolower($text);
+        if (preg_match('/translat|ترجم|תרגום/u', $text) === 1) {
+            return true;
+        }
+        $images = preg_match('/image|photo|picture|صور|صورة|תמונ/u', $text) === 1;
+        $languages = preg_match('/arabic|hebrew|english|عربي|עברית|אנגלית/u', $text) === 1;
+        $source = preg_match('/wolt|source link|menu link/u', $text) === 1;
+
+        return $images && ($languages || $source);
+    }
+
+    /**
+     * @param  list<array{role: string, content: string}>  $history
+     * @param  array<string, mixed>  $memory
+     */
+    private function resolveMenuSource(string $userText, array $history, array $memory): ?string
+    {
+        if (! $this->wantsLinkedMenuWork($userText)) {
+            return null;
+        }
+
+        $direct = $this->menuSourceUrl($userText);
+        if ($direct !== null) {
+            return $direct;
+        }
+
+        $fromHistory = $this->findMenuUrlInHistory($history);
+        if ($fromHistory !== null) {
+            return $fromHistory;
+        }
+
+        foreach ([(string) ($memory['source_url'] ?? ''), (string) ($memory['title'] ?? '')] as $extra) {
+            $url = $this->menuSourceUrl($extra);
+            if ($url !== null) {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array{name: string, path: string, mime: string}>  $attachments
+     * @param  array{categories?: list<array<string, mixed>>}|null  $draft
+     * @return array{reply: string, tool_calls: list<array<string, mixed>>, attachments: list<array{name: string, path: string, mime: string}>, menu_draft: ?array}
+     */
+    private function importLinkedMenu(string $url, string $token, string $baseUrl, callable $emit, array $attachments, ?array $draft): array
+    {
+        $emit([
+            'event' => 'status',
+            'message' => 'Opening the menu link…',
+        ]);
+
+        try {
+            $parsed = $this->wolt->isWoltUrl($url)
+                ? $this->wolt->parse($url)
+                : $this->publicMenus->scrape($url);
+            $parsed = $this->translateMenu($parsed, $emit);
+            $emit([
+                'event' => 'status',
+                'message' => 'Copying categories, meals, options, and photos…',
+            ]);
+            $report = $this->writer->write($baseUrl, $token, $parsed, true, function (string $step, string $message) use ($emit): void {
+                $emit([
+                    'event' => 'status',
+                    'message' => $message,
+                ]);
+            });
+            $reply = $this->importReport($report, $parsed);
+        } catch (FormWorkflowPausedException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('Menu link import failed', ['url' => $url, 'error' => $e->getMessage()]);
+            $reply = 'The menu link could not be copied: '.$e->getMessage();
+        }
+
+        $emit([
+            'event' => 'message',
+            'reply' => $reply,
+        ]);
+
+        return [
+            'reply' => $reply,
+            'tool_calls' => [[
+                'name' => 'import_menu_url',
+                'arguments' => ['url' => $url],
+                'ok' => ! str_starts_with($reply, 'The menu link could not'),
+                'summary' => $reply,
+            ]],
+            'attachments' => $attachments,
+            'menu_draft' => $draft,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array{ok: bool, summary: string, content: string}
+     */
+    private function importMenuTool(array $arguments, string $token, string $baseUrl): array
+    {
+        $url = trim((string) ($arguments['url'] ?? ''));
+        if ($this->menuSourceUrl($url) === null) {
+            return [
+                'ok' => false,
+                'summary' => 'URL is not a Wolt restaurant or a public Kaman menu',
+                'content' => json_encode(['error' => 'unsupported url'], JSON_UNESCAPED_UNICODE),
+            ];
+        }
+
+        $result = $this->importLinkedMenu($url, $token, $baseUrl, $this->emit, [], null);
+
+        return [
+            'ok' => (bool) ($result['tool_calls'][0]['ok'] ?? false),
+            'summary' => (string) $result['reply'],
+            'content' => $this->jsonForModel(['reply' => $result['reply']], 8000),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
+     * @return array<string, mixed>
+     */
+    private function translateMenu(array $parsed, callable $emit): array
+    {
+        $rows = [];
+        foreach (['categories', 'meals', 'unique_ingredient_categories', 'unique_ingredients'] as $list) {
+            foreach ($parsed[$list] ?? [] as $index => $row) {
+                if (! is_array($row) || ! $this->needsTranslation($row)) {
+                    continue;
+                }
+                $id = (string) ($row['haat_id'] ?? $row['title'] ?? $index);
+                $rows[] = [
+                    'id' => $list.':'.$id,
+                    'name' => $this->sourceText($row, 'name'),
+                    'description' => $this->sourceText($row, 'description'),
+                ];
+            }
+        }
+        if ($rows === []) {
+            return $parsed;
+        }
+
+        $emit([
+            'event' => 'status',
+            'message' => 'Translating names into Arabic, Hebrew, and English…',
+        ]);
+
+        $translated = [];
+        $chunks = array_chunk($rows, 12);
+        foreach ($chunks as $index => $chunk) {
+            $emit([
+                'event' => 'status',
+                'message' => 'Translating names '.(($index * 12) + 1).'–'.min(count($rows), ($index + 1) * 12).' of '.count($rows).'…',
+            ]);
+            $translated += $this->translateMenuChunk($chunk);
+            $missing = array_values(array_filter($chunk, fn (array $row): bool => ! isset($translated[$row['id']])));
+            if ($missing !== []) {
+                $translated += $this->translateMenuChunk($missing);
+            }
+        }
+        $emit([
+            'event' => 'status',
+            'message' => 'Translated '.count($translated).' of '.count($rows).' names.',
+        ]);
+
+        foreach (['categories', 'meals', 'unique_ingredient_categories', 'unique_ingredients'] as $list) {
+            foreach ($parsed[$list] ?? [] as $index => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $id = $list.':'.(string) ($row['haat_id'] ?? $row['title'] ?? $index);
+                $parsed[$list][$index] = $this->applyTranslation($row, $translated[$id] ?? null);
+            }
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    /**
+     * @param  list<array{id: string, name: string, description: string}>  $rows
+     * @return array<string, array<string, mixed>>
+     */
+    private function translateMenuChunk(array $rows): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+
+        try {
+            $choice = $this->chatCompletions(trim((string) config('openai.api_key')), [
+                ['role' => 'system', 'content' => 'Translate each restaurant menu row into Arabic, Hebrew, and English. Return only JSON {"rows":[{"id":"","name_ar":"","name_en":"","name_he":"","description_ar":"","description_en":"","description_he":""}]}. Keep the source text in its own language. Arabic must use Arabic letters. Hebrew must use Hebrew letters. English must use Latin letters. Do not copy one language into the other fields.'],
+                ['role' => 'user', 'content' => $this->jsonForModel(['rows' => $rows], 20000)],
+            ], null, [
+                'temperature' => 0.2,
+                'max_tokens' => 8000,
+                'reasoning_effort' => 'low',
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Menu translation failed', ['error' => $e->getMessage()]);
+
+            return [];
+        }
+
+        $content = trim((string) ($choice['content'] ?? ''));
+        $content = preg_replace('/^```(?:json)?\s*|\s*```$/u', '', $content) ?? $content;
+        $decoded = $this->decodeMaybeJson($content);
+        if (! is_array($decoded) && preg_match('/\{.*\}/su', $content, $match) === 1) {
+            $decoded = json_decode($match[0], true);
+        }
+        $byId = [];
+        foreach ($rows as $row) {
+            $byId[$row['id']] = $row;
+        }
+        $accepted = [];
+        foreach (is_array($decoded) ? ($decoded['rows'] ?? []) : [] as $row) {
+            if (! is_array($row) || ! isset($row['id'], $byId[(string) $row['id']])) {
+                continue;
+            }
+            $source = $byId[(string) $row['id']];
+            if (! $this->translationAccepted((string) $source['name'], $row)) {
+                continue;
+            }
+            $accepted[(string) $row['id']] = $row;
+        }
+
+        return $accepted;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function translationAccepted(string $source, array $row): bool
+    {
+        $ar = trim((string) ($row['name_ar'] ?? ''));
+        $en = trim((string) ($row['name_en'] ?? ''));
+        $he = trim((string) ($row['name_he'] ?? ''));
+        if ($ar === '' || $en === '' || $he === '' || ($ar === $source && $en === $source && $he === $source)) {
+            return false;
+        }
+        if (preg_match('/\p{Hebrew}/u', $source) === 1) {
+            return preg_match('/\p{Arabic}/u', $ar) === 1
+                && preg_match('/[A-Za-z]/', $en) === 1
+                && preg_match('/\p{Hebrew}/u', $he) === 1;
+        }
+        if (preg_match('/\p{Arabic}/u', $source) === 1) {
+            return preg_match('/\p{Hebrew}/u', $he) === 1 && preg_match('/[A-Za-z]/', $en) === 1;
+        }
+
+        return preg_match('/\p{Arabic}/u', $ar) === 1 && preg_match('/\p{Hebrew}/u', $he) === 1;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function needsTranslation(array $row): bool
+    {
+        $names = [];
+        foreach (['name_ar', 'name_en', 'name_he'] as $field) {
+            $names[] = trim((string) ($row[$field] ?? ''));
+        }
+        if (in_array('', $names, true)) {
+            return true;
+        }
+
+        return $names[0] === $names[1] && $names[1] === $names[2];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function sourceText(array $row, string $prefix): string
+    {
+        foreach ([$prefix.'_he', $prefix.'_ar', $prefix.'_en', $prefix] as $field) {
+            $value = trim((string) ($row[$field] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>|null  $translation
+     * @return array<string, mixed>
+     */
+    private function applyTranslation(array $row, ?array $translation): array
+    {
+        foreach (['name', 'description'] as $prefix) {
+            $source = $this->sourceText($row, $prefix);
+            if ($source === '' && $prefix === 'description') {
+                continue;
+            }
+            foreach (['ar', 'en', 'he'] as $code) {
+                $field = $prefix.'_'.$code;
+                if (! array_key_exists($field, $row) && $prefix === 'description') {
+                    continue;
+                }
+                $value = trim((string) ($translation[$field] ?? ''));
+                if ($value === '') {
+                    $value = trim((string) ($row[$field] ?? ''));
+                }
+                if ($value === '') {
+                    $value = $source;
+                }
+                $row[$field] = $value;
+            }
+        }
+
+        return $row;
+    }
+
+    /**
+     * @param  array<string, mixed>  $report
+     * @param  array<string, mixed>  $parsed
+     */
+    private function importReport(array $report, array $parsed): string
+    {
+        $photos = [];
+        foreach ($parsed['meals'] ?? [] as $meal) {
+            if (is_array($meal) && is_string($meal['image_url'] ?? null) && $meal['image_url'] !== '') {
+                $photos[(string) $meal['haat_id']] = true;
+            }
+        }
+        $createdPhotos = 0;
+        foreach ($report['meals']['created'] ?? [] as $row) {
+            if (is_array($row) && isset($photos[(string) ($row['haat_id'] ?? '')])) {
+                $createdPhotos++;
+            }
+        }
+
+        $lines = [
+            'Copied the menu from the link.',
+            count($report['categories']['created'] ?? []).' categories created, '.count($report['categories']['reused'] ?? []).' already there.',
+            count($report['meals']['created'] ?? []).' meals created, '.count($report['meals']['reused'] ?? []).' already there, '.$createdPhotos.' photos copied.',
+            count($report['ingredient_categories']['created'] ?? []).' option groups and '.count($report['ingredients']['created'] ?? []).' choices created.',
+        ];
+        $failed = count($report['meals']['failed'] ?? []) + count($report['categories']['failed'] ?? []);
+        if ($failed > 0) {
+            $lines[] = $failed.' rows failed. Say what to fix and I will patch them.';
+        }
+
+        return implode("\n", $lines);
     }
 
     private function wantsDedupe(string $text): bool
@@ -262,6 +767,624 @@ final class FormMenuAgentService
         }
 
         return preg_match('/store|save|create|add all|the rest|remaining|every meal|all meals|خزن|احفظ|أضف كل|כל המנות/u', $t) === 1;
+    }
+
+    private function wantsMealPhotoMatch(string $text): bool
+    {
+        return preg_match(
+            '/meal photos?|meal images?|match (these |the )?(photos?|images?|pictures?)|assign (these |the )?(photos?|images?|pictures?)|طابق|صور الوجبات|اربط الصور|התאם|תמונות מנות|שייך/u',
+            mb_strtolower($text)
+        ) === 1;
+    }
+
+    private function textAsksForMoreThanPhotos(string $text): bool
+    {
+        return preg_match(
+            '/\b(price|rename|delete|duplicates?|dedupe|translate|categor(?:y|ies))\b|سعر|احذف|ترجم|قسم|מחיר|מחק|תרגם|קטגור/u',
+            mb_strtolower($text)
+        ) === 1;
+    }
+
+    /**
+     * @param  list<array{name: string, path: string, mime: string, kind?: string}>  $newAttachments
+     * @param  list<array{name: string, path: string, mime: string, kind?: string}>  $attachments
+     * @param  array<string, mixed>|null  $draft
+     * @return array{reply: string, tool_calls: list<array<string, mixed>>, attachments: list<array{name: string, path: string, mime: string, kind?: string}>, menu_draft: ?array}|null
+     */
+    private function matchMealPhotosIfNeeded(
+        array $newAttachments,
+        array $attachments,
+        string $userText,
+        string $token,
+        string $baseUrl,
+        callable $emit,
+        ?array $draft,
+        string $apiKey,
+    ): ?array {
+        $incoming = array_values(array_filter($newAttachments, fn (array $row): bool => $this->isMealPhoto($row)));
+        $photos = $incoming;
+        if ($photos === [] && $this->wantsMealPhotoMatch($userText)) {
+            $photos = array_values(array_filter($attachments, fn (array $row): bool => $this->isMealPhoto($row)));
+        }
+        if ($photos === []) {
+            return null;
+        }
+
+        $matched = $this->matchAndUploadMealPhotos($photos, $token, $baseUrl, $emit, $draft, $apiKey);
+
+        return [
+            'reply' => $matched['reply'],
+            'tool_calls' => $matched['tool_calls'],
+            'attachments' => $attachments,
+            'menu_draft' => $matched['menu_draft'],
+        ];
+    }
+
+    /**
+     * @param  list<array{name: string, path: string, mime: string, kind?: string}>  $photos
+     * @param  array<string, mixed>|null  $draft
+     * @return array{reply: string, tool_calls: list<array<string, mixed>>, menu_draft: ?array}
+     */
+    private function matchAndUploadMealPhotos(
+        array $photos,
+        string $token,
+        string $baseUrl,
+        callable $emit,
+        ?array $draft,
+        string $apiKey,
+    ): array {
+        $emit([
+            'event' => 'status',
+            'message' => 'Matching '.count($photos).' meal photo'.(count($photos) === 1 ? '' : 's').'…',
+        ]);
+
+        $candidates = $this->mealPhotoCandidates($token, $baseUrl, $draft);
+        if ($candidates === []) {
+            return [
+                'reply' => 'No meals to match yet. Store the menu first, then upload the meal photos again.',
+                'tool_calls' => [],
+                'menu_draft' => $draft,
+            ];
+        }
+
+        $filenameHits = $this->filenameMealMatches($photos, $candidates);
+        $usedMeals = [];
+        foreach ($filenameHits as $candidateIndex) {
+            $usedMeals[$candidateIndex] = true;
+        }
+
+        $visionIndexes = [];
+        foreach ($photos as $index => $photo) {
+            if (! isset($filenameHits[$index])) {
+                $visionIndexes[] = $index;
+            }
+        }
+
+        $visionHits = [];
+        if ($visionIndexes !== []) {
+            $emit([
+                'event' => 'status',
+                'message' => count($filenameHits).' matched by file name. Looking at '.count($visionIndexes).' photo'.(count($visionIndexes) === 1 ? '' : 's').'…',
+            ]);
+            $visionHits = $this->visionMealMatches($photos, $visionIndexes, $candidates, $usedMeals, $apiKey, $emit);
+        }
+
+        $toolCalls = [];
+        $byName = [];
+        $byVision = [];
+        $unmatched = [];
+        $linkedDraft = [];
+
+        foreach ($photos as $index => $photo) {
+            $candidateIndex = $filenameHits[$index] ?? $visionHits[$index] ?? null;
+            $via = isset($filenameHits[$index]) ? 'name' : (isset($visionHits[$index]) ? 'vision' : null);
+            if ($candidateIndex === null || ! isset($candidates[$candidateIndex]) || $via === null) {
+                $unmatched[] = (string) $photo['name'];
+                continue;
+            }
+
+            $candidate = $candidates[$candidateIndex];
+            $label = $this->candidateLabel($candidate);
+            $line = (string) $photo['name'].' → '.$label;
+            if ($via === 'name') {
+                $byName[] = $line;
+            } else {
+                $byVision[] = $line;
+            }
+
+            $id = (string) ($candidate['id'] ?? '');
+            if ($id !== '') {
+                $sent = $this->uploadMealPhoto($candidate, (string) $photo['path'], $token, $baseUrl);
+                $this->trackHttp($emit, $toolCalls, 'PUT', '/items/'.$id, $sent, true);
+                if (! $sent['ok']) {
+                    $line = $line.' (upload failed, HTTP '.$sent['status'].')';
+                    if ($via === 'name') {
+                        $byName[array_key_last($byName)] = $line;
+                    } else {
+                        $byVision[array_key_last($byVision)] = $line;
+                    }
+                }
+            }
+
+            $draftPointer = $candidate['draft'] ?? null;
+            if (is_array($draftPointer) && is_array($draft)) {
+                [$categoryIndex, $mealIndex] = $draftPointer;
+                if (isset($draft['categories'][$categoryIndex]['meals'][$mealIndex]) && is_array($draft['categories'][$categoryIndex]['meals'][$mealIndex])) {
+                    $draft['categories'][$categoryIndex]['meals'][$mealIndex]['image_path'] = (string) $photo['path'];
+                    if ($id === '') {
+                        $linkedDraft[] = $line;
+                    }
+                }
+            }
+        }
+
+        $matchedCount = count($byName) + count($byVision);
+        $lines = [
+            'Matched '.$matchedCount.' of '.count($photos).' meal photo'.(count($photos) === 1 ? '' : 's').'.',
+        ];
+        if ($byName !== []) {
+            $lines[] = '';
+            $lines[] = 'By file name:';
+            foreach ($byName as $line) {
+                $lines[] = '- '.$line;
+            }
+        }
+        if ($byVision !== []) {
+            $lines[] = '';
+            $lines[] = 'By looking at the photo:';
+            foreach ($byVision as $line) {
+                $lines[] = '- '.$line;
+            }
+        }
+        if ($linkedDraft !== []) {
+            $lines[] = '';
+            $lines[] = 'These are linked to meals that are not on the dashboard yet. They upload when those meals are stored.';
+        }
+        if ($unmatched !== []) {
+            $lines[] = '';
+            $lines[] = 'No confident match:';
+            foreach ($unmatched as $name) {
+                $lines[] = '- '.$name;
+            }
+        }
+
+        return [
+            'reply' => implode("\n", $lines),
+            'tool_calls' => $toolCalls,
+            'menu_draft' => $draft,
+        ];
+    }
+
+    /**
+     * @param  list<array{name: string, path: string, mime: string, kind?: string}>  $rows
+     * @return list<array{name: string, path: string, mime: string, kind?: string}>
+     */
+    private function menuAttachments(array $rows): array
+    {
+        return array_values(array_filter($rows, fn (array $row): bool => ! $this->isMealPhoto($row)));
+    }
+
+    /**
+     * @param  array{name?: string, path?: string, mime?: string, kind?: string}  $row
+     */
+    private function isMealPhoto(array $row): bool
+    {
+        if (($row['kind'] ?? '') !== 'meal_photo') {
+            return false;
+        }
+        $mime = (string) ($row['mime'] ?? '');
+        if (str_starts_with($mime, 'image/')) {
+            return true;
+        }
+        $name = strtolower((string) ($row['name'] ?? ''));
+
+        return preg_match('/\.(jpe?g|png|gif|webp)$/', $name) === 1;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $draft
+     * @return list<array{token: string, id: string, names: list<string>, description: string, row: array<string, mixed>, draft: ?array{0: int, 1: int}}>
+     */
+    private function mealPhotoCandidates(string $token, string $baseUrl, ?array $draft): array
+    {
+        $candidates = [];
+        $byKey = [];
+        foreach ($this->fetchPaged($token, $baseUrl, '/items') as $item) {
+            $names = $this->rowNames($item);
+            $key = $this->firstNameKey($names);
+            $description = trim((string) ($item['description_en'] ?? ''));
+            if ($description === '') {
+                $description = trim((string) ($item['description_ar'] ?? ''));
+            }
+            $candidates[] = [
+                'token' => $this->rowId($item),
+                'id' => $this->rowId($item),
+                'names' => $names,
+                'description' => $description,
+                'row' => $item,
+                'draft' => null,
+            ];
+            if ($key !== '') {
+                $byKey[$key] = count($candidates) - 1;
+            }
+        }
+
+        foreach ($draft['categories'] ?? [] as $categoryIndex => $category) {
+            if (! is_array($category)) {
+                continue;
+            }
+            foreach ($category['meals'] ?? [] as $mealIndex => $meal) {
+                if (! is_array($meal)) {
+                    continue;
+                }
+                $names = $this->rowNames($meal);
+                $key = $this->firstNameKey($names);
+                $description = trim((string) ($meal['description_en'] ?? $meal['description_ar'] ?? ''));
+                if ($key !== '' && isset($byKey[$key])) {
+                    $candidates[$byKey[$key]]['draft'] = [(int) $categoryIndex, (int) $mealIndex];
+                    if ($candidates[$byKey[$key]]['description'] === '' && $description !== '') {
+                        $candidates[$byKey[$key]]['description'] = $description;
+                    }
+                    continue;
+                }
+                $candidates[] = [
+                    'token' => 'draft:'.$categoryIndex.':'.$mealIndex,
+                    'id' => '',
+                    'names' => $names,
+                    'description' => $description,
+                    'row' => $meal,
+                    'draft' => [(int) $categoryIndex, (int) $mealIndex],
+                ];
+                if ($key !== '') {
+                    $byKey[$key] = count($candidates) - 1;
+                }
+            }
+        }
+
+        return array_values(array_filter($candidates, fn (array $candidate): bool => $this->firstNameKey($candidate['names']) !== ''));
+    }
+
+    /**
+     * @param  list<string>  $names
+     */
+    private function firstNameKey(array $names): string
+    {
+        foreach ($names as $name) {
+            $key = $this->nameKey((string) $name);
+            if ($key !== '') {
+                return $key;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @param  list<array{name: string, path: string, mime: string}>  $photos
+     * @param  list<array{names: list<string>}>  $candidates
+     * @return array<int, int> photo index => candidate index
+     */
+    private function filenameMealMatches(array $photos, array $candidates): array
+    {
+        $pairs = [];
+        foreach ($photos as $photoIndex => $photo) {
+            $scores = [];
+            foreach ($candidates as $candidateIndex => $candidate) {
+                $score = $this->scoreFilename((string) $photo['name'], $candidate['names']);
+                if ($score > 0) {
+                    $scores[] = ['index' => $candidateIndex, 'score' => $score];
+                }
+            }
+            usort($scores, static fn (array $a, array $b): int => $b['score'] <=> $a['score']);
+            $best = $scores[0]['score'] ?? 0;
+            $second = $scores[1]['score'] ?? 0;
+            $confident = ($best >= 100 && $second < 100) || ($best >= 86 && ($best - $second) >= 12);
+            if ($confident) {
+                $pairs[] = [
+                    'photo' => $photoIndex,
+                    'candidate' => $scores[0]['index'],
+                    'score' => $best,
+                ];
+            }
+        }
+
+        usort($pairs, static fn (array $a, array $b): int => $b['score'] <=> $a['score']);
+        $takenPhotos = [];
+        $takenMeals = [];
+        $hits = [];
+        foreach ($pairs as $pair) {
+            if (isset($takenPhotos[$pair['photo']]) || isset($takenMeals[$pair['candidate']])) {
+                continue;
+            }
+            $takenPhotos[$pair['photo']] = true;
+            $takenMeals[$pair['candidate']] = true;
+            $hits[$pair['photo']] = $pair['candidate'];
+        }
+
+        return $hits;
+    }
+
+    /**
+     * @param  list<string>  $names
+     */
+    private function scoreFilename(string $filename, array $names): int
+    {
+        $stem = $this->filenameStem($filename);
+        $stemKey = $this->nameKey($stem);
+        $stemWords = $this->nameWords($stem);
+        if ($stemKey === '' || mb_strlen($stemKey) < 3) {
+            return 0;
+        }
+
+        $best = 0;
+        foreach ($names as $name) {
+            $name = trim((string) $name);
+            if ($name === '') {
+                continue;
+            }
+            $key = $this->nameKey($name);
+            if ($key !== '' && $key === $stemKey) {
+                return 100;
+            }
+            $mealWords = $this->nameWords($name);
+            if ($stemWords !== [] && $mealWords !== [] && $this->wordsCover($stemWords, $mealWords)) {
+                $best = max($best, count($stemWords) === count($mealWords) ? 100 : 90);
+            }
+            if ($key !== '' && $stemKey !== '' && preg_match('/[^\x00-\x7F]/', $stemKey.$key) !== 1) {
+                similar_text($stemKey, $key, $percent);
+                if ($percent >= 90) {
+                    $best = max($best, (int) round($percent));
+                }
+            }
+        }
+
+        return $best;
+    }
+
+    private function filenameStem(string $filename): string
+    {
+        $base = pathinfo($filename, PATHINFO_FILENAME);
+        $base = str_replace(['_', '-', '.'], ' ', $base);
+        $base = preg_replace('/\b(img|image|images|photo|photos|pic|pics|dsc|whatsapp|copy|final|edited)\b/iu', ' ', $base) ?? $base;
+        $base = preg_replace('/\b\d{3,}\b/u', ' ', $base) ?? $base;
+        $base = preg_replace('/\s+/u', ' ', $base) ?? $base;
+
+        return trim($base);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function nameWords(string $value): array
+    {
+        $words = [];
+        foreach (preg_split('/\s+/u', trim($value)) ?: [] as $word) {
+            $key = $this->nameKey((string) $word);
+            if (mb_strlen($key) >= 3) {
+                $words[] = $key;
+            }
+        }
+
+        return array_values(array_unique($words));
+    }
+
+    /**
+     * @param  list<string>  $needles
+     * @param  list<string>  $haystack
+     */
+    private function wordsCover(array $needles, array $haystack): bool
+    {
+        foreach ($needles as $needle) {
+            if (! in_array($needle, $haystack, true)) {
+                return false;
+            }
+        }
+
+        return $needles !== [];
+    }
+
+    /**
+     * @param  list<array{name: string, path: string}>  $photos
+     * @param  list<int>  $photoIndexes
+     * @param  list<array{token: string, id: string, names: list<string>, description: string}>  $candidates
+     * @param  array<int, true>  $usedMeals
+     * @return array<int, int>
+     */
+    private function visionMealMatches(
+        array $photos,
+        array $photoIndexes,
+        array $candidates,
+        array $usedMeals,
+        string $apiKey,
+        callable $emit,
+    ): array {
+        $open = [];
+        foreach ($candidates as $index => $candidate) {
+            if (! isset($usedMeals[$index])) {
+                $open[$index] = $candidate;
+            }
+        }
+        if ($open === [] || $apiKey === '') {
+            return [];
+        }
+
+        $menuLines = [];
+        foreach ($open as $candidate) {
+            $names = array_values(array_filter(array_map('trim', $candidate['names']), static fn (string $name): bool => $name !== ''));
+            $desc = trim((string) ($candidate['description'] ?? ''));
+            $menuLines[] = 'id '.$candidate['token'].' | '.implode(' | ', $names).($desc !== '' ? ' | '.$this->truncate($desc, 120) : '');
+        }
+        $menu = implode("\n", $menuLines);
+        $hits = [];
+
+        foreach (array_chunk($photoIndexes, 4) as $chunk) {
+            $content = [[
+                'type' => 'text',
+                'text' => "Match each food photo to the restaurant meal it depicts.\n"
+                    ."Filename is a hint. When the file name and the picture disagree, trust the picture.\n"
+                    ."Pick the meal the photo resembles most. Use null when nothing is a reasonable match.\n"
+                    ."Each meal id may be used once.\n\nMeals:\n{$menu}\n\n"
+                    ."Return JSON only: {\"matches\":[{\"file\":\"exact-filename.jpg\",\"item_id\":\"id or null\"}]}",
+            ]];
+            $batchPhotos = [];
+            foreach ($chunk as $offset => $photoIndex) {
+                $photo = $photos[$photoIndex];
+                $batchPhotos[] = $photo;
+                $content[] = ['type' => 'text', 'text' => 'Image '.($offset + 1).' filename: '.$photo['name']];
+                $prepared = $this->prepareVisionImage((string) $photo['path']);
+                $block = $this->toVisionInput($prepared, 'low');
+                $content[] = $block;
+            }
+
+            try {
+                $choice = $this->chatCompletions($apiKey, [
+                    ['role' => 'system', 'content' => 'You match restaurant meal photos to menu items. Output valid JSON only.'],
+                    ['role' => 'user', 'content' => $content],
+                ], null, [
+                    'model' => (string) (config('openai.vision_model') ?: 'gpt-4o'),
+                    'max_tokens' => 800,
+                    'temperature' => 0.1,
+                ], $emit);
+            } catch (\Throwable $e) {
+                Log::warning('Menu agent meal photo vision failed', ['error' => $e->getMessage()]);
+                continue;
+            }
+
+            $mapping = $this->parseMealPhotoMapping((string) ($choice['content'] ?? ''));
+            foreach ($batchPhotos as $photo) {
+                $fileKey = mb_strtolower((string) $photo['name']);
+                $token = $mapping[$fileKey] ?? null;
+                if ($token === null || $token === '' || $token === 'null') {
+                    continue;
+                }
+                $candidateIndex = $this->candidateIndexForToken($token, $candidates);
+                if ($candidateIndex === null || isset($usedMeals[$candidateIndex]) || isset($hits[$this->photoIndexOf($photos, $photo)])) {
+                    continue;
+                }
+                $photoIndex = $this->photoIndexOf($photos, $photo);
+                if ($photoIndex === null) {
+                    continue;
+                }
+                $usedMeals[$candidateIndex] = true;
+                $hits[$photoIndex] = $candidateIndex;
+            }
+        }
+
+        return $hits;
+    }
+
+    /**
+     * @return array<string, string> lowercase filename => item token
+     */
+    private function parseMealPhotoMapping(string $response): array
+    {
+        $response = trim($response);
+        if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $response, $match) === 1) {
+            $response = trim($match[1]);
+        }
+        $decoded = json_decode($response, true);
+        if (! is_array($decoded)) {
+            if (preg_match('/\{[\s\S]*\}/', $response, $match) === 1) {
+                $decoded = json_decode($match[0], true);
+            }
+        }
+        $rows = is_array($decoded) ? ($decoded['matches'] ?? $decoded) : [];
+        if (! is_array($rows)) {
+            return [];
+        }
+        $mapping = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $file = mb_strtolower(trim((string) ($row['file'] ?? '')));
+            $token = trim((string) ($row['item_id'] ?? ''));
+            if ($file !== '' && $token !== '') {
+                $mapping[$file] = $token;
+            }
+        }
+
+        return $mapping;
+    }
+
+    /**
+     * @param  list<array{token: string, id: string, names: list<string>}>  $candidates
+     */
+    private function candidateIndexForToken(string $token, array $candidates): ?int
+    {
+        foreach ($candidates as $index => $candidate) {
+            if ($candidate['token'] === $token || ($candidate['id'] !== '' && $candidate['id'] === $token)) {
+                return $index;
+            }
+        }
+        $key = $this->nameKey($token);
+        if ($key === '') {
+            return null;
+        }
+        foreach ($candidates as $index => $candidate) {
+            foreach ($candidate['names'] as $name) {
+                if ($this->nameKey((string) $name) === $key) {
+                    return $index;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array{name: string, path: string}>  $photos
+     * @param  array{name: string, path: string}  $photo
+     */
+    private function photoIndexOf(array $photos, array $photo): ?int
+    {
+        foreach ($photos as $index => $row) {
+            if ($row['path'] === $photo['path'] && $row['name'] === $photo['name']) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{names: list<string>, id: string}  $candidate
+     */
+    private function candidateLabel(array $candidate): string
+    {
+        foreach ($candidate['names'] as $name) {
+            $name = trim((string) $name);
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        return '#'.($candidate['id'] !== '' ? $candidate['id'] : '?');
+    }
+
+    /**
+     * @param  array{id: string, row: array<string, mixed>}  $candidate
+     * @return array{ok: bool, status: int, content: string, with_image: bool}
+     */
+    private function uploadMealPhoto(array $candidate, string $imagePath, string $token, string $baseUrl): array
+    {
+        $row = $candidate['row'];
+        $categoryId = (string) ($row['category_id'] ?? ($row['category']['id'] ?? ''));
+        $body = [
+            'name_ar' => (string) ($row['name_ar'] ?? ''),
+            'name_en' => (string) ($row['name_en'] ?? ''),
+            'name_he' => (string) ($row['name_he'] ?? ''),
+            'description_ar' => (string) ($row['description_ar'] ?? ''),
+            'description_en' => (string) ($row['description_en'] ?? ''),
+            'description_he' => (string) ($row['description_he'] ?? ''),
+            'price' => $this->normalizePrice((string) ($row['price'] ?? '0')),
+            'category_id' => $categoryId,
+            'status' => (string) ($row['status'] ?? '1'),
+        ];
+
+        $body['_method'] = 'PUT';
+
+        return $this->sendKaman('POST', '/items/'.$candidate['id'], $body, $token, $baseUrl, $imagePath, false);
     }
 
     /**
@@ -484,7 +1607,10 @@ final class FormMenuAgentService
                     'description_ar' => (string) ($meal['description_ar'] ?? ''),
                     'description_he' => (string) ($meal['description_he'] ?? ''),
                 ];
-                $image = $this->drinks->imageFor($mealNames);
+                $uploaded = is_string($meal['image_path'] ?? null) && is_file($meal['image_path'])
+                    ? $meal['image_path']
+                    : null;
+                $image = $uploaded ?? $this->drinks->imageFor($mealNames);
                 $sent = $this->sendKaman('POST', '/items', $body, $token, $baseUrl, $image);
                 $this->trackHttp($emit, $toolCalls, 'POST', '/items', $sent, (bool) ($sent['with_image'] ?? false));
                 if ($sent['ok'] || $this->looksLikeDuplicate($sent)) {
@@ -1135,7 +2261,7 @@ final class FormMenuAgentService
             $extra[] = [
                 'type' => 'text',
                 'text' => "EXTRACTED MENU ALREADY IN THIS CHAT (do not ask to re-upload):\n"
-                    .$this->truncate(json_encode($draft, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}', 20000),
+                    .$this->jsonForModel($draft, 20000),
             ];
         }
 
@@ -1269,7 +2395,7 @@ final class FormMenuAgentService
     /**
      * @return array{type: string, image_url: array{url: string, detail: string}}
      */
-    private function toVisionInput(string $imagePath): array
+    private function toVisionInput(string $imagePath, string $detail = 'high'): array
     {
         $mime = mime_content_type($imagePath) ?: 'image/jpeg';
         $data = base64_encode((string) file_get_contents($imagePath));
@@ -1278,7 +2404,7 @@ final class FormMenuAgentService
             'type' => 'image_url',
             'image_url' => [
                 'url' => 'data:'.$mime.';base64,'.$data,
-                'detail' => 'high',
+                'detail' => $detail,
             ],
         ];
     }
@@ -1337,7 +2463,11 @@ Logged in:
 Use tools to patch, rename, create leftovers, or delete duplicates. Do not stop after a sample. If the job is to store a menu, every meal from every photo must be written — except names that already exist.
 
 Tools:
-- kaman_request: one HTTP call (GET, POST, PUT, PATCH, DELETE)
+- import_menu_url: open a Wolt restaurant link or a public Kaman /menu link and copy the whole menu, including photos, prices, and option groups. Never say you cannot open the page.
+- assign_meal_photos: match uploaded meal photos to meals by file name, then by looking at each photo, and upload the image onto the meal.
+- read_menu: the live menu (categories, meals, and option groups). Call this before any change.
+- edit_menu: apply chat edits to the live menu. Use this for rename, remove a phrase, change a price, change a description, or the same edit on many rows. Do not recreate meals to rename them.
+- kaman_request: one HTTP call (GET, POST, PUT, PATCH, DELETE) when edit_menu does not fit
 - kaman_request_many: many HTTP calls in order (bulk meals). Max 80 per call; call again for the rest.
 
 Paths are relative to /api/manager:
@@ -1352,6 +2482,17 @@ Paths are relative to /api/manager:
 - POST /ingredients  {name_en, name_ar, name_he}
 - DELETE /ingredients/{id}
 
+Menu links:
+- If the user pastes a Wolt link or a public menu link and asks to build, copy, analyze, or import it, call import_menu_url with that URL. Copy every category, meal, option, price, and photo. Do not ask for screenshots instead.
+
+Chat edits:
+- A sentence that changes the menu already stored (remove words, rename, reprice, fix a translation, move a meal to another section) is an edit, not a new import.
+- Call read_menu, then edit_menu. Match the user's words. Change only those rows and fields.
+- To move a meal, set category_id to the destination category id from read_menu.
+- remove_text strips a phrase from names. An Arabic phrase only hits Arabic names. Keep the rest of the name, including brand names.
+- target "items" is meals and drinks. "categories" is section titles. "choices" is option values (pita, hummus, large). "groups" is option questions (choose a size).
+- After edit_menu, answer in the user's language with what changed. Do not store the menu again.
+
 Rules:
 - Follow user instructions exactly (item name as description, dialect spellings, etc.).
 - Never mix Hebrew letters into Arabic, or Arabic letters into Hebrew.
@@ -1360,9 +2501,448 @@ Rules:
 - Before creating, GET existing rows. Skip any category, meal, or ingredient whose name already exists (any language). Do not POST duplicates.
 - If the user asks to delete duplicates, GET the list, group by name, keep the lowest id, DELETE the extras.
 - Known drinks (cola, sprite, water, pepsi, fanta, …) are stored with catalog images automatically on POST /items.
+- Meal photos uploaded with the Meal photos button are matched and uploaded for you. Do not ask the user to re-upload them. Call assign_meal_photos only when the user asks to match meal photos that are already in this chat and they were not matched yet.
 - After writes, list counts per category, not a partial sample.
 - If something is ambiguous, pick the smallest reasonable choice and mention it.
 PROMPT;
+    }
+
+    /**
+     * @return array{ok: bool, summary: string, content: string}
+     */
+    private function assignMealPhotosTool(string $token, string $baseUrl): array
+    {
+        if ($this->mealPhotosHandled) {
+            $reply = $this->mealPhotoReport !== '' ? $this->mealPhotoReport : 'Meal photos were already matched in this turn.';
+
+            return [
+                'ok' => true,
+                'summary' => 'Meal photos already matched',
+                'content' => $reply,
+            ];
+        }
+
+        $photos = array_values(array_filter($this->turnAttachments, fn (array $row): bool => $this->isMealPhoto($row)));
+        if ($photos === []) {
+            return [
+                'ok' => false,
+                'summary' => 'No meal photos in this chat',
+                'content' => 'No meal photos are attached. Ask the user to upload them with Meal photos.',
+            ];
+        }
+
+        $matched = $this->matchAndUploadMealPhotos($photos, $token, $baseUrl, $this->emit, $this->turnDraft, $this->turnApiKey);
+        $this->turnDraft = $matched['menu_draft'];
+        $this->mealPhotosHandled = true;
+        $this->mealPhotoReport = $matched['reply'];
+
+        return [
+            'ok' => true,
+            'summary' => 'Matched meal photos',
+            'content' => $matched['reply'],
+        ];
+    }
+
+    /**
+     * @return array{ok: bool, summary: string, content: string}
+     */
+    private function readMenu(string $token, string $baseUrl): array
+    {
+        $categories = $this->fetchPaged($token, $baseUrl, '/categories');
+        $items = $this->fetchPaged($token, $baseUrl, '/items');
+        $byCategory = [];
+        foreach ($categories as $category) {
+            $id = $this->rowId($category);
+            if ($id === '') {
+                continue;
+            }
+            $byCategory[$id] = [
+                'id' => $id,
+                'name_ar' => (string) ($category['name_ar'] ?? ''),
+                'name_en' => (string) ($category['name_en'] ?? ''),
+                'name_he' => (string) ($category['name_he'] ?? ''),
+                'items' => [],
+            ];
+        }
+
+        foreach ($items as $item) {
+            $categoryId = (string) ($item['category_id'] ?? ($item['category']['id'] ?? ''));
+            $row = [
+                'id' => $this->rowId($item),
+                'name_ar' => (string) ($item['name_ar'] ?? ''),
+                'name_en' => (string) ($item['name_en'] ?? ''),
+                'name_he' => (string) ($item['name_he'] ?? ''),
+                'price' => (string) ($item['price'] ?? ''),
+                'description_ar' => (string) ($item['description_ar'] ?? ''),
+                'description_en' => (string) ($item['description_en'] ?? ''),
+                'description_he' => (string) ($item['description_he'] ?? ''),
+            ];
+            if (! isset($byCategory[$categoryId])) {
+                $byCategory[$categoryId] = [
+                    'id' => $categoryId,
+                    'name_ar' => '',
+                    'name_en' => '',
+                    'name_he' => '',
+                    'items' => [],
+                ];
+            }
+            $byCategory[$categoryId]['items'][] = $row;
+        }
+
+        $groups = [];
+        $cashier = $this->sendCashier('GET', '/ingredient-categories?per_page=100', [], $token, $baseUrl);
+        if ($cashier['ok']) {
+            foreach ($this->unwrapList(json_decode($cashier['content'], true)) as $group) {
+                $groups[] = [
+                    'id' => $this->rowId($group),
+                    'name_ar' => (string) ($group['name_ar'] ?? ''),
+                    'name_en' => (string) ($group['name_en'] ?? ''),
+                    'name_he' => (string) ($group['name_he'] ?? ''),
+                    'type' => (string) ($group['type'] ?? ''),
+                    'min' => $group['min_options'] ?? null,
+                    'max' => $group['max_options'] ?? null,
+                ];
+            }
+        }
+        $choices = [];
+        $choiceResponse = $this->sendCashier('GET', '/ingredients?per_page=100', [], $token, $baseUrl);
+        if ($choiceResponse['ok']) {
+            foreach ($this->unwrapList(json_decode($choiceResponse['content'], true)) as $choice) {
+                $choices[] = [
+                    'id' => $this->rowId($choice),
+                    'name_ar' => (string) ($choice['name_ar'] ?? ''),
+                    'name_en' => (string) ($choice['name_en'] ?? ''),
+                    'name_he' => (string) ($choice['name_he'] ?? ''),
+                    'price' => $choice['price'] ?? 0,
+                    'category_id' => (string) ($choice['category_id'] ?? ''),
+                ];
+            }
+        }
+
+        $payload = [
+            'categories' => array_values($byCategory),
+            'groups' => $groups,
+            'choices' => $choices,
+        ];
+
+        return [
+            'ok' => true,
+            'summary' => count($items).' meals, '.count($categories).' categories, '.count($choices).' choices',
+            'content' => $this->jsonForModel($payload, 24000),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array{ok: bool, summary: string, content: string}
+     */
+    private function editMenu(array $arguments, string $token, string $baseUrl): array
+    {
+        $operations = $arguments['operations'] ?? [];
+        if (is_array($operations) && array_is_list($operations) === false) {
+            $operations = [$operations];
+        }
+        if (! is_array($operations) || $operations === []) {
+            return [
+                'ok' => false,
+                'summary' => 'No edits given',
+                'content' => json_encode(['error' => 'operations is required'], JSON_UNESCAPED_UNICODE),
+            ];
+        }
+
+        $changed = [];
+        $failed = [];
+        foreach (array_slice($operations, 0, 40) as $operation) {
+            if (! is_array($operation)) {
+                continue;
+            }
+            $target = (string) ($operation['target'] ?? 'items');
+            $rows = $this->rowsForEditTarget($target, $token, $baseUrl);
+            $matches = $this->matchingRows($rows, $operation);
+            if ($matches === []) {
+                $failed[] = 'No '.$target.' matched '.($operation['match'] ?? $operation['remove_text'] ?? '');
+                continue;
+            }
+            foreach ($matches as $row) {
+                $result = $this->applyEdit($target, $row, $operation, $token, $baseUrl);
+                if ($result['ok']) {
+                    $changed[] = $result['summary'];
+                } else {
+                    $failed[] = $result['summary'];
+                }
+            }
+        }
+
+        return [
+            'ok' => $failed === [] && $changed !== [],
+            'summary' => count($changed).' updated'.($failed === [] ? '' : ', '.count($failed).' failed'),
+            'content' => $this->jsonForModel([
+                'updated' => $changed,
+                'failed' => $failed,
+            ], 8000),
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function rowsForEditTarget(string $target, string $token, string $baseUrl): array
+    {
+        return match ($target) {
+            'categories' => $this->fetchPaged($token, $baseUrl, '/categories'),
+            'choices' => $this->fetchCashierPaged($token, $baseUrl, '/ingredients'),
+            'groups' => $this->fetchCashierPaged($token, $baseUrl, '/ingredient-categories'),
+            default => $this->fetchPaged($token, $baseUrl, '/items'),
+        };
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @param  array<string, mixed>  $operation
+     * @return list<array<string, mixed>>
+     */
+    private function matchingRows(array $rows, array $operation): array
+    {
+        $match = trim((string) ($operation['match'] ?? ''));
+        if ($match === '') {
+            $match = trim((string) ($operation['remove_text'] ?? ''));
+        }
+        if ($match === '') {
+            return [];
+        }
+        $needle = mb_strtolower($match);
+        $matched = [];
+        foreach ($rows as $row) {
+            foreach ($this->rowNames($row) as $name) {
+                if ($name !== '' && str_contains(mb_strtolower($name), $needle)) {
+                    $matched[] = $row;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $operation
+     * @return array{ok: bool, summary: string}
+     */
+    private function applyEdit(string $target, array $row, array $operation, string $token, string $baseUrl): array
+    {
+        $id = $this->rowId($row);
+        $label = $this->rowLabel($row);
+        if ($id === '') {
+            return ['ok' => false, 'summary' => $label.' has no id'];
+        }
+
+        $fields = $operation['fields'] ?? [];
+        if (! is_array($fields) || $fields === []) {
+            $fields = ['name_ar', 'name_en', 'name_he', 'description_ar', 'description_en', 'description_he'];
+        }
+        $remove = trim((string) ($operation['remove_text'] ?? ''));
+        $set = is_array($operation['set'] ?? null) ? $operation['set'] : [];
+        $next = $row;
+        foreach ($fields as $field) {
+            if (! is_string($field) || $remove === '') {
+                continue;
+            }
+            $current = (string) ($next[$field] ?? '');
+            if ($current === '' || ! str_contains($current, $remove)) {
+                continue;
+            }
+            $next[$field] = $this->stripPhrase($current, $remove);
+        }
+        foreach ($set as $field => $value) {
+            if (! is_string($field) || ! is_scalar($value)) {
+                continue;
+            }
+            $next[$field] = $field === 'price'
+                ? $this->normalizePrice((string) $value)
+                : (string) $value;
+        }
+
+        if ($target === 'items') {
+            $categoryId = (string) ($next['category_id'] ?? ($row['category_id'] ?? ($row['category']['id'] ?? '')));
+            $body = [
+                'name_ar' => (string) ($next['name_ar'] ?? ''),
+                'name_en' => (string) ($next['name_en'] ?? ''),
+                'name_he' => (string) ($next['name_he'] ?? ''),
+                'description_ar' => (string) ($next['description_ar'] ?? ''),
+                'description_en' => (string) ($next['description_en'] ?? ''),
+                'description_he' => (string) ($next['description_he'] ?? ''),
+                'price' => $this->normalizePrice((string) ($next['price'] ?? '0')),
+                'category_id' => $categoryId,
+                'status' => (string) ($next['status'] ?? $row['status'] ?? '1'),
+            ];
+            $sent = $this->sendKaman('PUT', '/items/'.$id, $body, $token, $baseUrl);
+        } elseif ($target === 'categories') {
+            $body = [
+                'name_ar' => (string) ($next['name_ar'] ?? ''),
+                'name_en' => (string) ($next['name_en'] ?? ''),
+                'name_he' => (string) ($next['name_he'] ?? ''),
+                'order_index' => (string) ($row['order_index'] ?? '0'),
+            ];
+            $sent = $this->sendKaman('PUT', '/categories/'.$id, $body, $token, $baseUrl);
+        } elseif ($target === 'groups') {
+            $body = [
+                'name_ar' => (string) ($next['name_ar'] ?? ''),
+                'name_en' => (string) ($next['name_en'] ?? ''),
+                'name_he' => (string) ($next['name_he'] ?? ''),
+                'type' => (string) ($next['type'] ?? $row['type'] ?? 'multi_option'),
+                'max_options' => (int) ($next['max_options'] ?? $row['max_options'] ?? 2),
+                'min_options' => (int) ($next['min_options'] ?? $row['min_options'] ?? 1),
+                'order_index' => (int) ($row['order_index'] ?? 0),
+                'must_pick' => filter_var($next['must_pick'] ?? $row['must_pick'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            ];
+            $sent = $this->sendCashier('PUT', '/ingredient-categories/'.$id, $body, $token, $baseUrl);
+        } else {
+            $body = [
+                'name_ar' => (string) ($next['name_ar'] ?? ''),
+                'name_en' => (string) ($next['name_en'] ?? ''),
+                'name_he' => (string) ($next['name_he'] ?? ''),
+                'price' => (float) ($next['price'] ?? 0),
+                'category_id' => (string) ($next['category_id'] ?? $row['category_id'] ?? ''),
+                'allow_multiple' => (bool) ($row['allow_multiple'] ?? false),
+                'order_index' => (int) ($row['order_index'] ?? 0),
+            ];
+            $sent = $this->sendCashier('PUT', '/ingredients/'.$id, $body, $token, $baseUrl);
+        }
+
+        if (! $sent['ok']) {
+            return ['ok' => false, 'summary' => $label.' HTTP '.$sent['status'].' '.mb_substr($sent['content'], 0, 180)];
+        }
+
+        return ['ok' => true, 'summary' => $label.' → '.$this->rowLabel($next)];
+    }
+
+    private function stripPhrase(string $value, string $phrase): string
+    {
+        $value = str_replace($phrase, '', $value);
+        $value = preg_replace('/\s*[،,]\s*(?=\s|$)/u', '', $value) ?? $value;
+        $value = preg_replace('/\s{2,}/u', ' ', $value) ?? $value;
+        $value = preg_replace('/^[\s،,]+|[\s،,]+$/u', '', $value) ?? $value;
+
+        return $value;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function fetchPaged(string $token, string $baseUrl, string $path): array
+    {
+        return $this->collectPages(function (int $page) use ($token, $baseUrl, $path): array {
+            $sent = $this->sendKaman('GET', $path.'?page='.$page.'&per_page=100', [], $token, $baseUrl);
+            if (! $sent['ok'] && $page === 1) {
+                $sent = $this->sendKaman('GET', $path, [], $token, $baseUrl);
+            }
+            if (! $sent['ok']) {
+                return [];
+            }
+
+            return $this->unwrapList(json_decode($sent['content'], true));
+        });
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function fetchCashierPaged(string $token, string $baseUrl, string $path): array
+    {
+        return $this->collectPages(function (int $page) use ($token, $baseUrl, $path): array {
+            $sent = $this->sendCashier('GET', $path.'?page='.$page.'&per_page=100', [], $token, $baseUrl);
+            if (! $sent['ok']) {
+                return [];
+            }
+
+            return $this->unwrapList(json_decode($sent['content'], true));
+        });
+    }
+
+    /**
+     * @param  callable(int): list<array<string, mixed>>  $load
+     * @return list<array<string, mixed>>
+     */
+    private function collectPages(callable $load): array
+    {
+        $all = [];
+        $seen = [];
+        for ($page = 1; $page <= 20; $page++) {
+            $batch = $load($page);
+            if ($batch === []) {
+                break;
+            }
+            $fresh = 0;
+            foreach ($batch as $row) {
+                $id = $this->rowId($row);
+                if ($id !== '' && isset($seen[$id])) {
+                    continue;
+                }
+                if ($id !== '') {
+                    $seen[$id] = true;
+                }
+                $all[] = $row;
+                $fresh++;
+            }
+            if ($fresh === 0 || count($batch) < 100) {
+                break;
+            }
+        }
+
+        return $all;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function unwrapList(mixed $payload): array
+    {
+        if (! is_array($payload)) {
+            return [];
+        }
+        $data = $payload['data'] ?? null;
+        if (is_array($data) && isset($data['items']) && is_array($data['items'])) {
+            return array_values(array_filter($data['items'], 'is_array'));
+        }
+        if (is_array($data) && array_is_list($data)) {
+            return array_values(array_filter($data, 'is_array'));
+        }
+        foreach (['categories', 'items', 'ingredients'] as $key) {
+            if (isset($payload[$key]) && is_array($payload[$key]) && array_is_list($payload[$key])) {
+                return array_values(array_filter($payload[$key], 'is_array'));
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{ok: bool, status: int, content: string, with_image: bool}
+     */
+    private function sendCashier(string $method, string $path, array $body, string $token, string $managerBase): array
+    {
+        $query = '';
+        if (str_contains($path, '?')) {
+            [$path, $queryString] = explode('?', $path, 2);
+            if (preg_match('/^[A-Za-z0-9=&_.\-]*$/', $queryString) === 1) {
+                $query = '?'.$queryString;
+            }
+        }
+        $normalized = $this->normalizePath($path);
+        if ($normalized === null) {
+            return [
+                'ok' => false,
+                'status' => 0,
+                'content' => json_encode(['error' => 'Invalid cashier path'], JSON_UNESCAPED_UNICODE),
+                'with_image' => false,
+            ];
+        }
+
+        $url = rtrim(KamanUrl::cashierApiFromManager($managerBase), '/').$normalized.$query;
+
+        return $this->dispatchKaman($method, $url, $token, $body, null);
     }
 
     /**
@@ -1390,6 +2970,102 @@ PROMPT;
         ];
 
         return [
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'import_menu_url',
+                    'description' => 'Open a Wolt restaurant URL or a public Kaman menu URL and copy the full menu onto this restaurant, including item photos and option groups.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'url' => [
+                                'type' => 'string',
+                                'description' => 'https://wolt.com/.../restaurant/... or a public https://name.kaman.rest/menu link',
+                            ],
+                        ],
+                        'required' => ['url'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'read_menu',
+                    'description' => 'Read the restaurant menu already stored on Kaman: categories, meals, and option groups with ids and names in Arabic, Hebrew, and English.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => new \stdClass,
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'edit_menu',
+                    'description' => 'Change the live menu. Match rows by name, then remove a phrase and/or set fields. Does not create new meals.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'operations' => [
+                                'type' => 'array',
+                                'minItems' => 1,
+                                'maxItems' => 40,
+                                'items' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'target' => [
+                                            'type' => 'string',
+                                            'enum' => ['items', 'categories', 'choices', 'groups'],
+                                            'description' => 'items = meals and drinks, categories = sections, choices = option values, groups = option questions',
+                                        ],
+                                        'match' => [
+                                            'type' => 'string',
+                                            'description' => 'Text that appears in the row name. Leave empty to match remove_text.',
+                                        ],
+                                        'remove_text' => [
+                                            'type' => 'string',
+                                            'description' => 'Phrase to delete from matching names, such as زجاجة زجاج.',
+                                        ],
+                                        'fields' => [
+                                            'type' => 'array',
+                                            'items' => ['type' => 'string'],
+                                            'description' => 'name_ar, name_en, name_he, description_ar, description_en, description_he, or price. Empty means every name field that contains remove_text.',
+                                        ],
+                                        'set' => [
+                                            'type' => 'object',
+                                            'description' => 'Replacement values. Only include fields that should change.',
+                                            'properties' => [
+                                                'name_ar' => ['type' => 'string'],
+                                                'name_en' => ['type' => 'string'],
+                                                'name_he' => ['type' => 'string'],
+                                                'description_ar' => ['type' => 'string'],
+                                                'description_en' => ['type' => 'string'],
+                                                'description_he' => ['type' => 'string'],
+                                                'price' => ['type' => 'string'],
+                                                'category_id' => ['type' => 'string'],
+                                                'status' => ['type' => 'string'],
+                                            ],
+                                        ],
+                                    ],
+                                    'required' => ['target'],
+                                ],
+                            ],
+                        ],
+                        'required' => ['operations'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'assign_meal_photos',
+                    'description' => 'Match meal photos already uploaded in this chat to menu meals. File names are tried first. Remaining photos are matched by looking at the food. Matched photos are uploaded onto the meals.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => new \stdClass,
+                    ],
+                ],
+            ],
             [
                 'type' => 'function',
                 'function' => [
@@ -1427,6 +3103,10 @@ PROMPT;
     private function executeTool(string $name, array $arguments, string $token, string $baseUrl): array
     {
         return match ($name) {
+            'import_menu_url' => $this->importMenuTool($arguments, $token, $baseUrl),
+            'assign_meal_photos' => $this->assignMealPhotosTool($token, $baseUrl),
+            'read_menu' => $this->readMenu($token, $baseUrl),
+            'edit_menu' => $this->editMenu($arguments, $token, $baseUrl),
             'kaman_request' => $this->kamanRequest($arguments, $token, $baseUrl),
             'kaman_request_many' => $this->kamanRequestMany($arguments, $token, $baseUrl),
             default => [
@@ -1525,7 +3205,7 @@ PROMPT;
      * @param  array<string, mixed>  $body
      * @return array{ok: bool, status: int, content: string, with_image: bool}
      */
-    private function sendKaman(string $method, string $path, array $body, string $token, string $baseUrl, ?string $imagePath = null): array
+    private function sendKaman(string $method, string $path, array $body, string $token, string $baseUrl, ?string $imagePath = null, bool $retryWithoutImage = true): array
     {
         $allowed = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'];
         if (! in_array($method, $allowed, true)) {
@@ -1535,6 +3215,14 @@ PROMPT;
                 'content' => json_encode(['error' => 'Method not allowed'], JSON_UNESCAPED_UNICODE),
                 'with_image' => false,
             ];
+        }
+
+        $query = '';
+        if (str_contains($path, '?')) {
+            [$path, $queryString] = explode('?', $path, 2);
+            if (preg_match('/^[A-Za-z0-9=&_.\-]*$/', $queryString) === 1) {
+                $query = '?'.$queryString;
+            }
         }
 
         $normalized = $this->normalizePath($path);
@@ -1548,8 +3236,8 @@ PROMPT;
         }
 
         if ($imagePath === null
-            && in_array($method, ['POST', 'PUT', 'PATCH'], true)
-            && preg_match('#^/items(?:/\d+)?$#', $normalized) === 1
+            && $method === 'POST'
+            && $normalized === '/items'
         ) {
             $imagePath = $this->drinks->imageFor([
                 (string) ($body['name_en'] ?? ''),
@@ -1559,7 +3247,7 @@ PROMPT;
             ]);
         }
 
-        $url = KamanUrl::join($baseUrl, $normalized);
+        $url = KamanUrl::join($baseUrl, $normalized).$query;
         $canAttachImage = $imagePath !== null
             && is_file($imagePath)
             && in_array($method, ['POST', 'PUT', 'PATCH'], true);
@@ -1572,7 +3260,7 @@ PROMPT;
             $canAttachImage ? $imagePath : null,
         );
 
-        if ($canAttachImage && ! $sent['ok'] && ! $this->looksLikeDuplicate($sent)) {
+        if ($retryWithoutImage && $canAttachImage && ! $sent['ok'] && ! $this->looksLikeDuplicate($sent)) {
             Log::warning('Menu agent item image rejected; retrying without image', [
                 'url' => $url,
                 'status' => $sent['status'],
@@ -1745,6 +3433,20 @@ PROMPT;
      */
     private function publicArguments(string $name, array $arguments): array
     {
+        if ($name === 'import_menu_url') {
+            return ['url' => (string) ($arguments['url'] ?? '')];
+        }
+        if ($name === 'read_menu' || $name === 'assign_meal_photos') {
+            return [];
+        }
+        if ($name === 'edit_menu') {
+            $operations = $arguments['operations'] ?? [];
+
+            return [
+                'operations' => is_array($operations) ? count($operations) : 0,
+            ];
+        }
+
         if ($name === 'kaman_request_many') {
             $requests = $arguments['requests'] ?? [];
             $count = is_array($requests) ? count($requests) : 0;
@@ -1786,6 +3488,11 @@ PROMPT;
         $sslVerify = filter_var(config('openai.ssl_verify', true), FILTER_VALIDATE_BOOLEAN);
         $attempts = 0;
         $maxAttempts = 6;
+        $omitTemperature = false;
+        $useCompletionTokens = false;
+        $reasoningEffort = array_key_exists('reasoning_effort', $options)
+            ? (($options['reasoning_effort'] === null || $options['reasoning_effort'] === '') ? null : (string) $options['reasoning_effort'])
+            : (($tools !== null && $this->chatToolsNeedNoReasoning($model)) ? 'none' : null);
 
         while ($attempts < $maxAttempts) {
             $attempts++;
@@ -1804,13 +3511,24 @@ PROMPT;
             $payload = [
                 'model' => $model,
                 'messages' => $messages,
-                'temperature' => $options['temperature'] ?? 0.2,
-                'max_tokens' => $options['max_tokens'] ?? 4096,
             ];
+            if (! $omitTemperature) {
+                $payload['temperature'] = $options['temperature'] ?? 0.2;
+            }
+            $tokenLimit = $options['max_tokens'] ?? 4096;
+            if ($useCompletionTokens) {
+                $payload['max_completion_tokens'] = $tokenLimit;
+            } else {
+                $payload['max_tokens'] = $tokenLimit;
+            }
             if ($tools !== null) {
                 $payload['tools'] = $tools;
                 $payload['tool_choice'] = 'auto';
             }
+            if ($reasoningEffort !== null) {
+                $payload['reasoning_effort'] = $reasoningEffort;
+            }
+            $payload = $this->utf8Value($payload);
 
             $response = $http->post('/chat/completions', $payload);
             $body = $response->json() ?? [];
@@ -1825,6 +3543,21 @@ PROMPT;
 
             $error = is_array($body) ? ($body['error']['message'] ?? $body['error'] ?? $response->body()) : $response->body();
             $errorText = is_string($error) ? $error : (string) json_encode($error);
+            if (! $useCompletionTokens && str_contains($errorText, 'max_tokens')) {
+                $useCompletionTokens = true;
+                $attempts--;
+                continue;
+            }
+            if (! $omitTemperature && str_contains(strtolower($errorText), 'temperature')) {
+                $omitTemperature = true;
+                $attempts--;
+                continue;
+            }
+            if ($reasoningEffort !== 'none' && str_contains($errorText, 'reasoning_effort')) {
+                $reasoningEffort = 'none';
+                $attempts--;
+                continue;
+            }
             if (! $this->isOpenAiRateLimit($response->status(), $errorText) || $attempts >= $maxAttempts) {
                 Log::error('Menu agent OpenAI error', ['status' => $response->status(), 'body' => $body]);
                 throw new \RuntimeException($this->friendlyOpenAiError($errorText));
@@ -1843,6 +3576,11 @@ PROMPT;
         }
 
         throw new \RuntimeException($this->friendlyOpenAiError('rate limit retries exhausted'));
+    }
+
+    private function chatToolsNeedNoReasoning(string $model): bool
+    {
+        return preg_match('/^gpt-(?:5|6)/i', $model) === 1;
     }
 
     private function friendlyOpenAiError(string $errorText): string
@@ -1878,10 +3616,129 @@ PROMPT;
 
     private function truncate(string $value, int $max): string
     {
+        $value = $this->utf8String($value);
         if (strlen($value) <= $max) {
             return $value;
         }
 
-        return substr($value, 0, $max)."\n…truncated…";
+        $slice = mb_strcut($value, 0, max(0, $max - 16), 'UTF-8');
+
+        return $slice."\n…truncated…";
+    }
+
+    private function jsonForModel(mixed $value, int $maxBytes): string
+    {
+        $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE;
+        $json = json_encode($this->utf8Value($value), $flags);
+        if (! is_string($json) || $json === '') {
+            return '{}';
+        }
+        if (strlen($json) <= $maxBytes) {
+            return $json;
+        }
+        if (is_array($value) && isset($value['categories']) && is_array($value['categories'])) {
+            return $this->fitMenuJson($value, $maxBytes, $flags);
+        }
+
+        return $this->truncate($json, $maxBytes);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function fitMenuJson(array $payload, int $maxBytes, int $flags): string
+    {
+        $encode = function (array $data) use ($flags): string {
+            $json = json_encode($this->utf8Value($data), $flags);
+
+            return is_string($json) && $json !== '' ? $json : '{}';
+        };
+
+        foreach ($payload['categories'] as &$category) {
+            if (! is_array($category['items'] ?? null)) {
+                continue;
+            }
+            foreach ($category['items'] as &$item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                unset($item['description_ar'], $item['description_en'], $item['description_he']);
+            }
+        }
+        unset($category, $item);
+
+        $payload['note'] = 'Descriptions omitted so this list fits. edit_menu still matches every live row by name, including rows left out of this list.';
+        $json = $encode($payload);
+        if (strlen($json) <= $maxBytes) {
+            return $json;
+        }
+
+        if (isset($payload['choices']) && is_array($payload['choices']) && count($payload['choices']) > 15) {
+            $payload['choices_omitted'] = count($payload['choices']) - 15;
+            $payload['choices'] = array_slice($payload['choices'], -15);
+            $json = $encode($payload);
+            if (strlen($json) <= $maxBytes) {
+                return $json;
+            }
+        }
+
+        $guard = 0;
+        while (strlen($json) > $maxBytes && $guard < 800) {
+            $guard++;
+            $dropped = false;
+            foreach ($payload['categories'] as &$category) {
+                if (! is_array($category['items'] ?? null) || $category['items'] === []) {
+                    continue;
+                }
+                array_shift($category['items']);
+                $payload['items_omitted'] = (int) ($payload['items_omitted'] ?? 0) + 1;
+                $dropped = true;
+                $json = $encode($payload);
+                if (strlen($json) <= $maxBytes) {
+                    unset($category);
+
+                    return $json;
+                }
+            }
+            unset($category);
+            if (! $dropped) {
+                break;
+            }
+        }
+
+        return strlen($json) <= $maxBytes ? $json : $this->truncate($json, $maxBytes);
+    }
+
+    private function utf8Value(mixed $value): mixed
+    {
+        if (is_string($value)) {
+            return $this->utf8String($value);
+        }
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $out = [];
+        foreach ($value as $key => $item) {
+            $cleanKey = is_string($key) ? $this->utf8String($key) : $key;
+            $out[$cleanKey] = $this->utf8Value($item);
+        }
+
+        return $out;
+    }
+
+    private function utf8String(string $value): string
+    {
+        if ($value === '' || mb_check_encoding($value, 'UTF-8')) {
+            return $value;
+        }
+
+        $encoded = json_encode($value, JSON_INVALID_UTF8_SUBSTITUTE);
+        if (! is_string($encoded)) {
+            return '';
+        }
+        $decoded = json_decode($encoded, true);
+
+        return is_string($decoded) ? $decoded : '';
     }
 }

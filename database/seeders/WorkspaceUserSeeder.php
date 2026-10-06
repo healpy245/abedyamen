@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\Project;
+use App\Models\AppDevelopment\AppDevelopmentMember;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -33,7 +34,7 @@ class WorkspaceUserSeeder extends Seeder
             [
                 'name' => 'Yamen',
                 'email' => 'yamen@kaman.rest',
-                'password' => 'Yam123456@',
+                'password' => 'yam1234@',
                 // Admin: full catalog access, now and for any project added later.
                 'is_admin' => true,
                 'projects' => Project::keys(),
@@ -78,12 +79,25 @@ class WorkspaceUserSeeder extends Seeder
                 ],
             ],
             [
+                // POS live logs only, and only devices running app version 1.0.x.
+                'name' => 'Moaz',
+                'email' => 'moaz@kaman.rest',
+                'password' => 'Moaz123@',
+                'is_admin' => false,
+                'projects' => [
+                    Project::KamanSupport->value,
+                ],
+            ],
+            [
                 'name' => 'Burhan',
                 'email' => 'burhan@kaman.rest',
                 'password' => 'Burhan123@',
-                // Full workspace access: every project now and any added later.
+                // Admin for the existing catalog, but not POS customer support.
                 'is_admin' => true,
-                'projects' => Project::keys(),
+                'projects' => array_values(array_filter(
+                    Project::keys(),
+                    static fn (string $key): bool => $key !== Project::KamanSupport->value,
+                )),
             ],
         ];
 
@@ -93,6 +107,11 @@ class WorkspaceUserSeeder extends Seeder
 
         foreach ($this->appDevelopmentTeam() as $user) {
             $this->upsertWorkspaceUser($user, mergeProjects: true);
+        }
+
+        $moaz = User::query()->where('email', 'moaz@kaman.rest')->first();
+        if ($moaz !== null) {
+            AppDevelopmentMember::query()->where('user_id', $moaz->id)->delete();
         }
     }
 
@@ -145,13 +164,6 @@ class WorkspaceUserSeeder extends Seeder
                 'name' => 'Amro',
                 'email' => 'amro@kaman.rest',
                 'password' => 'Amro123@',
-                'is_admin' => false,
-                'projects' => $grant,
-            ],
-            [
-                'name' => 'Moaz',
-                'email' => 'moaz@kaman.rest',
-                'password' => 'Moaz123@',
                 'is_admin' => false,
                 'projects' => $grant,
             ],

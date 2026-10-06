@@ -1881,7 +1881,8 @@ class FormController extends Controller
 
         return $service->forUser($user)->map(function (FormWorkflowRun $run) use ($service, $user) {
             if ($run->isRunning()) {
-                $run = $service->reclaimIfStale($run);
+                $staleAfter = $run->method_type === 'Menu Agent' ? 180 : 45;
+                $run = $service->reclaimIfStale($run, $staleAfter);
             }
 
             return $service->toArray($run, $user);
@@ -1904,7 +1905,7 @@ class FormController extends Controller
 
         return response()->stream(function () use ($executor, $runService, $run, $payload) {
             @ignore_user_abort(true);
-            @set_time_limit($run->method_type === 'HAAT Menu Copy' ? 1800 : 600);
+            @set_time_limit(in_array($run->method_type, ['HAAT Menu Copy', 'Menu Agent'], true) ? 1800 : 600);
             $safePayload = $runService->safePayload($payload);
             $emit = function (array $event) {
                 if (connection_aborted()) {
@@ -1968,54 +1969,7 @@ class FormController extends Controller
 
     private function startDetachedWorker(FormWorkflowRun $run): bool
     {
-        if (app()->environment('testing') || \PHP_OS_FAMILY === 'Windows') {
-            return false;
-        }
-
-        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
-        if (in_array('exec', $disabled, true)) {
-            return false;
-        }
-
-        $php = $this->cliPhpBinary();
-        $artisan = base_path('artisan');
-        $log = storage_path('logs/form-workflow-'.$run->id.'.log');
-        $cmd = sprintf(
-            'nohup %s %s form:workflow-run %d >> %s 2>&1 &',
-            escapeshellarg($php),
-            escapeshellarg($artisan),
-            $run->id,
-            escapeshellarg($log)
-        );
-        exec($cmd);
-
-        Log::info('Detached form workflow worker', [
-            'run_id' => $run->id,
-            'php' => $php,
-        ]);
-
-        return true;
-    }
-
-    private function cliPhpBinary(): string
-    {
-        $candidates = array_filter([
-            '/usr/local/bin/php',
-            '/usr/bin/php',
-            PHP_BINARY,
-            'php',
-        ]);
-        foreach ($candidates as $bin) {
-            $bin = (string) $bin;
-            if (str_contains(strtolower($bin), 'cgi')) {
-                continue;
-            }
-            if ($bin === 'php' || is_executable($bin)) {
-                return $bin;
-            }
-        }
-
-        return 'php';
+        return app(FormWorkflowRunService::class)->startDetached($run);
     }
 
     /**

@@ -51,5 +51,6 @@
 </main>
 
 @stack('scripts')
+@include('partials.csrf-keepalive')
 </body>
 </html>

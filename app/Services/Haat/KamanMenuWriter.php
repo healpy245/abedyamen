@@ -472,7 +472,7 @@ final class KamanMenuWriter
             }
 
             $planned = $this->plan['meals'][$meal['haat_id']] ?? null;
-            $matched = is_array($planned) ? ($planned['kaman_id'] ?? null) : $this->matchExistingItem($existing, (string) $meal['name_ar'], (string) $meal['name_en'], $categoryId);
+            $matched = is_array($planned) ? ($planned['kaman_id'] ?? null) : $this->matchExistingItem($existing, (string) ($meal['name_ar'] ?? ''), (string) ($meal['name_en'] ?? ''), $categoryId, (string) ($meal['name_he'] ?? ''), (string) ($meal['source_name'] ?? ''));
             $op = is_array($planned) ? (string) ($planned['op'] ?? 'create') : ($matched !== null ? 'skip' : 'create');
             if (is_string($matched) && $matched !== '' && $op !== 'create') {
                 $map[$meal['haat_id']] = $matched;
@@ -502,9 +502,9 @@ final class KamanMenuWriter
                 $nameHe = trim($nameHe.' ('.$suffix.')');
             }
 
-            $descriptionAr = trim((string) $meal['description_ar']);
-            $descriptionEn = trim((string) $meal['description_en']);
-            $descriptionHe = trim((string) $meal['description_he']);
+            $descriptionAr = trim((string) ($meal['description_ar'] ?? ''));
+            $descriptionEn = trim((string) ($meal['description_en'] ?? ''));
+            $descriptionHe = trim((string) ($meal['description_he'] ?? ''));
             if ($descriptionAr === '') {
                 $descriptionAr = $nameAr;
             }
@@ -526,9 +526,11 @@ final class KamanMenuWriter
                 'category_id' => $categoryId,
             ];
 
-            $imagePath = $withImages ? $this->images->download($meal['image_url'] ?? null) : null;
+            $hadImage = $withImages && is_string($meal['image_url'] ?? null) && $meal['image_url'] !== '';
+            $imagePath = $hadImage ? $this->images->download($meal['image_url']) : null;
             $response = $this->postItemSafely($baseUrl, $token, $body, $imagePath);
-            if ($imagePath && ($response === null || ! $response->successful())) {
+            $imageAttached = $imagePath !== null && $response !== null && $response->successful();
+            if ($hadImage && ($response === null || ! $response->successful())) {
                 $response = $this->postItemSafely($baseUrl, $token, $body, null);
             }
             if ($imagePath && is_file($imagePath)) {
@@ -558,6 +560,9 @@ final class KamanMenuWriter
             $map[$meal['haat_id']] = $id;
             $this->rememberItem($existing, $usedNames, $body['name_ar'], $body['name_en'], $id, $categoryId);
             $report['meals']['created'][] = ['haat_id' => $meal['haat_id'], 'id' => $id, 'name' => $label];
+            if ($hadImage && ! $imageAttached) {
+                $this->updateMeal($baseUrl, $token, $id, $meal, $categoryId, $label, true);
+            }
             $progress && $progress('meals', 'Created '.$label, ['status' => 'ok', 'name' => $label, 'id' => $id]);
 
             if (! $meal['is_available']) {
@@ -565,6 +570,25 @@ final class KamanMenuWriter
                     '_method' => 'PUT',
                     'status' => '0',
                 ]));
+            }
+        }
+
+        if ($withImages) {
+            $byHaat = [];
+            foreach ($meals as $meal) {
+                $byHaat[(string) ($meal['haat_id'] ?? '')] = $meal;
+            }
+            foreach ($report['meals']['created'] as $row) {
+                if (empty($row['bulk'])) {
+                    continue;
+                }
+                $meal = $byHaat[(string) ($row['haat_id'] ?? '')] ?? null;
+                $imageUrl = is_array($meal) ? ($meal['image_url'] ?? null) : null;
+                if (! is_array($meal) || ! is_string($imageUrl) || $imageUrl === '') {
+                    continue;
+                }
+                $categoryId = (string) ($categoryIds[$meal['category_haat_id'] ?? ''] ?? '');
+                $this->updateMeal($baseUrl, $token, (string) $row['id'], $meal, $categoryId, (string) ($row['name'] ?? 'meal'), true);
             }
         }
 
@@ -632,7 +656,7 @@ final class KamanMenuWriter
                 continue;
             }
             $planned = $this->plan['meals'][$haatId] ?? null;
-            $matched = is_array($planned) ? ($planned['kaman_id'] ?? null) : $this->matchExistingItem($existing, (string) $meal['name_ar'], (string) $meal['name_en'], $categoryId);
+            $matched = is_array($planned) ? ($planned['kaman_id'] ?? null) : $this->matchExistingItem($existing, (string) ($meal['name_ar'] ?? ''), (string) ($meal['name_en'] ?? ''), $categoryId, (string) ($meal['name_he'] ?? ''), (string) ($meal['source_name'] ?? ''));
             $op = is_array($planned) ? (string) ($planned['op'] ?? 'create') : ($matched !== null ? 'skip' : 'create');
             if (is_string($matched) && $matched !== '' && $op !== 'create') {
                 continue;
@@ -659,9 +683,9 @@ final class KamanMenuWriter
                     $nameEn = trim($nameEn.' ('.$suffix.')');
                     $nameHe = trim($nameHe.' ('.$suffix.')');
                 }
-                $descriptionAr = trim((string) $meal['description_ar']) !== '' ? (string) $meal['description_ar'] : $nameAr;
-                $descriptionEn = trim((string) $meal['description_en']) !== '' ? (string) $meal['description_en'] : $nameEn;
-                $descriptionHe = trim((string) $meal['description_he']) !== '' ? (string) $meal['description_he'] : $nameHe;
+                $descriptionAr = trim((string) ($meal['description_ar'] ?? '')) !== '' ? (string) $meal['description_ar'] : $nameAr;
+                $descriptionEn = trim((string) ($meal['description_en'] ?? '')) !== '' ? (string) $meal['description_en'] : $nameEn;
+                $descriptionHe = trim((string) ($meal['description_he'] ?? '')) !== '' ? (string) $meal['description_he'] : $nameHe;
                 $bodies[] = [
                     'name_ar' => $nameAr,
                     'name_en' => $nameEn,
@@ -946,9 +970,9 @@ final class KamanMenuWriter
         $nameAr = (string) $meal['name_ar'];
         $nameEn = (string) $meal['name_en'];
         $nameHe = (string) $meal['name_he'];
-        $descriptionAr = trim((string) $meal['description_ar']) !== '' ? (string) $meal['description_ar'] : $nameAr;
-        $descriptionEn = trim((string) $meal['description_en']) !== '' ? (string) $meal['description_en'] : $nameEn;
-        $descriptionHe = trim((string) $meal['description_he']) !== '' ? (string) $meal['description_he'] : $nameHe;
+        $descriptionAr = trim((string) ($meal['description_ar'] ?? '')) !== '' ? (string) $meal['description_ar'] : $nameAr;
+        $descriptionEn = trim((string) ($meal['description_en'] ?? '')) !== '' ? (string) $meal['description_en'] : $nameEn;
+        $descriptionHe = trim((string) ($meal['description_he'] ?? '')) !== '' ? (string) $meal['description_he'] : $nameHe;
         $body = [
             'name_ar' => $nameAr,
             'name_en' => $nameEn,
@@ -2521,9 +2545,9 @@ final class KamanMenuWriter
     /**
      * @param  array<string, list<array{id: string, category_id: string}>>  $existing
      */
-    private function matchExistingItem(array $existing, string $nameAr, string $nameEn, string $categoryId): ?string
+    private function matchExistingItem(array $existing, string $nameAr, string $nameEn, string $categoryId, string $nameHe = '', string $sourceName = ''): ?string
     {
-        foreach ([$nameAr, $nameEn] as $name) {
+        foreach ([$nameAr, $nameEn, $nameHe, $sourceName] as $name) {
             $key = $this->nameKey($name);
             if ($key === '' || ! isset($existing[$key])) {
                 continue;

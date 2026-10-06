@@ -1,0 +1,20 @@
+[
+  {
+    "id": 14,
+    "cashier": "Koba",
+    "ver": "1.3.29+52",
+    "kind": "tablet"
+  },
+  {
+    "id": 15,
+    "cashier": "حمودي",
+    "ver": "1.3.29+52",
+    "kind": "tablet"
+  },
+  {
+    "id": 16,
+    "cashier": "حمودي",
+    "ver": "1.3.29+52",
+    "kind": "tablet"
+  }
+]

@@ -70,11 +70,48 @@ class User extends Authenticatable
             return false;
         }
 
+        if ($project->requiresExplicitGrant()) {
+            if (in_array($project->value, $this->projectKeys(), true)) {
+                return true;
+            }
+
+            // Phase-1 hard lock: Yamen can open POS support even before the
+            // projects column is re-seeded on production.
+            return strcasecmp((string) $this->email, 'yamen@kaman.rest') === 0;
+        }
+
         if ($this->is_admin) {
             return true;
         }
 
         return in_array($project->value, $this->projectKeys(), true);
+    }
+
+    /**
+     * POS live logs only, limited to app versions 1.0.x. No tickets, commands,
+     * or other workspace projects.
+     */
+    public function posLiveLogsOnly(): bool
+    {
+        return strcasecmp((string) $this->email, 'moaz@kaman.rest') === 0;
+    }
+
+    /**
+     * App-version prefix this user may see on the live log board.
+     * Null means every version.
+     */
+    public function posAppVersionPrefix(): ?string
+    {
+        return $this->posLiveLogsOnly() ? '1.0.' : null;
+    }
+
+    public function projectEntryUrl(Project $project): string
+    {
+        if ($project === Project::KamanSupport && $this->posLiveLogsOnly()) {
+            return route('kaman-support.live');
+        }
+
+        return $project->url();
     }
 
     /**

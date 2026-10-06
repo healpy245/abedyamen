@@ -590,10 +590,7 @@ class KamanWhatsappPromptTest extends TestCase
             'message' => KamanConversationCloser::THANKS_REPLY_AR,
             'delivery_status' => 'sent',
         ]);
-        Queue::assertPushed(StoreKamanWhatsappLeadJob::class, function (StoreKamanWhatsappLeadJob $job) use ($conversation): bool {
-            return $job->conversationId === (int) $conversation->id
-                && $job->reason === \App\Services\AiChatbot\KamanWhatsappLeadStoreService::REASON_CLOSED;
-        });
+        Queue::assertNotPushed(StoreKamanWhatsappLeadJob::class);
         Http::assertNotSent(fn ($request) => str_contains((string) $request->url(), 'api.openai.com'));
     }
 

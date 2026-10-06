@@ -17,6 +17,7 @@ enum Project: string
     case Form = 'form';
     case AiChatbot = 'ai-chatbot';
     case AppDevelopment = 'app-development';
+    case KamanSupport = 'kaman-support';
 
     /**
      * Human readable name, shown on the welcome page and in 403 messages.
@@ -40,6 +41,7 @@ enum Project: string
             self::Form => 'form.index',
             self::AiChatbot => 'ai-chatbot.index',
             self::AppDevelopment => 'app-development.index',
+            self::KamanSupport => 'kaman-support.index',
         };
     }
 
@@ -57,6 +59,7 @@ enum Project: string
             self::Form => 'clipboard-document-list',
             self::AiChatbot => 'sparkles',
             self::AppDevelopment => 'beaker',
+            self::KamanSupport => 'lifebuoy',
         };
     }
 
@@ -99,7 +102,24 @@ enum Project: string
                 'status_text' => 'text-emerald-700',
                 'status_border' => 'border-emerald-200',
             ],
+            self::KamanSupport => [
+                'icon_bg' => 'bg-rose-50',
+                'icon_text' => 'text-rose-600',
+                'border_hover' => 'hover:border-rose-200',
+                'status_bg' => 'bg-emerald-50',
+                'status_text' => 'text-emerald-700',
+                'status_border' => 'border-emerald-200',
+            ],
         };
+    }
+
+    /**
+     * Restricted tools are not implied by is_admin. They must appear on
+     * users.projects explicitly (phase-1: Yamen only for POS support).
+     */
+    public function requiresExplicitGrant(): bool
+    {
+        return $this === self::KamanSupport;
     }
 
     /**

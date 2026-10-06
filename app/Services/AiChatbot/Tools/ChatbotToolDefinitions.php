@@ -236,8 +236,8 @@ class ChatbotToolDefinitions
             .'Then ask «تمام، اعطيني اسمك الكامل بس.» NEVER ask for city — always city_name='.$city.'. '
             .'When name+phone ready, call immediately with confirmed_by_customer=true, '
             .'with_fiber=1 if they said they have סיב אופטי at home else 0, '
-            .'and note=preferred call time / later-call request if they said that. '
-            .'then close with «تمام {first_name}، رح تتواصل معك الصبيه كمان شوي 👍». '
+            .'and note=preferred call time if they volunteered one inside Sun–Thu 9–6. '
+            .'then close with «تمام {first_name}، الصبيه رح تتواصل معك.». NEVER «كمان شوي». NEVER ask for a preferred hour. If they volunteer an hour outside Sun–Thu 9–6, tell them that time is outside sales hours. '
             .'Opt-out customers: never call this tool. Server picks leads_sources_id.';
 
         $tool['function']['parameters']['properties']['phone']['description'] =

@@ -63,7 +63,7 @@ class MalanCampaignController extends Controller
             'name' => ['required', 'string', 'max:160'],
             'greenapi_url' => ['required', 'string', 'max:2000'],
             'opening_message' => ['nullable', 'string', 'max:4000'],
-            'system_prompt' => ['nullable', 'string', 'max:20000'],
+            'system_prompt' => ['nullable', 'string', 'max:100000'],
             'excel' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
         ]);
 
@@ -366,7 +366,7 @@ class MalanCampaignController extends Controller
             'name' => ['required', 'string', 'max:160'],
             'greenapi_url' => ['required', 'string', 'max:2000'],
             'opening_message' => ['required', 'string', 'max:4000'],
-            'system_prompt' => ['required', 'string', 'max:20000'],
+            'system_prompt' => ['required', 'string', 'max:100000'],
             'excel' => ['nullable', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
         ]);
 

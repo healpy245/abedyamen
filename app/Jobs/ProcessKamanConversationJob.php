@@ -517,20 +517,37 @@ class ProcessKamanConversationJob implements ShouldQueue
     private function queueLeadStore(ChatbotConversation $conversation, bool $closed): void
     {
         if ($closed) {
-            StoreKamanWhatsappLeadJob::dispatch(
-                (int) $conversation->id,
+            app(KamanWhatsappLeadStoreService::class)->storeFromConversation(
+                $conversation,
                 KamanWhatsappLeadStoreService::REASON_CLOSED,
             );
 
             return;
         }
 
+        $conversationId = (int) $conversation->id;
+        $idleSince = optional($conversation->last_message_at)?->toIso8601String() ?? now()->toIso8601String();
         $idleMinutes = max(1, (int) config('services.kaman_agents.lead_idle_minutes', 30));
-        StoreKamanWhatsappLeadJob::dispatch(
-            (int) $conversation->id,
-            KamanWhatsappLeadStoreService::REASON_IDLE,
-            optional($conversation->last_message_at)?->toIso8601String() ?? now()->toIso8601String(),
-        )->delay(now()->addMinutes($idleMinutes));
+
+        // Replies already run after the HTTP response. A delayed database job never
+        // runs on this host, so the idle lead has to wait in that same process.
+        dispatch(function () use ($conversationId, $idleSince, $idleMinutes): void {
+            @set_time_limit(($idleMinutes * 60) + 90);
+            sleep($idleMinutes * 60);
+
+            $fresh = ChatbotConversation::query()->find($conversationId);
+            if ($fresh === null) {
+                return;
+            }
+            if ($fresh->last_message_at !== null && $fresh->last_message_at->gt($idleSince)) {
+                return;
+            }
+
+            app(KamanWhatsappLeadStoreService::class)->storeFromConversation(
+                $fresh,
+                KamanWhatsappLeadStoreService::REASON_IDLE,
+            );
+        })->afterResponse();
     }
 
     private function markStale(int $messageId, string $reason): void

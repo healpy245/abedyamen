@@ -1,0 +1,31 @@
+0 size=274691 list key=['woltCities', 'en', None] preview=list[963] keys=coordinates,countryCode,countryCode3,distance,hasFrontpage,hidden,id,name
+1 size=64370 dict key=['footer', 'en'] preview=id,contentType,appLinks,bottomLinks,linkColumns,underColumns
+2 size=45 dict key=['geoIpCountry'] preview=countryCode2,countryCode3
+3 size=308527 dict key=['translations/en'] preview=accept-corporate-event-invitation.accept-button,accept-corporate-event-invitation.already-accepted-error.button,accept-corporate-event-invitation.already-accepted-error.subtitle,accept-corporate-event-invitation.already-accepted-error.title,accept-corporate-event-invitation.error.button,accept-corporate-event-invitation.error.subtitle,accept-corporate-event-invitation.error.title,accept-corporate-event-invitation.join-description,accept-corporate-event-invitation.join-prompt,accept-corporate-event-invitation.voucher-description,accept-corporate-event-invitation.voucher-title,accept-corporate-invitation.accept-button
+4 size=22 dict key=['server', 'unified-store-page-decision'] preview=shouldServe
+5 size=28 dict key=['server', 'variant-assignment-contexts'] preview=assignmentContexts
+6 size=9864 dict key=['venue', 'static', 'shawarma-balev', 'en'] preview=venue,venue_raw,order_minimum
+7 size=89490 dict key=['venue-assortment', 'category-listing', 'shawarma-balev', None, None, 'en', 'no-user'] preview=assortment_id,loading_strategy,primary_language,selected_language,available_languages,compliance_info,categories,items,options,variant_groups
+8 size=41077 dict key=['venue-assortment', 'venue-content', 'shawarma-balev', 'no-user', 'en', None, None] preview=pages,pageParams
+9 size=50 dict key=['server', 'request-data'] preview=domainInfo,sandboxRoutingCookie
+10 size=26 dict key=['server', 'feature-flag-data'] preview=serverFeatureFlags
+11 size=192 dict key=['evaluateDVs', ['cx_pco_pedregal_use_mock_data', 'cx_wolt_pedregal_loyalty_modal_v2', 'wolt_com_dv_demo', 'cx_pco_pedregal_web', 'pedregal_cart_page', 'wolt_cx_web_homepage_postlogin_pedregal_aa', 'wolt_cx_web_homepage_prelogin_pedregal_aa', 'enable_adhoc_web_evaluations'], 'f626dda19e73be1af7651fbcd2221e4c2ceb9e87', 'wolt-com', 'wolt', True] preview=context,successes
+12 size=2 dict key=['server', 'dv-evaluations'] preview=
+13 size=162 dict key=['ssr-dv-context'] preview=brand,platform,language,environment,is_guest,session_id,country_code
+14 size=7 str key=['formattedCurrency', 0, 'ILS', 'ISR', None] preview=
+15 size=8 str key=['formattedCurrency', 5500, 'ILS', 'ISR', None] preview=
+16 size=8 str key=['formattedCurrency', 1500, 'ILS', 'ISR', None] preview=
+17 size=8 str key=['formattedCurrency', 7500, 'ILS', 'ISR', None] preview=
+18 size=8 str key=['formattedCurrency', 4500, 'ILS', 'ISR', None] preview=
+19 size=8 str key=['formattedCurrency', 5300, 'ILS', 'ISR', None] preview=
+20 size=9 str key=['formattedCurrency', 12000, 'ILS', 'ISR', None] preview=
+21 size=8 str key=['formattedCurrency', 3000, 'ILS', 'ISR', None] preview=
+22 size=8 str key=['formattedCurrency', 1800, 'ILS', 'ISR', None] preview=
+23 size=8 str key=['formattedCurrency', 6500, 'ILS', 'ISR', None] preview=
+24 size=9 str key=['formattedCurrency', 18000, 'ILS', 'ISR', None] preview=
+25 size=8 str key=['formattedCurrency', 7000, 'ILS', 'ISR', None] preview=
+26 size=8 str key=['formattedCurrency', 4800, 'ILS', 'ISR', None] preview=
+27 size=8 str key=['formattedCurrency', 6000, 'ILS', 'ISR', None] preview=
+28 size=8 str key=['formattedCurrency', 2000, 'ILS', 'ISR', None] preview=
+29 size=8 str key=['formattedCurrency', 1000, 'ILS', 'ISR', None] preview=
+30 size=8 str key=['formattedCurrency', 1200, 'ILS', 'ISR', None] preview=

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\FormWorkflowPausedException;
+use App\Models\FormWorkflowRun;
 use App\Models\User;
 use App\Services\Form\FormMenuAgentMemory;
 use App\Services\Form\FormMenuAgentService;
@@ -29,6 +31,8 @@ final class FormMenuAgentController extends Controller
             'messages.*.content' => 'nullable|string|max:20000',
             'attachments' => 'nullable|array|max:'.FormMenuAgentService::MAX_ATTACHMENTS,
             'attachments.*' => 'file|max:20480',
+            'attachment_roles' => 'nullable|array|max:'.FormMenuAgentService::MAX_ATTACHMENTS,
+            'attachment_roles.*' => 'nullable|string|in:menu,meal_photo',
         ]);
 
         $token = trim((string) $request->session()->get('full_ai_kaman_token', ''));
@@ -76,18 +80,35 @@ final class FormMenuAgentController extends Controller
             $environment,
         ) {
             @ignore_user_abort(true);
-            @set_time_limit(600);
+            @set_time_limit(1800);
 
             $run = null;
             $previousMessages = $runService->sanitizeStoredMessages($stored['messages'] ?? []);
+            $userText = '';
+            for ($i = count($history) - 1; $i >= 0; $i--) {
+                if (($history[$i]['role'] ?? '') === 'user') {
+                    $userText = (string) ($history[$i]['content'] ?? '');
+                    break;
+                }
+            }
+            $sourceUrl = $agent->findMenuUrlInHistory($history);
+            if ($sourceUrl === null && $user instanceof User && $agent->wantsLinkedMenuWork($userText)) {
+                $sourceUrl = $this->recentMenuUrl($user, $agent);
+            }
+            $title = $this->conversationTitle($history, $attachments);
+            $runPayload = [
+                'subdomain' => $subdomain,
+                'environment' => $environment,
+                'kaman_base_url' => $baseUrl,
+                'conversation_id' => $conversationId,
+                'title' => $title,
+                'messages' => $this->messagesForStorage($history, $attachments, null, $previousMessages),
+            ];
+            if ($sourceUrl !== null) {
+                $runPayload['source_url'] = $sourceUrl;
+            }
             if ($user instanceof User) {
-                $run = $runService->startMenuAgent($user, $conversationId, [
-                    'subdomain' => $subdomain,
-                    'environment' => $environment,
-                    'conversation_id' => $conversationId,
-                    'title' => $this->conversationTitle($history, $attachments),
-                    'messages' => $this->messagesForStorage($history, $attachments, null, $previousMessages),
-                ]);
+                $run = $runService->startMenuAgent($user, $conversationId, $runPayload);
                 $runService->rememberToken($run, $token);
                 if ($previousMessages === []) {
                     $previousMessages = $runService->sanitizeStoredMessages(
@@ -128,11 +149,43 @@ final class FormMenuAgentController extends Controller
                     ]);
                 }
 
-                $result = $agent->run($history, $attachments, $token, $baseUrl, $emit, $stored);
+                $agentMemory = array_merge($stored, [
+                    'source_url' => $sourceUrl,
+                    'title' => $title,
+                    'run_id' => $run?->id,
+                    'worker_generation' => $run !== null ? $runService->workerGeneration($run) : null,
+                ]);
+                if ($run !== null && $agent->shouldCopyLinkedMenu($history, $agentMemory) && $runService->startDetached($run)) {
+                    $reply = 'Translating the menu into Arabic, English, and Hebrew and uploading the meal photos. Watch the debugger — Continue resumes it if this chat disconnects.';
+                    $messages = $this->messagesForStorage($history, $attachments, $reply, $previousMessages);
+                    $memory->put($userId, $conversationId, [
+                        'attachments' => array_values(array_merge($stored['attachments'] ?? [], $attachments)),
+                        'menu_draft' => $stored['menu_draft'] ?? null,
+                        'source_url' => $sourceUrl,
+                        'messages' => $messages,
+                    ]);
+                    $emit([
+                        'event' => 'message',
+                        'reply' => $reply,
+                    ]);
+                    $emit([
+                        'event' => 'done',
+                        'success' => true,
+                        'reply' => $reply,
+                        'conversation_id' => $conversationId,
+                        'method_type' => 'Menu Agent',
+                        'run' => $runService->toArray($run->refresh()),
+                    ]);
+
+                    return;
+                }
+
+                $result = $agent->run($history, $attachments, $token, $baseUrl, $emit, $agentMemory);
                 $messages = $this->messagesForStorage($history, $attachments, $result['reply'], $previousMessages);
                 $memory->put($userId, $conversationId, [
                     'attachments' => $result['attachments'],
                     'menu_draft' => $result['menu_draft'],
+                    'source_url' => $sourceUrl,
                     'messages' => $messages,
                 ]);
                 if ($run !== null) {
@@ -149,6 +202,35 @@ final class FormMenuAgentController extends Controller
                     'success' => true,
                     'reply' => $result['reply'],
                     'tool_calls' => $result['tool_calls'],
+                    'conversation_id' => $conversationId,
+                    'method_type' => 'Menu Agent',
+                    'run' => $run !== null ? $runService->toArray($run) : null,
+                ]);
+            } catch (FormWorkflowPausedException $e) {
+                $pausedReply = 'Paused. Click Continue to resume the translations and photos.';
+                $pausedMessages = $this->messagesForStorage($history, $attachments, $pausedReply, $previousMessages);
+                $memory->put($userId, $conversationId, [
+                    'attachments' => array_values(array_merge($stored['attachments'] ?? [], $attachments)),
+                    'menu_draft' => $stored['menu_draft'] ?? null,
+                    'source_url' => $sourceUrl,
+                    'messages' => $pausedMessages,
+                ]);
+                if ($run !== null) {
+                    $run = $runService->markPaused($run, [
+                        'conversation_id' => $conversationId,
+                        'title' => $title,
+                        'messages' => $pausedMessages,
+                        'paused' => true,
+                    ], $pausedReply);
+                }
+                $emit([
+                    'event' => 'message',
+                    'reply' => $pausedReply,
+                ]);
+                $emit([
+                    'event' => 'done',
+                    'success' => false,
+                    'reply' => $pausedReply,
                     'conversation_id' => $conversationId,
                     'method_type' => 'Menu Agent',
                     'run' => $run !== null ? $runService->toArray($run) : null,
@@ -250,6 +332,40 @@ final class FormMenuAgentController extends Controller
         return 'think';
     }
 
+    private function recentMenuUrl(User $user, FormMenuAgentService $agent): ?string
+    {
+        $runs = FormWorkflowRun::query()
+            ->where('user_id', $user->id)
+            ->where('method_type', 'Menu Agent')
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get();
+
+        foreach ($runs as $run) {
+            $payload = is_array($run->payload) ? $run->payload : [];
+            $blob = trim((string) ($payload['source_url'] ?? ''));
+            if ($blob !== '') {
+                $url = $agent->findMenuUrlInHistory([['role' => 'user', 'content' => $blob]]);
+                if ($url !== null) {
+                    return $url;
+                }
+            }
+            $url = $agent->findMenuUrlInHistory(is_array($payload['messages'] ?? null) ? $payload['messages'] : []);
+            if ($url !== null) {
+                return $url;
+            }
+            $title = trim((string) ($payload['title'] ?? ''));
+            if ($title !== '') {
+                $url = $agent->findMenuUrlInHistory([['role' => 'user', 'content' => $title]]);
+                if ($url !== null) {
+                    return $url;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private function conversationTitle(array $history, array $attachments): string
     {
         foreach ($history as $row) {
@@ -329,8 +445,9 @@ final class FormMenuAgentController extends Controller
         $dir = storage_path('app/menu-agent/'.$userId.'/'.$conversationId);
         File::ensureDirectoryExists($dir);
 
+        $roles = $request->input('attachment_roles', []);
         $stored = [];
-        foreach ($request->file('attachments') as $file) {
+        foreach ($request->file('attachments') as $index => $file) {
             if ($file === null || ! $file->isValid()) {
                 continue;
             }
@@ -343,10 +460,12 @@ final class FormMenuAgentController extends Controller
             if ($mime === '') {
                 $mime = (string) (mime_content_type($path) ?: '');
             }
+            $role = is_array($roles) ? (string) ($roles[$index] ?? 'menu') : 'menu';
             $stored[] = [
                 'name' => $original,
                 'path' => $path,
                 'mime' => $mime,
+                'kind' => $role === 'meal_photo' ? 'meal_photo' : 'menu',
             ];
         }
 

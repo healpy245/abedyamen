@@ -44,7 +44,8 @@ class SendCampaignFollowUpNudgeJob implements ShouldQueue
      */
     public static function textAsksClosingQuestion(string $text): bool
     {
-        return mb_stripos($text, 'جزء من نجاحنا') !== false;
+        return mb_stripos($text, 'جزء من نجاحنا') !== false
+            || mb_stripos($text, 'تشرحلك') !== false;
     }
 
     public function handle(ChatbotGreenApiService $greenApi): void

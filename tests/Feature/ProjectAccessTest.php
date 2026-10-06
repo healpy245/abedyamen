@@ -22,13 +22,14 @@ class ProjectAccessTest extends TestCase
      * @var array<string, list<string>>
      */
     private const MATRIX = [
-        'yamen@kaman.rest' => ['form', 'ai-chatbot', 'app-development'],
+        'yamen@kaman.rest' => ['form', 'ai-chatbot', 'app-development', 'kaman-support'],
         'burhan@kaman.rest' => ['form', 'ai-chatbot', 'app-development'],
         'ahmad@kaman.rest' => ['form'],
         'mohamed@kaman.rest' => ['form', 'ai-chatbot'],
         'malan@kaman.rest' => ['ai-chatbot'],
         'kaman@kaman.rest' => ['ai-chatbot'],
         'ahmadessa@kaman.rest' => ['form', 'app-development'],
+        'moaz@kaman.rest' => ['kaman-support'],
     ];
 
     protected function setUp(): void
@@ -44,12 +45,13 @@ class ProjectAccessTest extends TestCase
     public function test_each_seeded_user_can_sign_in_with_their_password(): void
     {
         $credentials = [
-            'yamen@kaman.rest' => 'Yam123456@',
+            'yamen@kaman.rest' => 'yam1234@',
             'burhan@kaman.rest' => 'Burhan123@',
             'ahmad@kaman.rest' => 'Ahmad123',
             'mohamed@kaman.rest' => 'mohamed123@',
             'malan@kaman.rest' => 'Malan123@',
             'kaman@kaman.rest' => 'Kaman123@',
+            'moaz@kaman.rest' => 'Moaz123@',
         ];
 
         foreach ($credentials as $email => $password) {
@@ -99,31 +101,35 @@ class ProjectAccessTest extends TestCase
         $cases = [
             'ahmad@kaman.rest' => [
                 'visible' => [__('projects.form.label')],
-                'hidden' => [__('projects.ai-chatbot.label'), __('projects.app-development.label')],
+                'hidden' => [__('projects.ai-chatbot.label'), __('projects.app-development.label'), __('projects.kaman-support.label')],
             ],
             'mohamed@kaman.rest' => [
                 'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label')],
-                'hidden' => [__('projects.app-development.label')],
+                'hidden' => [__('projects.app-development.label'), __('projects.kaman-support.label')],
             ],
             'yamen@kaman.rest' => [
-                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label')],
+                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label'), __('projects.kaman-support.label')],
                 'hidden' => [],
             ],
             'burhan@kaman.rest' => [
                 'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label')],
-                'hidden' => [],
+                'hidden' => [__('projects.kaman-support.label')],
             ],
             'malan@kaman.rest' => [
                 'visible' => [__('projects.ai-chatbot.label')],
-                'hidden' => [__('projects.form.label'), __('projects.app-development.label')],
+                'hidden' => [__('projects.form.label'), __('projects.app-development.label'), __('projects.kaman-support.label')],
             ],
             'kaman@kaman.rest' => [
                 'visible' => [__('projects.ai-chatbot.label')],
-                'hidden' => [__('projects.form.label'), __('projects.app-development.label')],
+                'hidden' => [__('projects.form.label'), __('projects.app-development.label'), __('projects.kaman-support.label')],
             ],
             'ahmadessa@kaman.rest' => [
                 'visible' => [__('projects.form.label'), __('projects.app-development.label')],
-                'hidden' => [__('projects.ai-chatbot.label')],
+                'hidden' => [__('projects.ai-chatbot.label'), __('projects.kaman-support.label')],
+            ],
+            'moaz@kaman.rest' => [
+                'visible' => [__('projects.kaman-support.label')],
+                'hidden' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label')],
             ],
         ];
 

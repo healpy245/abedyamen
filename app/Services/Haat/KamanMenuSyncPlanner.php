@@ -285,7 +285,12 @@ final class KamanMenuSyncPlanner
             }
             $wantedCategory = $categoryMatches[(string) ($meal['category_haat_id'] ?? '')] ?? null;
             $found = null;
-            foreach ([(string) ($meal['name_ar'] ?? ''), (string) ($meal['name_en'] ?? '')] as $name) {
+            foreach ([
+                (string) ($meal['name_ar'] ?? ''),
+                (string) ($meal['name_en'] ?? ''),
+                (string) ($meal['name_he'] ?? ''),
+                (string) ($meal['source_name'] ?? ''),
+            ] as $name) {
                 $key = $this->nameKey($name);
                 if ($key === '' || ! isset($byName[$key])) {
                     continue;
@@ -629,6 +634,9 @@ SYS, json_encode(['haat_meals' => $haat, 'kaman_items' => $kaman, 'category_matc
         $wantedAvailable = (bool) ($meal['is_available'] ?? true);
         if ($this->isAvailable($existing) !== $wantedAvailable) {
             $changes[] = 'status';
+        }
+        if (is_string($meal['image_url'] ?? null) && $meal['image_url'] !== '') {
+            $changes[] = 'image';
         }
 
         return [

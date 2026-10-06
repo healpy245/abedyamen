@@ -100,9 +100,15 @@ class MalanLeadService
 
         if ($duplicate !== null) {
             $this->contextService->setPendingFlow($conversation, $instance, 'new_lead_open');
+            $existingLeadId = $duplicate->metadata['malan_lead_id'] ?? null;
             $this->markCampaignLeadIfNeeded(
                 $conversation,
-                isset($duplicate->metadata['malan_lead_id']) ? (int) $duplicate->metadata['malan_lead_id'] : null,
+                isset($existingLeadId) && is_numeric($existingLeadId) ? (int) $existingLeadId : null,
+            );
+            $this->attachSupplementalLeadNote(
+                $conversation,
+                $existingLeadId,
+                is_string($input['note'] ?? null) ? $input['note'] : null,
             );
 
             return [
@@ -189,6 +195,11 @@ class MalanLeadService
                 }
 
                 $this->markCampaignLeadIfNeeded($conversation, null);
+                $this->attachSupplementalLeadNote(
+                    $conversation,
+                    $report->metadata['malan_lead_id'] ?? null,
+                    is_string($input['note'] ?? null) ? $input['note'] : null,
+                );
 
                 return [
                     'success' => true,
@@ -345,6 +356,96 @@ class MalanLeadService
         }
 
         return ((int) $provided) === 1 ? 1 : 0;
+    }
+
+    public function attachPreferredCallTimeNote(ChatbotConversation $conversation, string $time): bool
+    {
+        $time = trim($time);
+        if ($time === '') {
+            return false;
+        }
+
+        $report = MalanSupportReport::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('issue_type', 'new_lead')
+            ->latest('id')
+            ->first();
+
+        $leadId = $report !== null && isset($report->metadata['malan_lead_id'])
+            ? $report->metadata['malan_lead_id']
+            : null;
+
+        $note = 'يفضل مكالمة الساعة '.$time;
+
+        if ($report !== null) {
+            $meta = is_array($report->metadata) ? $report->metadata : [];
+            $meta['preferred_call_time'] = $time;
+            $report->forceFill(['metadata' => $meta])->save();
+        }
+
+        if (! is_scalar($leadId) || (string) $leadId === '') {
+            return false;
+        }
+
+        try {
+            $this->apiClient->createLeadNote($leadId, $note);
+
+            return true;
+        } catch (Throwable $e) {
+            Log::warning('Malan createLeadNote failed for preferred hour', [
+                'conversation_id' => $conversation->id,
+                'lead_id' => $leadId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * A second create_malan_lead in the same chat is a duplicate and must not
+     * open another CRM lead, but a volunteered call time still has to be noted.
+     */
+    private function attachSupplementalLeadNote(ChatbotConversation $conversation, mixed $leadId, ?string $extraNote): void
+    {
+        if (! is_scalar($leadId) || (string) $leadId === '') {
+            return;
+        }
+
+        $parts = [];
+        $extra = is_string($extraNote) ? trim($extraNote) : '';
+        if ($extra !== '') {
+            $parts[] = $extra;
+        }
+
+        $composed = $this->memoryService->composeLeadNote($conversation);
+        if (is_string($composed)) {
+            foreach (preg_split("/\n/", $composed) ?: [] as $line) {
+                $line = trim($line);
+                if ($line === '' || ! str_starts_with($line, 'يفضل مكالمة الساعة ')) {
+                    continue;
+                }
+                $clock = trim(substr($line, strlen('يفضل مكالمة الساعة ')));
+                if ($extra !== '' && $clock !== '' && str_contains($extra, $clock)) {
+                    continue;
+                }
+                $parts[] = $line;
+            }
+        }
+
+        if ($parts === []) {
+            return;
+        }
+
+        try {
+            $this->apiClient->createLeadNote($leadId, implode("\n", $parts));
+        } catch (Throwable $e) {
+            Log::warning('Malan createLeadNote failed on duplicate lead', [
+                'conversation_id' => $conversation->id,
+                'lead_id' => $leadId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function attachLeadNote(ChatbotConversation $conversation, mixed $leadId, ?string $extraNote): void

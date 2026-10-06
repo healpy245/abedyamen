@@ -7,14 +7,12 @@ use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
-    /**
-     * The workspace home is the authenticated landing page, so a guest hitting
-     * it is sent to the single sign-in screen rather than served the page.
-     */
-    public function test_the_application_redirects_guests_to_login(): void
+    public function test_the_welcome_page_is_public(): void
     {
-        $response = $this->get('/');
-
-        $response->assertRedirect('/login');
+        $this->get('/')
+            ->assertOk()
+            ->assertSee(__('features.hero_title'))
+            ->assertSee(__('auth.sign_in'))
+            ->assertDontSee('id="your-tools"', false);
     }
 }
