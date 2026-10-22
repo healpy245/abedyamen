@@ -63,6 +63,11 @@ class ChatbotAuthorizationService
 
     public function canAccessInstance(User $user, ChatbotInstance $instance): bool
     {
+        if ($user->isMowahada()) {
+            return (int) $instance->user_id === (int) $user->id
+                && $instance->hasMansourIntegration();
+        }
+
         if ($user->is_admin ?? false) {
             return true;
         }
@@ -139,6 +144,14 @@ class ChatbotAuthorizationService
      */
     public function instancesForUser(User $user): Collection
     {
+        if ($user->isMowahada()) {
+            return ChatbotInstance::query()
+                ->where('user_id', $user->id)
+                ->where('integration_type', 'mansour')
+                ->orderBy('name')
+                ->get();
+        }
+
         if ($user->is_admin ?? false) {
             return ChatbotInstance::query()->orderBy('name')->get();
         }

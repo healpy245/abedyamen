@@ -24,23 +24,23 @@ class ChatbotToolDefinitions
 
         // Campaign outreach chats are sales-first — only expose lead tool with campaign-safe description.
         if ($conversation !== null && $conversation->isCampaignLeadBot()) {
-            return [
+            return $this->forSpeedcomDesk($instance, [
                 $this->createMalanLeadForCampaign($instance),
-            ];
+            ]);
         }
 
         // Phone calls need fewer tools → smaller schema → faster first model round-trip.
         if ($voiceMode) {
-            return [
+            return $this->forSpeedcomDesk($instance, [
                 $this->lookupMalanCustomer(),
                 $this->setMalanPaymentMethodPreference(),
                 $this->createMalanSupportReport(),
                 $this->createMalanTask(),
                 $this->createMalanLead(),
-            ];
+            ]);
         }
 
-        return [
+        return $this->forSpeedcomDesk($instance, [
             $this->lookupMalanCustomer(),
             $this->createMalanSupportReport(),
             $this->createMalanTask(),
@@ -50,7 +50,66 @@ class ChatbotToolDefinitions
             $this->checkMalanPaymentStatus(),
             $this->requestMalanServiceReactivation(),
             $this->setMalanPaymentMethodPreference(),
-        ];
+        ]);
+    }
+
+    /**
+     * Mamdouh stores nothing in the Malan CRM. Lead and task tools send a fixed WhatsApp template.
+     *
+     * @param  list<array<string, mixed>>  $tools
+     * @return list<array<string, mixed>>
+     */
+    private function forSpeedcomDesk(ChatbotInstance $instance, array $tools): array
+    {
+        if (! $instance->companyProfile()->isSpeedcom()) {
+            return $tools;
+        }
+
+        return array_map(fn (array $tool): array => $this->asSpeedcomDeskTool($tool), $tools);
+    }
+
+    /**
+     * @param  array<string, mixed>  $tool
+     * @return array<string, mixed>
+     */
+    private function asSpeedcomDeskTool(array $tool): array
+    {
+        $name = (string) ($tool['function']['name'] ?? '');
+
+        if ($name === 'create_malan_lead') {
+            $tool['function']['description'] .= ' SPEEDCOM: do NOT create a Malan CRM lead. This sends one fixed WhatsApp template to the Speedcom desk. Still collect full_name, phone, and city_name, confirm, then call. Never mention the desk phone number to the customer.';
+        }
+
+        if ($name === 'create_malan_task' || $name === 'create_malan_support_report') {
+            $tool['function']['description'] = 'SPEEDCOM: send a fixed WhatsApp template to the Speedcom desk. Does not create a Malan CRM task and does not require a verified CRM customer. For a technical problem, first identify router power (off/on), whether the light is red and weak, and whether the internet is fully down. Show the customer a one-line draft and call only after they agree. Never mention the desk phone number.';
+            $properties = &$tool['function']['parameters']['properties'];
+            $properties['customer_name'] = [
+                'type' => 'string',
+                'description' => 'Customer name if known.',
+            ];
+            $properties['phone'] = [
+                'type' => 'string',
+                'description' => 'Customer phone digits, or whatsapp_chat_phone when they mean the current chat number.',
+            ];
+            $properties['router_power'] = [
+                'type' => 'string',
+                'enum' => ['off', 'on', 'unknown'],
+                'description' => 'Router power: off = مطفي, on = ضاوي.',
+            ];
+            $properties['router_light'] = [
+                'type' => 'string',
+                'enum' => ['off', 'red_weak', 'red', 'normal', 'unknown'],
+                'description' => 'Router light. red_weak = أحمر ضعيف.',
+            ];
+            $properties['internet'] = [
+                'type' => 'string',
+                'enum' => ['none', 'weak', 'ok', 'unknown'],
+                'description' => 'none = no internet at all, weak = weak internet.',
+            ];
+            unset($properties);
+        }
+
+        return $tool;
     }
 
     /**

@@ -23,6 +23,7 @@ Route::middleware(['auth', 'project:app-development'])
         Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
         Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
 
+        Route::get('/restaurants/logos', [TicketController::class, 'restaurantLogos'])->name('restaurants.logos');
         Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
         Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
         Route::post('/tickets', [TicketController::class, 'store'])
@@ -47,6 +48,7 @@ Route::middleware(['auth', 'project:app-development'])
         Route::post('/tickets/{ticket}/assign', [TicketWorkflowController::class, 'assign'])->name('tickets.assign');
         Route::patch('/tickets/{ticket}/priority', [TicketWorkflowController::class, 'updatePriority'])->name('tickets.priority');
         Route::patch('/tickets/{ticket}/status', [TicketWorkflowController::class, 'updateStatus'])->name('tickets.status');
+        Route::patch('/tickets/{ticket}/restaurant', [TicketController::class, 'updateRestaurant'])->name('tickets.restaurant');
         Route::patch('/tickets/{ticket}/app-types', [TicketWorkflowController::class, 'updateAppTypes'])->name('tickets.app-types');
 
         Route::post('/tickets/{ticket}/comments', [TicketCommentController::class, 'store'])->name('tickets.comments.store');
@@ -60,6 +62,7 @@ Route::middleware(['auth', 'project:app-development'])
         Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
         Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+        Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
         Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
         Route::post('/tasks/{task}/timer/start', [TaskTimerController::class, 'start'])->name('tasks.timer.start');
         Route::post('/tasks/{task}/timer/pause', [TaskTimerController::class, 'pause'])->name('tasks.timer.pause');
@@ -83,6 +86,7 @@ Route::middleware(['auth', 'project:app-development'])
         Route::get('/releases/{release}/download', [ReleaseController::class, 'download'])->name('releases.download');
 
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export', [ReportController::class, 'exportSummary'])->name('reports.export.summary');
         Route::get('/reports/export/tickets', [ReportController::class, 'exportTickets'])->name('reports.export.tickets');
         Route::get('/reports/export/tasks', [ReportController::class, 'exportTasks'])->name('reports.export.tasks');
         Route::get('/reports/export/time', [ReportController::class, 'exportTime'])->name('reports.export.time');

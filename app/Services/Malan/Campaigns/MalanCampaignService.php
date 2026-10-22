@@ -7,7 +7,6 @@ namespace App\Services\Malan\Campaigns;
 use App\Jobs\ProcessMalanCampaignBlastJob;
 use App\Models\AiChatbot\ChatbotConversation;
 use App\Models\AiChatbot\ChatbotInstance;
-use App\Models\AiChatbot\ChatbotMessage;
 use App\Models\Malan\MalanCampaign;
 use App\Models\Malan\MalanCampaignContact;
 use App\Models\User;
@@ -35,6 +34,38 @@ class MalanCampaignService
         return route('ai-chatbot.greenapi.campaign-webhook', [
             'token' => $campaign->greenapi_webhook_token,
         ]);
+    }
+
+    /**
+     * @return string|null error translation key
+     */
+    public function assignWebhookToken(MalanCampaign $campaign, ?string $input): ?string
+    {
+        $input = trim((string) $input);
+        if ($input === '') {
+            return null;
+        }
+
+        $token = \App\Services\AiChatbot\WhapiCloudClient::parseWebhookToken($input);
+        if ($token === null) {
+            return 'chatbot.webhook_token_invalid';
+        }
+
+        if ($token === $campaign->greenapi_webhook_token) {
+            return null;
+        }
+
+        $taken = MalanCampaign::query()
+            ->where('greenapi_webhook_token', $token)
+            ->where('id', '!=', $campaign->id)
+            ->exists();
+        if ($taken) {
+            return 'chatbot.webhook_token_taken';
+        }
+
+        $campaign->forceFill(['greenapi_webhook_token' => $token])->save();
+
+        return null;
     }
 
     public function findByWebhookToken(string $token): ?MalanCampaign
@@ -82,7 +113,7 @@ class MalanCampaignService
                 'name' => trim($data['name']),
                 'status' => MalanCampaign::STATUS_READY,
                 'is_active' => true,
-                'greenapi_url' => trim($data['greenapi_url']),
+                'greenapi_url' => trim((string) ($data['greenapi_url'] ?? '')),
                 'opening_message' => $opening,
                 'system_prompt' => trim((string) ($data['system_prompt'] ?? '')) !== ''
                     ? trim((string) $data['system_prompt'])
@@ -168,7 +199,7 @@ class MalanCampaignService
             $campaign->save();
             $this->insertContacts($campaign, $rows);
         } else {
-            if ($campaign->contacts_count > 0 && $campaign->hasGreenApiCredentials()) {
+            if ($campaign->contacts_count > 0 && $campaign->hasWhatsAppTransport()) {
                 $campaign->status = MalanCampaign::STATUS_READY;
             }
             $campaign->save();
@@ -184,7 +215,7 @@ class MalanCampaignService
     public function start(MalanCampaign $campaign, ?array $contactIds = null): array
     {
         if (! $campaign->canStart() && $campaign->status !== MalanCampaign::STATUS_RUNNING) {
-            throw new RuntimeException('Campaign is not ready to start. Check Green API URL, opening message, and contacts.');
+            throw new RuntimeException('Campaign is not ready to start. Check WhatsApp (Whapi or a Green API link), opening message, and contacts.');
         }
 
         $selectedIds = $this->normalizeSelectedContactIds($campaign, $contactIds);
@@ -192,26 +223,20 @@ class MalanCampaignService
             throw new RuntimeException('No contacts selected.');
         }
 
-        $resent = $campaign->contacts()
-            ->whereIn('id', $selectedIds)
-            ->whereNotNull('message_sent_at')
-            ->exists();
-
-        // Selected contacts: queue for (re)send.
-        foreach ($campaign->contacts()->whereIn('id', $selectedIds)->orderBy('id')->cursor() as $contact) {
-            $fixed = $this->rebuildChatIdForContact($contact);
-            $contact->forceFill([
-                'chat_id' => $fixed !== '' ? $fixed : $contact->chat_id,
-                'phone_normalized' => $this->normalizePhoneDigits((string) $contact->phone) ?: $contact->phone_normalized,
-                'status' => MalanCampaignContact::STATUS_PENDING,
-                'message_sent_at' => null,
-                'last_error' => null,
-            ])->save();
+        $resent = false;
+        foreach (array_chunk($selectedIds, 500) as $chunk) {
+            $resent = $campaign->contacts()
+                ->whereIn('id', $chunk)
+                ->whereNotNull('message_sent_at')
+                ->exists();
+            if ($resent) {
+                break;
+            }
         }
 
-        // Unselected pending rows must not be picked up by this blast.
+        // Park every unsent row, then queue only the selected ids.
+        // One update per chunk — never hydrate the whole list.
         $campaign->contacts()
-            ->whereNotIn('id', $selectedIds)
             ->whereNull('message_sent_at')
             ->whereIn('status', [
                 MalanCampaignContact::STATUS_PENDING,
@@ -223,6 +248,38 @@ class MalanCampaignService
             ]);
 
         $queued = count($selectedIds);
+        $now = now();
+        foreach (array_chunk($selectedIds, 500) as $chunk) {
+            MalanCampaignContact::query()
+                ->where('campaign_id', $campaign->id)
+                ->whereIn('id', $chunk)
+                ->update([
+                    'status' => MalanCampaignContact::STATUS_PENDING,
+                    'message_sent_at' => null,
+                    'last_error' => null,
+                    'updated_at' => $now,
+                ]);
+        }
+
+        foreach (array_chunk($selectedIds, 500) as $chunk) {
+            $needsChatId = MalanCampaignContact::query()
+                ->where('campaign_id', $campaign->id)
+                ->whereIn('id', $chunk)
+                ->where(function ($q): void {
+                    $q->whereNull('chat_id')
+                        ->orWhere('chat_id', '')
+                        ->orWhere('chat_id', 'not like', '%@%');
+                })
+                ->get();
+
+            foreach ($needsChatId as $contact) {
+                $fixed = $this->rebuildChatIdForContact($contact);
+                $contact->forceFill([
+                    'chat_id' => $fixed !== '' ? $fixed : $contact->chat_id,
+                    'phone_normalized' => $this->normalizePhoneDigits((string) $contact->phone) ?: $contact->phone_normalized,
+                ])->save();
+            }
+        }
 
         $campaign->forceFill([
             'status' => MalanCampaign::STATUS_RUNNING,
@@ -492,12 +549,15 @@ class MalanCampaignService
             return null;
         }
 
+        $local = strlen($digits) >= 9 ? '0'.substr($digits, -9) : $digits;
+
         return MalanCampaignContact::query()
             ->where('campaign_id', $campaign->id)
-            ->where(function ($q) use ($digits): void {
+            ->where(function ($q) use ($digits, $local): void {
                 $q->where('phone_normalized', $digits)
-                    ->orWhere('phone_normalized', '0'.substr($digits, -9))
-                    ->orWhere('phone', 'like', '%'.substr($digits, -9).'%');
+                    ->orWhere('phone_normalized', $local)
+                    ->orWhere('phone', $digits)
+                    ->orWhere('phone', $local);
             })
             ->first();
     }
@@ -514,9 +574,10 @@ class MalanCampaignService
             ->where(function ($q) use ($chatId, $digits): void {
                 $q->where('chat_id', $chatId);
                 if ($digits !== '') {
+                    $local = strlen($digits) >= 9 ? '0'.substr($digits, -9) : $digits;
                     $q->orWhere('phone_normalized', $digits)
-                        ->orWhere('phone_normalized', '0'.substr($digits, -9))
-                        ->orWhere('chat_id', 'like', '%'.$digits.'%');
+                        ->orWhere('phone_normalized', $local)
+                        ->orWhere('chat_id', $digits.'@c.us');
                 }
             })
             ->with('campaign')
@@ -551,7 +612,8 @@ class MalanCampaignService
     }
 
     /**
-     * Send the opening blast to one contact and create a leads-only conversation.
+     * Send the opening blast to one contact.
+     * A conversation row is created only when that person replies.
      */
     public function sendToContact(MalanCampaign $campaign, MalanCampaignContact $contact): void
     {
@@ -575,7 +637,7 @@ class MalanCampaignService
         }
 
         $sendUrl = trim((string) $campaign->greenapi_url);
-        if ($sendUrl === '') {
+        if (! app(\App\Services\AiChatbot\WhapiCloudClient::class)->transportReady($sendUrl)) {
             $contact->forceFill([
                 'status' => MalanCampaignContact::STATUS_FAILED,
                 'last_error' => 'Missing Green API URL.',
@@ -594,11 +656,15 @@ class MalanCampaignService
             return;
         }
 
-        try {
-            $conversation = $this->ensureConversation($campaign, $instance, $contact, $chatId);
-            // Every trigger blast starts clean — no stale name/number flags or old bubbles.
-            $this->contextService->resetCampaignConversationForResend($conversation, $instance);
+        $existingConversation = null;
+        if ($contact->conversation_id) {
+            $existingConversation = ChatbotConversation::query()->find($contact->conversation_id);
+            if ($existingConversation !== null) {
+                $this->contextService->resetCampaignConversationForResend($existingConversation, $instance);
+            }
+        }
 
+        try {
             $message = trim((string) $campaign->opening_message);
             $sendResult = $this->greenApiService->sendMessage($sendUrl, $chatId, $message);
             $httpOk = ($sendResult['status'] ?? 0) >= 200 && ($sendResult['status'] ?? 0) < 300;
@@ -617,39 +683,9 @@ class MalanCampaignService
                 }
             }
 
-            ChatbotMessage::query()->create([
-                'conversation_id' => $conversation->id,
-                'role' => 'assistant',
-                'sender_type' => 'ai',
-                'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
-                'delivery_status' => $ok ? 'sent' : 'failed',
-                'message_type' => 'text',
-                'message' => $message,
-                'metadata' => [
-                    'campaign_id' => $campaign->id,
-                    'campaign_contact_id' => $contact->id,
-                    'campaign_blast' => true,
-                    'greenapi_chat_id' => $chatId,
-                    'greenapi_status' => $sendResult['status'] ?? null,
-                    'greenapi_id_message' => $idMessage,
-                    'greenapi_body' => is_array($body) ? $body : null,
-                ],
-            ]);
-
-            // Keep a stable local external id (campaign-scoped) so we never collide with
-            // the main WhatsApp inbox conversation for the same phone on this instance.
-            $meta = is_array($conversation->metadata) ? $conversation->metadata : [];
-            $meta['whatsapp_chat_id'] = $chatId;
-            $conversation->forceFill([
-                'contact_phone' => preg_replace('/@.*$/', '', $chatId) ?: $conversation->contact_phone,
-                'metadata' => $meta,
-            ])->save();
-            $conversation->recordAssistantActivity();
-
             if (! $ok) {
                 $contact->forceFill([
                     'status' => MalanCampaignContact::STATUS_FAILED,
-                    'conversation_id' => $conversation->id,
                     'chat_id' => $chatId,
                     'last_error' => mb_substr((string) $errorDetail, 0, 1000),
                 ])->save();
@@ -657,12 +693,22 @@ class MalanCampaignService
                 return;
             }
 
+            $meta = is_array($contact->metadata) ? $contact->metadata : [];
+            $meta['outbound_id_message'] = $idMessage;
+            $meta['outbound_text'] = $message;
+            $meta['outbound_sent_at'] = now()->toIso8601String();
+
+            $isLead = $contact->lead_created_at !== null
+                || $contact->status === MalanCampaignContact::STATUS_LEAD_CREATED;
+
             $contact->forceFill([
-                'status' => MalanCampaignContact::STATUS_SENT,
-                'conversation_id' => $conversation->id,
+                'status' => $isLead ? MalanCampaignContact::STATUS_LEAD_CREATED : MalanCampaignContact::STATUS_SENT,
                 'chat_id' => $chatId,
                 'phone_normalized' => $this->normalizePhoneDigits((string) $contact->phone) ?: $contact->phone_normalized,
                 'message_sent_at' => now(),
+                'responded_at' => $isLead ? $contact->responded_at : null,
+                'insight_group' => $isLead ? CampaignInsightService::GROUP_LEADS : CampaignInsightService::GROUP_NO_RESPONSE,
+                'metadata' => $meta,
                 'last_error' => null,
             ])->save();
 
@@ -714,6 +760,7 @@ class MalanCampaignService
 
         $contact->forceFill([
             'status' => MalanCampaignContact::STATUS_LEAD_CREATED,
+            'insight_group' => CampaignInsightService::GROUP_LEADS,
             'lead_created_at' => now(),
             'malan_lead_id' => $leadId,
         ])->save();
@@ -930,65 +977,5 @@ class MalanCampaignService
         }
 
         return '';
-    }
-
-    private function ensureConversation(
-        MalanCampaign $campaign,
-        ChatbotInstance $instance,
-        MalanCampaignContact $contact,
-        string $chatId,
-    ): ChatbotConversation {
-        if ($contact->conversation_id) {
-            $existing = ChatbotConversation::query()->find($contact->conversation_id);
-            if ($existing !== null) {
-                return $existing;
-            }
-        }
-
-        $existing = ChatbotConversation::query()
-            ->where('instance_id', $instance->id)
-            ->where('campaign_id', $campaign->id)
-            ->where('external_chat_id', $chatId)
-            ->first();
-
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        // Campaign chats share the Malan chatbot instance with the main inbox, so the
-        // real WhatsApp chatId can already exist there. Keep a scoped external id.
-        $scopedExternalId = 'campaign:'.$campaign->id.':'.$chatId;
-
-        $existingScoped = ChatbotConversation::query()
-            ->where('instance_id', $instance->id)
-            ->where('campaign_id', $campaign->id)
-            ->where('external_chat_id', $scopedExternalId)
-            ->first();
-
-        if ($existingScoped !== null) {
-            return $existingScoped;
-        }
-
-        $meta = [
-            'campaign_id' => $campaign->id,
-            'campaign_contact_id' => $contact->id,
-            'campaign_lead_bot' => true,
-            'source' => 'malan_campaign',
-            'whatsapp_chat_id' => $chatId,
-        ];
-
-        return ChatbotConversation::query()->create([
-            'user_id' => $instance->user_id,
-            'instance_id' => $instance->id,
-            'campaign_id' => $campaign->id,
-            'title' => $contact->name ?: ($contact->phone_normalized ?: $contact->phone),
-            'channel' => ChatbotConversation::CHANNEL_WHATSAPP,
-            'external_chat_id' => $scopedExternalId,
-            'contact_phone' => preg_replace('/@.*$/', '', $chatId) ?: ($contact->phone_normalized ?: $contact->phone),
-            'contact_name' => $contact->name,
-            'bot_mode' => ChatbotConversation::BOT_MODE_ACTIVE,
-            'attention_status' => ChatbotConversation::ATTENTION_NORMAL,
-            'metadata' => $meta,
-        ]);
     }
 }

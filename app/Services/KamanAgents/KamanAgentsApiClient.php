@@ -204,6 +204,43 @@ final class KamanAgentsApiClient
     }
 
     /**
+     * @param  array{
+     *     fullName: string,
+     *     restName: string,
+     *     source: string,
+     *     city: string,
+     *     phoneNumber: string,
+     *     notes: string
+     * }  $payload
+     * @return array<string, mixed>
+     */
+    public function updateLead(string $leadId, array $payload): array
+    {
+        $response = $this->authenticatedRequest()
+            ->asJson()
+            ->patch($this->url('/api/leads/'.$leadId), $payload);
+
+        if ($response->status() === 401) {
+            Cache::forget(self::TOKEN_CACHE_KEY);
+            $response = $this->authenticatedRequest()
+                ->asJson()
+                ->patch($this->url('/api/leads/'.$leadId), $payload);
+        }
+
+        if (!$response->successful()) {
+            $message = $response->json('message') ?? $response->body();
+            throw new RuntimeException('Failed to update lead: HTTP ' . $response->status() . ' — ' . $message);
+        }
+
+        $body = $response->json();
+        if (!is_array($body)) {
+            return ['id' => $leadId, 'ok' => true];
+        }
+
+        return $body;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function createTask(

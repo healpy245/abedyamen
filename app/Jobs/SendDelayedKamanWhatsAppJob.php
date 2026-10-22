@@ -69,7 +69,7 @@ class SendDelayedKamanWhatsAppJob implements ShouldQueue
         }
 
         $sendUrl = trim((string) $instance->greenapi_url);
-        if ($sendUrl === '') {
+        if (! $greenApi->whapiTransportReady($sendUrl)) {
             $message->forceFill([
                 'delivery_status' => 'failed',
                 'metadata' => array_merge($meta, [

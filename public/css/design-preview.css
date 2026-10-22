@@ -1,0 +1,29 @@
+.design-dock {
+    position: fixed;
+    z-index: 40;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--kaman-border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--kaman-surface) 92%, transparent);
+    box-shadow: var(--kaman-shadow-card);
+}
+
+.design-dock a {
+    padding: 6px 12px;
+    border-radius: 999px;
+    color: var(--kaman-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+}
+
+.design-dock a[aria-current="page"] {
+    background: var(--kaman-primary);
+    color: #fff;
+}

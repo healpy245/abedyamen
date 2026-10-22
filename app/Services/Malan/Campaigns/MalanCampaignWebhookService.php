@@ -35,6 +35,7 @@ class MalanCampaignWebhookService
         protected MalanConversationContextService $contextService,
         protected CampaignConversationBurstService $burstService,
         protected WhatsAppVoiceInboundService $voiceInboundService,
+        protected CampaignInsightService $insightService,
     ) {}
 
     /**
@@ -42,6 +43,22 @@ class MalanCampaignWebhookService
      */
     public function handle(MalanCampaign $campaign, Request $request): array
     {
+        $expanded = $this->greenApiService->expandTransportWebhook($request);
+        if ($expanded !== null) {
+            $results = [];
+            foreach ($expanded as $part) {
+                $results[] = $this->handle($campaign, $part);
+            }
+
+            return [
+                'ok' => true,
+                'batch' => count($results),
+                'results' => $results,
+            ];
+        }
+
+        $request = $this->greenApiService->prepareTransportWebhook($request);
+
         if ($dotSilence = $this->handleStaffDotSilenceIfNeeded($campaign, $request)) {
             return $dotSilence;
         }
@@ -219,11 +236,20 @@ class MalanCampaignWebhookService
         }
 
         $sendUrl = trim((string) ($campaign->greenapi_url ?: $instance->greenapi_url));
-        if ($sendUrl === '') {
+        if (! app(\App\Services\AiChatbot\WhapiCloudClient::class)->transportReady($sendUrl)) {
             return ['ok' => false, 'error' => 'Campaign Green API URL is not configured.'];
         }
 
         $contact = $this->resolveContact($campaign, $incoming->chatId);
+        if ($contact !== null && $this->isStoredBlastEcho($contact, $incoming)) {
+            return [
+                'ok' => true,
+                'ignored' => true,
+                'reason' => 'Ignored echo of the campaign opening message.',
+                'campaign_id' => $campaign->id,
+            ];
+        }
+
         $conversation = $this->resolveConversation($campaign, $instance->id, $contact, $incoming);
 
         // Respect staff per-chat mute (paused / human_takeover). Do not auto-reactivate.
@@ -258,6 +284,8 @@ class MalanCampaignWebhookService
                 ];
             }
         }
+
+        $this->seedOpeningMessage($campaign, $conversation, $contact, $incoming->chatId);
 
         if ($contact !== null) {
             if ($contact->conversation_id !== $conversation->id) {
@@ -348,6 +376,10 @@ class MalanCampaignWebhookService
                 ])->save();
             }
 
+            if ($contact !== null) {
+                $this->insightService->syncContactInsight($contact->fresh() ?? $contact);
+            }
+
             return [
                 'ok' => true,
                 'campaign_id' => $campaign->id,
@@ -375,6 +407,10 @@ class MalanCampaignWebhookService
 
         $userMessage = $result['user_message'] ?? null;
         $conversation = $result['conversation'] ?? $conversation->fresh() ?? $conversation;
+
+        if ($contact !== null) {
+            $this->insightService->syncContactInsight($contact->fresh() ?? $contact);
+        }
 
         $registration = $this->burstService->registerInboundMessage($conversation);
         $version = (int) $registration['version'];
@@ -530,6 +566,63 @@ class MalanCampaignWebhookService
         $text = preg_replace('/\s+/u', ' ', trim($text)) ?? '';
 
         return mb_strtolower($text);
+    }
+
+    private function isStoredBlastEcho(MalanCampaignContact $contact, GreenApiIncomingMessage $incoming): bool
+    {
+        $meta = is_array($contact->metadata) ? $contact->metadata : [];
+        $outboundId = trim((string) ($meta['outbound_id_message'] ?? ''));
+        if ($outboundId !== '' && $incoming->messageId === $outboundId) {
+            return true;
+        }
+
+        $outboundText = $this->normalizeComparableText((string) ($meta['outbound_text'] ?? ''));
+        $incomingText = $this->normalizeComparableText($incoming->customerFacingText() ?? '');
+        if ($outboundText === '' || $incomingText === '' || $outboundText !== $incomingText) {
+            return false;
+        }
+
+        return $contact->message_sent_at !== null
+            && $contact->message_sent_at->greaterThan(now()->subHours(12));
+    }
+
+    private function seedOpeningMessage(
+        MalanCampaign $campaign,
+        ChatbotConversation $conversation,
+        ?MalanCampaignContact $contact,
+        string $chatId,
+    ): void {
+        $already = ChatbotMessage::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('role', 'assistant')
+            ->exists();
+        if ($already) {
+            return;
+        }
+
+        $meta = is_array($contact?->metadata) ? $contact->metadata : [];
+        $text = trim((string) ($meta['outbound_text'] ?? $campaign->opening_message));
+        if ($text === '') {
+            return;
+        }
+
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'delivery_status' => 'sent',
+            'message_type' => 'text',
+            'message' => $text,
+            'metadata' => [
+                'campaign_id' => $campaign->id,
+                'campaign_contact_id' => $contact?->id,
+                'campaign_blast' => true,
+                'seeded_on_reply' => true,
+                'greenapi_chat_id' => $chatId,
+                'greenapi_id_message' => $meta['outbound_id_message'] ?? null,
+            ],
+        ]);
     }
 
     private function resolveContact(MalanCampaign $campaign, string $chatId): ?MalanCampaignContact

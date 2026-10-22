@@ -143,6 +143,12 @@
         @case('clock')
             <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
             @break
+        @case('search')
+            <circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>
+            @break
+        @case('filter')
+            <path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/>
+            @break
         @default
             <circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/>
             <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>

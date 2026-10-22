@@ -10,7 +10,7 @@
 @section('content')
     <div class="page-container page-container--tight">
         <div class="mx-auto w-full max-w-6xl space-y-5">
-            <section class="hero-panel hero-panel--compact">
+            <section class="hero-panel hero-panel--compact flex flex-wrap items-center justify-between gap-3">
                 <div class="min-w-0">
                     <h1 class="text-xl sm:text-2xl font-semibold text-[#2b1e11]">
                         {{ __('chatbot.choose.title') }}
@@ -19,7 +19,16 @@
                         {{ __('chatbot.choose.subtitle') }}
                     </p>
                 </div>
+                @if($instances->contains(fn ($bot) => $bot->hasMansourIntegration()))
+                    <a href="{{ route('ai-chatbot.farz.dashboard') }}" class="kaman-button kaman-button--sm">
+                        {{ __('chatbot.mansour.dashboard') }}
+                    </a>
+                @endif
             </section>
+
+            @if(session('status'))
+                <p class="text-sm text-emerald-700">{{ session('status') }}</p>
+            @endif
 
             <section>
                 <x-workspace.section-header
@@ -30,15 +39,23 @@
 
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($instances as $bot)
-                        <x-workspace.tool-card
-                            :href="route('ai-chatbot.workspace.conversations', $bot)"
-                            :title="$bot->name"
-                            :description="$bot->workspaceDescription()"
-                            :icon="$bot->workspaceIcon()"
-                            :tone="$bot->workspaceTone()"
-                            :status="$bot->isBotGloballyActive() ? __('chatbot.workspace.bot_on') : __('chatbot.workspace.bot_off')"
-                            :detail="$bot->workspaceDescription()"
-                        />
+                        <div class="flex flex-col gap-2">
+                            <x-workspace.tool-card
+                                :href="route('ai-chatbot.workspace.conversations', $bot)"
+                                :title="$bot->name"
+                                :description="$bot->workspaceDescription()"
+                                :icon="$bot->workspaceIcon()"
+                                :tone="$bot->workspaceTone()"
+                                :status="$bot->isBotGloballyActive() ? __('chatbot.workspace.bot_on') : __('chatbot.workspace.bot_off')"
+                                :detail="$bot->workspaceDescription()"
+                            />
+                            @if($bot->hasMansourIntegration())
+                                <form method="post" action="{{ route('ai-chatbot.workspace.mansour.copy', $bot) }}">
+                                    @csrf
+                                    <button type="submit" class="kaman-button-ghost kaman-button--sm w-full">{{ __('chatbot.mansour.copy') }}</button>
+                                </form>
+                            @endif
+                        </div>
                     @endforeach
                 </div>
             </section>

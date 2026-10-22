@@ -4,33 +4,27 @@
 
 @extends('layouts.kaman')
 
-@section('tag', __('app-development.tag'))
+@section('tag', __('app-development.board.title'))
 
 @section('content')
-    <div class="page-container page-container--tight page-container--app-dev">
-        <div class="app-dev-shell">
-            @include('app-development.partials.nav')
-            <div class="app-dev-main">
-                <div class="app-dev-main__strip">
-                    <button type="button"
-                            class="app-dev-sidebar-open kaman-button-ghost kaman-button--sm"
-                            data-app-dev-sidebar-open
-                            aria-label="{{ __('app-development.nav.open_menu') }}">
-                        @include('app-development.partials.icon', ['name' => 'menu'])
-                    </button>
-                </div>
-                @unless($hidePageFlash ?? false)
-                    @include('app-development.partials.flash')
-                @endunless
-                @yield('app')
-            </div>
+    <div class="app-dev-workspace">
+        <div class="app-dev-workspace__body">
+            @unless($hidePageFlash ?? false)
+                @include('app-development.partials.flash')
+            @endunless
+            @yield('app')
         </div>
     </div>
-    @include('app-development.partials.timer-widget')
+    @if(request()->routeIs('app-development.tasks.*'))
+        @include('app-development.partials.timer-widget')
+    @endif
     @include('app-development.partials.modal')
 @endsection
 
+@push('head')
+    <link rel="stylesheet" href="{{ asset('css/app-development-board.css') }}?v={{ @filemtime(public_path('css/app-development-board.css')) ?: time() }}">
+@endpush
+
 @push('scripts')
-    <script src="{{ asset('js/app-development-sidebar.js') }}?v={{ @filemtime(public_path('js/app-development-sidebar.js')) ?: time() }}" defer></script>
     <script src="{{ asset('js/app-development-timer.js') }}?v={{ @filemtime(public_path('js/app-development-timer.js')) ?: time() }}" defer></script>
 @endpush

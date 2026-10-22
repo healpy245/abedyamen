@@ -8,12 +8,12 @@ import sys
 from pathlib import Path
 
 import paramiko
+from sftp_config import load_sftp
 
 LOCAL_PUBLIC = Path(__file__).resolve().parents[1] / "public"
 REMOTE = "/home/tut8x1radmrp/public_html/kaman-workspace"
-HOST = "sg2plzcpnl505722.prod.sin2.secureserver.net"
-USER = "tut8x1radmrp"
-PASSWORD = "Mfit2025@"
+
+HOST, _SFTP_PORT, USER, PASSWORD = load_sftp()
 
 # Relative paths under public/ that the domain docroot must serve.
 UPLOAD_PATHS = [

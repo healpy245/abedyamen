@@ -16,9 +16,11 @@ use App\Models\AppDevelopment\AppDevelopmentTicket;
 use App\Models\User;
 use App\Services\AppDevelopment\AppDevelopmentNotificationService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
@@ -41,9 +43,16 @@ class TaskController extends Controller
             $scope = 'mine';
         }
 
+        $view = (string) $request->query('view', 'board');
+        if (! in_array($view, ['board', 'list'], true)) {
+            $view = 'board';
+        }
+
         $query = AppDevelopmentTask::query()
             ->with([
-                'ticket:id,ticket_number,title',
+                'ticket' => function ($inner): void {
+                    $inner->select('id', 'ticket_number', 'title', 'status')->withCount('comments');
+                },
                 'ticket.appTypeRows',
                 'assignee:id,name',
                 'creator:id,name',
@@ -97,34 +106,95 @@ class TaskController extends Controller
             });
         }
 
-        $tasks = $query->latest('updated_at')->paginate(30)->withQueryString();
+        if ($request->filled('due')) {
+            try {
+                $due = Carbon::parse((string) $request->query('due'))->toDateString();
+                $query->whereDate('due_at', $due);
+            } catch (\Throwable) {
+                // Ignore an unreadable due-date filter.
+            }
+        }
 
-        $grouped = $tasks->getCollection()->groupBy(
-            static fn (AppDevelopmentTask $task): string => $task->status?->value ?? 'todo',
-        );
+        $search = trim((string) $request->query('q', ''));
+        if ($search !== '') {
+            $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';
+            $query->where(function ($inner) use ($like): void {
+                $inner->where('title', 'like', $like)
+                    ->orWhere('description', 'like', $like)
+                    ->orWhereHas('ticket', function ($ticket) use ($like): void {
+                        $ticket->where('ticket_number', 'like', $like)
+                            ->orWhere('title', 'like', $like);
+                    });
+            });
+        }
+
+        $columns = [];
+        $tasks = null;
+        $sort = (string) $request->query('sort', 'updated');
+        $dir = $request->query('dir') === 'asc' ? 'asc' : 'desc';
+
+        if ($view === 'board') {
+            foreach (AppDevelopmentTaskStatus::cases() as $status) {
+                $columnQuery = $query->clone()->where('status', $status);
+                $total = $columnQuery->clone()->count();
+                $columns[] = [
+                    'status' => $status,
+                    'total' => $total,
+                    'tasks' => $columnQuery->latest('updated_at')->limit(80)->get(),
+                ];
+            }
+        } else {
+            $sorted = $query->clone();
+            match ($sort) {
+                'title' => $sorted->orderBy('title', $dir),
+                'status' => $sorted->orderBy('status', $dir),
+                'priority' => $sorted->orderBy('priority', $dir),
+                'assignee' => $sorted->orderBy('assignee_id', $dir),
+                'due' => $sorted->orderBy('due_at', $dir),
+                default => $sorted->latest('updated_at'),
+            };
+            $tasks = $sorted->paginate(40)->withQueryString();
+        }
 
         return view('app-development.tasks.index', [
             'tasks' => $tasks,
-            'grouped' => $grouped,
+            'columns' => $columns,
+            'viewMode' => $view,
             'scope' => $scope,
+            'sort' => $sort,
+            'dir' => $dir,
+            'search' => $search,
             'developers' => $this->developers(),
             'selectedAppTypes' => $selectedAppTypes->map(static fn (AppDevelopmentAppType $type): string => $type->value)->all(),
+            'notifyDevelopers' => $user->isAppDevelopmentAdmin()
+                ? AppDevelopmentMember::selectableDevelopers()->get()->sortBy(fn (AppDevelopmentMember $member): string => mb_strtolower((string) $member->user?->name))->values()
+                : collect(),
+            'notifyTesters' => $user->isAppDevelopmentAdmin()
+                ? AppDevelopmentMember::selectableTesters()->get()->sortBy(fn (AppDevelopmentMember $member): string => mb_strtolower((string) $member->user?->name))->values()
+                : collect(),
             'filters' => [
                 'assignee' => $request->query('assignee'),
                 'ticket' => $request->query('ticket'),
                 'priority' => $request->query('priority'),
                 'status' => $request->query('status'),
+                'due' => $request->query('due'),
+                'app_type' => $selectedAppTypes->map(static fn (AppDevelopmentAppType $type): string => $type->value)->all(),
             ],
         ]);
     }
 
-    public function create(Request $request): RedirectResponse
+    public function create(Request $request): View
     {
         $this->authorize('create', AppDevelopmentTask::class);
 
-        return redirect()
-            ->route('app-development.tickets.index')
-            ->with('info', __('app-development.tasks.escalate_from_ticket_only'));
+        return $this->appDevelopmentModal(
+            $request,
+            'app-development.tasks.form-blank',
+            ['developers' => $this->developers()],
+            __('app-development.nav.new_task'),
+            'form',
+            route('app-development.tasks.index'),
+        );
     }
 
     public function createForTicket(Request $request, AppDevelopmentTicket $ticket): View
@@ -147,9 +217,39 @@ class TaskController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorize('create', AppDevelopmentTask::class);
+
+        $developerIds = AppDevelopmentMember::assignableDeveloperUserIds();
+        $restaurantNames = array_column(
+            app(\App\Services\KamanSupport\SupportDeviceSessionService::class)->restaurantChoices(),
+            'label',
+        );
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:20000'],
+            'restaurant_name' => ['nullable', 'string', 'max:191', Rule::in($restaurantNames === [] ? ['__none__'] : $restaurantNames)],
+            'assignee_id' => ['nullable', 'integer', Rule::in($developerIds === [] ? [0] : $developerIds)],
+            'priority' => ['nullable', Rule::enum(AppDevelopmentTicketPriority::class)],
+        ]);
+
+        $task = AppDevelopmentTask::query()->create([
+            'ticket_id' => null,
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'restaurant_name' => $data['restaurant_name'] ?? null,
+            'assignee_id' => $data['assignee_id'] ?? null,
+            'priority' => $data['priority'] ?? AppDevelopmentTicketPriority::Normal,
+            'status' => AppDevelopmentTaskStatus::Todo,
+            'created_by' => $request->user()->id,
+        ]);
+
+        if ($task->assignee_id) {
+            $this->notifications->notifyTaskAssigned($task, $request->user());
+        }
+
         return redirect()
-            ->route('app-development.tickets.index')
-            ->with('info', __('app-development.tasks.escalate_from_ticket_only'));
+            ->route('app-development.tasks.index')
+            ->with('success', __('app-development.flash.task_escalated'));
     }
 
     public function storeForTicket(StoreTaskRequest $request, AppDevelopmentTicket $ticket): RedirectResponse
@@ -157,10 +257,26 @@ class TaskController extends Controller
         return $this->escalateFromTicket($request, $ticket);
     }
 
-    public function show(Request $request, AppDevelopmentTask $task): RedirectResponse
+    public function show(Request $request, AppDevelopmentTask $task): View|RedirectResponse
     {
         $this->authorize('view', $task);
-        $task->loadMissing('ticket');
+        $task->load([
+            'assignee:id,name',
+            'creator:id,name',
+            'timeEntries.user:id,name',
+            'ticket.appTypeRows',
+            'ticket.comments.user:id,name',
+            'ticket.comments.attachment',
+            'ticket.attachments',
+            'ticket.activities.user:id,name',
+        ]);
+
+        if ($this->wantsAppDevelopmentModal($request)) {
+            return view('app-development.tasks.panel', [
+                'task' => $task,
+                'developers' => $this->developers(),
+            ]);
+        }
 
         if ($task->ticket === null) {
             return redirect()->route('app-development.tasks.index');
@@ -171,6 +287,30 @@ class TaskController extends Controller
                 'ticket' => $task->ticket,
                 'task' => $task->id,
             ]);
+    }
+
+    public function updateStatus(Request $request, AppDevelopmentTask $task): JsonResponse
+    {
+        $this->authorize('update', $task);
+
+        $status = AppDevelopmentTaskStatus::from((string) $request->validate([
+            'status' => ['required', Rule::enum(AppDevelopmentTaskStatus::class)],
+        ])['status']);
+
+        $task->forceFill([
+            'status' => $status,
+            'completed_at' => $status === AppDevelopmentTaskStatus::Completed
+                ? ($task->completed_at ?? Carbon::now())
+                : null,
+            'completion_note' => $status === AppDevelopmentTaskStatus::Completed ? $task->completion_note : null,
+        ])->save();
+
+        return response()->json([
+            'ok' => true,
+            'value' => $task->status->value,
+            'label' => $task->status->label(),
+            'message' => __('app-development.board.moved'),
+        ]);
     }
 
     public function update(UpdateTaskRequest $request, AppDevelopmentTask $task): RedirectResponse
@@ -203,9 +343,15 @@ class TaskController extends Controller
             $this->notifications->notifyTaskAssigned($task, $request->user());
         }
 
+        if ($task->ticket === null) {
+            return redirect()
+                ->route('app-development.tasks.show', $task)
+                ->with('success', __('app-development.flash.task_updated'));
+        }
+
         $redirect = redirect()
             ->route('app-development.tickets.show', [
-                'ticket' => $task->ticket ?? $task->ticket_id,
+                'ticket' => $task->ticket,
                 'task' => $task->id,
             ])
             ->with('success', __('app-development.flash.task_updated'));
@@ -224,7 +370,10 @@ class TaskController extends Controller
         $task = AppDevelopmentTask::query()->create([
             'ticket_id' => $ticket->id,
             'title' => $ticket->title,
-            'description' => $ticket->description,
+            'description' => $request->exists('description')
+                ? $request->validated('description')
+                : $ticket->description,
+            'restaurant_name' => $ticket->restaurant_name,
             'assignee_id' => (int) $request->validated('assignee_id'),
             'priority' => $ticket->priority,
             'status' => AppDevelopmentTaskStatus::Todo,

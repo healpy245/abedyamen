@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>One Kaman account</title>
+  <style>
+    @page { size: A4; margin: 12mm 14mm 12mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", Calibri, sans-serif;
+      color: #1c1917;
+      font-size: 12px;
+      line-height: 1.4;
+      background: #fff;
+    }
+    h1 {
+      font-size: 26px;
+      line-height: 1.1;
+      font-weight: 650;
+      margin: 0 0 6px;
+      letter-spacing: -0.03em;
+    }
+    h2 {
+      font-size: 14px;
+      margin: 14px 0 8px;
+      font-weight: 650;
+    }
+    p { margin: 0; }
+    .kicker {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #9a3412;
+      font-weight: 650;
+      margin-bottom: 6px;
+    }
+    .lead { color: #44403c; font-size: 13px; max-width: 640px; }
+    ol.start {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      color: #292524;
+    }
+    ol.start li { margin: 2px 0; }
+    .orbit {
+      position: relative;
+      height: 292px;
+      margin-top: 12px;
+    }
+    .ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 168px;
+      height: 168px;
+      margin: -84px 0 0 -84px;
+      border: 1.25px solid #d6d3d1;
+      border-radius: 50%;
+    }
+    .hub {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 108px;
+      height: 52px;
+      margin: -26px 0 0 -54px;
+      border: 1.5px solid #9a3412;
+      border-radius: 8px;
+      background: #fafaf9;
+      text-align: center;
+      padding-top: 8px;
+    }
+    .hub strong { display: block; font-size: 13px; }
+    .hub span { color: #57534e; font-size: 10.5px; }
+    .node {
+      position: absolute;
+      width: 214px;
+      border: 1px solid #e7e5e4;
+      border-radius: 8px;
+      background: #fff;
+      padding: 7px 9px 8px;
+    }
+    .node strong { display: block; color: #9a3412; font-size: 12px; margin-bottom: 2px; }
+    .node span { display: block; color: #44403c; font-size: 10.5px; line-height: 1.35; }
+    .node.top { left: 50%; top: 0; transform: translateX(-50%); }
+    .node.right { right: 0; top: 50%; transform: translateY(-50%); }
+    .node.bottom { left: 50%; bottom: 0; transform: translateX(-50%); width: 250px; }
+    .node.left { left: 0; top: 50%; transform: translateY(-50%); }
+    .roles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+    }
+    .role {
+      border: 1px solid #e7e5e4;
+      border-radius: 8px;
+      padding: 8px 10px 6px;
+      break-inside: avoid;
+    }
+    .role.wide { grid-column: 1 / -1; }
+    .role h3 { margin: 0 0 3px; font-size: 13px; }
+    ul { margin: 0; padding-left: 16px; }
+    li { margin: 1px 0; }
+    .notes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 16px;
+      margin-top: 12px;
+    }
+    .notes strong { display: block; margin-bottom: 2px; }
+    .notes p { color: #44403c; font-size: 11.5px; }
+    .foot { margin-top: 10px; font-size: 11px; color: #57534e; }
+  </style>
+</head>
+<body>
+  <div class="kicker">Kaman</div>
+  <h1>One account</h1>
+  <p class="lead">Every tenant restaurant is taken from kaman.rest. Back office work then connects that restaurant id to three places.</p>
+  <ol class="start">
+    <li>MFit Group billing id</li>
+    <li>Kaman Agents id</li>
+    <li>kaman-workspace.com, the main container</li>
+  </ol>
+
+  <div class="orbit">
+    <div class="ring"></div>
+    <div class="hub">
+      <strong>Restaurant</strong>
+      <span>No login here</span>
+    </div>
+    <div class="node top">
+      <strong>kaman.rest</strong>
+      <span>The restaurant base. Every tenant starts from this id.</span>
+    </div>
+    <div class="node right">
+      <strong>1 · MFit Group</strong>
+      <span>Invoice API: create and delete. Monthly payment API: items, price, and description.</span>
+    </div>
+    <div class="node bottom">
+      <strong>2 · Kaman Agents</strong>
+      <span>Merge the code in and simplify it. Onboarding creates the restaurant in Workspace and links the MFit id and the kaman.rest id. The form needs that step.</span>
+    </div>
+    <div class="node left">
+      <strong>3 · Workspace</strong>
+      <span>The main container. Support is already on this platform. Connect the API that creates a level 2 ticket.</span>
+    </div>
+  </div>
+
+  <h2>What each worker opens</h2>
+  <div class="roles">
+    <div class="role">
+      <h3>Support</h3>
+      <ul>
+        <li>Watch live devices and LAN health</li>
+        <li>Tickets, both levels</li>
+        <li>admin.kaman.rest, technical pages only</li>
+      </ul>
+    </div>
+    <div class="role">
+      <h3>Agent</h3>
+      <ul>
+        <li>Leads</li>
+        <li>Invoices and monthly payment, through MFit</li>
+        <li>Paid features for the restaurant</li>
+        <li>The restaurant account on kaman.rest</li>
+      </ul>
+    </div>
+    <div class="role">
+      <h3>Developer</h3>
+      <ul>
+        <li>Level 2 tickets</li>
+        <li>Watch live devices</li>
+      </ul>
+    </div>
+    <div class="role">
+      <h3>Tester</h3>
+      <ul>
+        <li>Watch live devices</li>
+        <li>Check the release</li>
+      </ul>
+    </div>
+    <div class="role wide">
+      <h3>Superadmin</h3>
+      <ul>
+        <li>Every door above</li>
+        <li>Turns a worker or a feature on or off</li>
+        <li>Names the lead of each team</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div>
+      <strong>A worker can wear two hats</strong>
+      <p>One person can be more than one type. Tester and support, for example.</p>
+    </div>
+    <div>
+      <strong>This is the start</strong>
+      <p>We build this structure first. Other connections are added as each one is ready.</p>
+    </div>
+  </div>
+  <p class="foot">A lead can switch only their own team. Closing a feature closes that screen. The worker stays.</p>
+</body>
+</html>

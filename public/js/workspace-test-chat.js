@@ -70,6 +70,9 @@
             let listeningPaused = false;
             let turnInFlight = false;
             const silenceMs = Math.max(400, Math.min(700, parseInt(root.dataset.silenceMs || '500', 10) || 500));
+            const listenMs = Math.max(0, parseInt(root.dataset.listenMs || '0', 10) || 0);
+            let pendingLines = [];
+            let listenTimer = null;
             const streamingEnabled = root.dataset.streaming !== '0' && !!root.dataset.streamUrl;
             const latencyOverlay = root.dataset.latencyOverlay === '1';
             const latencyEl = root.querySelector('#test-latency');
@@ -133,6 +136,22 @@
                 thread.scrollTop = thread.scrollHeight;
             };
 
+            const hideTyping = () => {
+                thread.querySelectorAll('.test-typing').forEach((node) => node.remove());
+            };
+
+            const showTyping = () => {
+                hideTyping();
+                if (empty) empty.classList.add('hidden');
+                const wrap = document.createElement('div');
+                wrap.className = 'flex test-typing justify-start';
+                wrap.setAttribute('role', 'status');
+                wrap.setAttribute('aria-label', t.typing || 'يكتب…');
+                wrap.innerHTML = '<div class="test-typing__bubble" dir="rtl"><span></span><span></span><span></span></div>';
+                thread.appendChild(wrap);
+                scrollBottom();
+            };
+
             const clearSelectedImage = () => {
                 selectedImageFile = null;
                 if (selectedImageObjectUrl) {
@@ -185,6 +204,7 @@
             };
 
             const clearThread = () => {
+                hideTyping();
                 thread.querySelectorAll('.test-bubble').forEach((n) => n.remove());
                 if (empty) {
                     empty.classList.remove('hidden');
@@ -369,6 +389,7 @@
                 updateLatencyOverlay();
 
                 streamAbort = new AbortController();
+                showTyping();
                 const res = await fetch(root.dataset.streamUrl, {
                     method: 'POST',
                     headers: {
@@ -443,6 +464,7 @@
                 }
 
                 await audioQueue;
+                hideTyping();
                 if (fullText) {
                     appendBubble('assistant', fullText);
                 } else if (!sawAssistant) {
@@ -519,6 +541,7 @@
                     ? speak(data.assistant_response)
                     : null;
 
+                hideTyping();
                 if (data.conversation_id) conversationId = data.conversation_id;
                 if (Array.isArray(data.messages) && data.messages.length) {
                     renderMessages(data.messages);
@@ -531,10 +554,60 @@
                 }
             };
 
+            const flushPending = async () => {
+                listenTimer = null;
+                const lines = pendingLines.splice(0);
+                const message = lines.join('\n').trim();
+                if (!message || busy) {
+                    if (message) pendingLines.unshift(...lines);
+                    return;
+                }
+                busy = true;
+                setError('');
+                if (sendBtn) sendBtn.disabled = true;
+                showTyping();
+                try {
+                    const data = await postJson({
+                        message,
+                        conversation_id: conversationId,
+                        reset: !conversationId,
+                        voice_mode: false,
+                        channel: 'test',
+                    });
+                    await applyResponse(data);
+                } catch (ex) {
+                    hideTyping();
+                    if (ex?.name !== 'AbortError') {
+                        setError(ex.message || t.error || 'Error');
+                    }
+                } finally {
+                    busy = false;
+                    if (sendBtn) sendBtn.disabled = false;
+                    input?.focus();
+                    if (pendingLines.length) {
+                        listenTimer = setTimeout(flushPending, listenMs);
+                    }
+                }
+            };
+
+            const queueSplitMessage = (message) => {
+                pendingLines.push(message);
+                appendBubble('user', message);
+                input.value = '';
+                if (busy) return;
+                if (listenTimer) clearTimeout(listenTimer);
+                listenTimer = setTimeout(flushPending, listenMs);
+            };
+
             const sendMessage = async (text, { voiceMode = false, speakReply = false } = {}) => {
                 const message = (text || '').trim();
                 const pendingFile = selectedImageFile || imageInput?.files?.[0] || null;
-                if ((!message && !pendingFile) || busy) return;
+                if (!message && !pendingFile) return;
+                if (listenMs > 0 && message && !pendingFile && !voiceMode) {
+                    queueSplitMessage(message);
+                    return;
+                }
+                if (busy) return;
                 busy = true;
                 setError('');
                 if (sendBtn) sendBtn.disabled = true;
@@ -555,6 +628,7 @@
                     appendBubble('user', message);
                 }
                 input.value = '';
+                showTyping();
 
                 try {
                     let data;
@@ -575,6 +649,7 @@
                         await applyResponse(data, { speakReply });
                     }
                 } catch (ex) {
+                    hideTyping();
                     if (ex?.name !== 'AbortError') {
                         setError(ex.message || t.error || 'Error');
                     }
@@ -886,6 +961,9 @@
                 stopCall();
                 stopRecognition(dictation);
                 clearSelectedImage();
+                if (listenTimer) clearTimeout(listenTimer);
+                listenTimer = null;
+                pendingLines = [];
                 setError('');
                 busy = true;
                 try {

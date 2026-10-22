@@ -7,12 +7,12 @@ import sys
 from pathlib import Path
 
 import paramiko
+from sftp_config import load_sftp
 
 LOCAL = Path(__file__).resolve().parents[1]
 REMOTE = "/home/tut8x1radmrp/webtimize"
-HOST = "sg2plzcpnl505722.prod.sin2.secureserver.net"
-USER = "tut8x1radmrp"
-PASSWORD = "Mfit2025@"
+
+HOST, _SFTP_PORT, USER, PASSWORD = load_sftp()
 
 FILES = [
     "app/Models/AiChatbot/ChatbotInstance.php",

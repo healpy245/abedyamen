@@ -10,6 +10,7 @@ use App\Models\AiChatbot\ChatbotMessage;
 use App\Models\Malan\MalanCampaign;
 use App\Models\Malan\MalanCampaignContact;
 use App\Models\Malan\MalanCampaignGuardianNumber;
+use App\Services\AiChatbot\AnalyticsDownloadService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -101,17 +102,47 @@ class CampaignInsightService
      */
     public function summarize(MalanCampaign $campaign): array
     {
-        $buckets = $this->classifyContacts($campaign);
+        $this->refreshStaleInsights($campaign);
 
-        $contacts = $campaign->contacts()->count();
-        $messages = $campaign->contacts()->whereNotNull('message_sent_at')->count();
-        $leads = count($buckets[self::GROUP_LEADS]);
-        $noResponse = count($buckets[self::GROUP_NO_RESPONSE]);
-        $rejected = count($buckets[self::GROUP_REJECTED]);
-        $engaged = count($buckets[self::GROUP_RESPONDED]);
+        $row = MalanCampaignContact::query()
+            ->where('campaign_id', $campaign->id)
+            ->selectRaw('COUNT(*) as contacts')
+            ->selectRaw('SUM(CASE WHEN message_sent_at IS NOT NULL THEN 1 ELSE 0 END) as messages')
+            ->selectRaw('SUM(CASE WHEN lead_created_at IS NOT NULL OR status = ? THEN 1 ELSE 0 END) as leads', [MalanCampaignContact::STATUS_LEAD_CREATED])
+            ->selectRaw('SUM(CASE WHEN insight_group = ? THEN 1 ELSE 0 END) as no_response', [self::GROUP_NO_RESPONSE])
+            ->selectRaw('SUM(CASE WHEN insight_group = ? THEN 1 ELSE 0 END) as rejected', [self::GROUP_REJECTED])
+            ->selectRaw('SUM(CASE WHEN insight_group = ? THEN 1 ELSE 0 END) as engaged', [self::GROUP_RESPONDED])
+            ->first();
+
+        $contacts = (int) ($row->contacts ?? 0);
+        $messages = (int) ($row->messages ?? 0);
+        $leads = (int) ($row->leads ?? 0);
+        $noResponse = (int) ($row->no_response ?? 0);
+        $rejected = (int) ($row->rejected ?? 0);
+        $engaged = (int) ($row->engaged ?? 0);
         $guardians = MalanCampaignGuardianNumber::query()->where('campaign_id', $campaign->id)->count();
         $responded = $leads + $rejected + $engaged;
         $pending = max(0, $contacts - $messages);
+
+        $campaign->refresh();
+        $settings = is_array($campaign->settings) ? $campaign->settings : [];
+        $settings['insight_counts'] = [
+            'contacts' => $contacts,
+            'messages' => $messages,
+            'leads' => $leads,
+            'no_response' => $noResponse,
+            'rejected' => $rejected,
+            'engaged' => $engaged,
+            'guardians' => $guardians,
+            'responded' => $responded,
+            'pending' => $pending,
+            'at' => now()->toIso8601String(),
+        ];
+        $campaign->forceFill([
+            'contacts_count' => $contacts,
+            'leads_stored_count' => $leads,
+            'settings' => $settings,
+        ])->save();
 
         return [
             'contacts' => $contacts,
@@ -155,24 +186,44 @@ class CampaignInsightService
         if ($group === self::GROUP_GUARDIANS) {
             return collect();
         }
-        if ($group === self::GROUP_CONTACTS) {
-            return $campaign->contacts()->orderBy('id')->get();
-        }
-        if ($group === self::GROUP_MESSAGES) {
-            return $campaign->contacts()->whereNotNull('message_sent_at')->orderBy('id')->get();
-        }
-        // Alias used by analytics UI cards.
+
+        return $this->contactsQueryForGroup($campaign, $group)->orderBy('id')->get();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<MalanCampaignContact>
+     */
+    public function contactsQueryForGroup(MalanCampaign $campaign, string $group): \Illuminate\Database\Eloquent\Builder
+    {
+        $group = strtolower(trim($group));
         if ($group === 'engaged') {
             $group = self::GROUP_RESPONDED;
         }
 
-        $buckets = $this->classifyContacts($campaign);
-        $ids = $buckets[$group] ?? [];
-        if ($ids === []) {
-            return collect();
-        }
+        $query = MalanCampaignContact::query()->where('campaign_id', $campaign->id);
 
-        return $campaign->contacts()->whereIn('id', $ids)->orderBy('id')->get();
+        return match ($group) {
+            self::GROUP_CONTACTS => $query,
+            self::GROUP_MESSAGES => $query->whereNotNull('message_sent_at'),
+            self::GROUP_LEADS => $query->where(function ($q): void {
+                $q->whereNotNull('lead_created_at')
+                    ->orWhere('status', MalanCampaignContact::STATUS_LEAD_CREATED)
+                    ->orWhere('insight_group', self::GROUP_LEADS);
+            }),
+            self::GROUP_NO_RESPONSE => $query->where(function ($q): void {
+                $q->where('insight_group', self::GROUP_NO_RESPONSE)
+                    ->orWhere(function ($inner): void {
+                        $inner->whereNull('insight_group')
+                            ->whereNotNull('message_sent_at')
+                            ->whereNull('responded_at')
+                            ->whereNull('lead_created_at')
+                            ->where('status', '!=', MalanCampaignContact::STATUS_LEAD_CREATED);
+                    });
+            }),
+            self::GROUP_REJECTED => $query->where('insight_group', self::GROUP_REJECTED),
+            self::GROUP_RESPONDED => $query->where('insight_group', self::GROUP_RESPONDED),
+            default => $query->whereRaw('1 = 0'),
+        };
     }
 
     /**
@@ -192,6 +243,8 @@ class CampaignInsightService
             return MalanCampaignGuardianNumber::query()
                 ->where('campaign_id', $campaign->id)
                 ->whereNotNull('conversation_id')
+                ->orderByDesc('id')
+                ->limit(200)
                 ->pluck('conversation_id')
                 ->map(fn ($id) => (int) $id)
                 ->unique()
@@ -199,79 +252,15 @@ class CampaignInsightService
                 ->all();
         }
 
-        $contacts = $this->contactsForGroup($campaign, $group);
-        if ($contacts->isEmpty()) {
-            return [];
-        }
-
-        $ids = [];
-        foreach ($contacts as $contact) {
-            $cid = (int) ($contact->conversation_id ?? 0);
-            if ($cid > 0) {
-                $ids[$cid] = true;
-            }
-        }
-
-        $unresolved = $contacts->filter(fn (MalanCampaignContact $c) => (int) ($c->conversation_id ?? 0) <= 0);
-        if ($unresolved->isNotEmpty()) {
-            $externalIds = [];
-            $phones = [];
-            foreach ($unresolved as $contact) {
-                $chatId = trim((string) ($contact->chat_id ?? ''));
-                if ($chatId !== '') {
-                    $externalIds[] = $chatId;
-                    $externalIds[] = 'campaign:'.$campaign->id.':'.$chatId;
-                    if (! str_contains($chatId, '@') && preg_match('/^\d+$/', $chatId)) {
-                        $externalIds[] = $chatId.'@c.us';
-                        $externalIds[] = 'campaign:'.$campaign->id.':'.$chatId.'@c.us';
-                    }
-                }
-                $phone = preg_replace('/\D+/', '', (string) ($contact->phone_normalized ?: $contact->phone)) ?: '';
-                if ($phone !== '') {
-                    $phones[] = $phone;
-                    if (str_starts_with($phone, '0') && strlen($phone) === 10) {
-                        $phones[] = '972'.substr($phone, 1);
-                    }
-                }
-            }
-
-            $externalIds = array_values(array_unique(array_filter($externalIds)));
-            $phones = array_values(array_unique(array_filter($phones)));
-
-            $query = ChatbotConversation::query()
-                ->where('campaign_id', $campaign->id)
-                ->where('channel', '!=', ChatbotConversation::CHANNEL_TEST);
-
-            $query->where(function ($q) use ($externalIds, $phones): void {
-                if ($externalIds !== []) {
-                    $q->orWhereIn('external_chat_id', $externalIds);
-                }
-                if ($phones !== []) {
-                    foreach ($phones as $phone) {
-                        $q->orWhere('contact_phone', $phone)
-                            ->orWhere('contact_phone', '0'.ltrim($phone, '0'))
-                            ->orWhere('external_chat_id', 'like', '%'.$phone.'@%')
-                            ->orWhere('external_chat_id', 'like', '%:'.$phone.'@%');
-                    }
-                }
-            });
-
-            if ($externalIds !== [] || $phones !== []) {
-                foreach ($query->pluck('id') as $id) {
-                    $ids[(int) $id] = true;
-                }
-            }
-        }
-
-        // Keep only conversations that still belong to this campaign.
-        if ($ids === []) {
-            return [];
-        }
-
         return ChatbotConversation::query()
             ->where('campaign_id', $campaign->id)
             ->where('channel', '!=', ChatbotConversation::CHANNEL_TEST)
-            ->whereIn('id', array_keys($ids))
+            ->whereIn('id', $this->contactsQueryForGroup($campaign, $group)
+                ->whereNotNull('conversation_id')
+                ->select('conversation_id'))
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('id')
+            ->limit(200)
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->values()
@@ -298,6 +287,14 @@ class CampaignInsightService
 
     public function exportExcel(MalanCampaign $campaign, string $group): StreamedResponse
     {
+        return app(AnalyticsDownloadService::class)->stream($this->exportBundle($campaign, $group));
+    }
+
+    /**
+     * @return array{format:string,filename:string,ascii:string,sheet:string,widths:list<int>,phone_index:int,table:list<list<string>>}
+     */
+    public function exportBundle(MalanCampaign $campaign, string $group): array
+    {
         $group = strtolower(trim($group));
         if ($group === 'engaged') {
             $group = self::GROUP_RESPONDED;
@@ -316,21 +313,19 @@ class CampaignInsightService
         }
 
         if ($group === self::GROUP_GUARDIANS) {
-            return $this->exportGuardianNumbers($campaign);
+            return $this->guardianBundle($campaign);
         }
 
-        $rows = $this->contactsForGroup($campaign, $group);
+        $this->refreshStaleInsights($campaign);
         $groupLabel = $this->localizedGroupLabel($group);
-        $locale = app()->getLocale();
         $filename = sprintf(
             'campaign-%d-%s-%s-%s.csv',
             $campaign->id,
             $group,
-            $locale,
+            app()->getLocale(),
             now()->format('Ymd-His')
         );
-
-        $headers = [
+        $table = [[
             __('chatbot.workspace.campaigns.export_col_name'),
             __('chatbot.workspace.campaigns.export_col_phone'),
             __('chatbot.workspace.campaigns.export_col_city'),
@@ -338,34 +333,34 @@ class CampaignInsightService
             __('chatbot.workspace.campaigns.export_col_group'),
             __('chatbot.workspace.campaigns.export_col_responded_at'),
             __('chatbot.workspace.campaigns.export_col_lead_created_at'),
-        ];
+        ]];
+        foreach ($this->contactsQueryForGroup($campaign, $group)->orderBy('id')->lazyById(500) as $contact) {
+            $table[] = [
+                (string) ($contact->name ?? ''),
+                (string) ($contact->phone_normalized ?: $contact->phone),
+                (string) ($contact->city ?? ''),
+                $this->localizedContactStatus((string) $contact->status),
+                $groupLabel,
+                optional($contact->responded_at)?->toDateTimeString() ?? '',
+                optional($contact->lead_created_at)?->toDateTimeString() ?? '',
+            ];
+        }
 
-        return response()->streamDownload(function () use ($rows, $groupLabel, $headers): void {
-            $out = fopen('php://output', 'wb');
-            if ($out === false) {
-                return;
-            }
-            // UTF-8 BOM so Excel opens Arabic/Hebrew correctly.
-            fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, $headers);
-            foreach ($rows as $contact) {
-                fputcsv($out, [
-                    (string) ($contact->name ?? ''),
-                    (string) ($contact->phone_normalized ?: $contact->phone),
-                    (string) ($contact->city ?? ''),
-                    $this->localizedContactStatus((string) $contact->status),
-                    $groupLabel,
-                    optional($contact->responded_at)?->toDateTimeString() ?? '',
-                    optional($contact->lead_created_at)?->toDateTimeString() ?? '',
-                ]);
-            }
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return [
+            'format' => 'csv',
+            'filename' => $filename,
+            'ascii' => $filename,
+            'sheet' => $groupLabel,
+            'widths' => [],
+            'phone_index' => 1,
+            'table' => $table,
+        ];
     }
 
-    private function exportGuardianNumbers(MalanCampaign $campaign): StreamedResponse
+    /**
+     * @return array{format:string,filename:string,ascii:string,sheet:string,widths:list<int>,phone_index:int,table:list<list<string>>}
+     */
+    private function guardianBundle(MalanCampaign $campaign): array
     {
         $rows = MalanCampaignGuardianNumber::query()
             ->where('campaign_id', $campaign->id)
@@ -378,33 +373,30 @@ class CampaignInsightService
             app()->getLocale(),
             now()->format('Ymd-His')
         );
-
-        $headers = [
+        $table = [[
             __('chatbot.workspace.campaigns.export_col_guardian_phone'),
             __('chatbot.workspace.campaigns.export_col_source_name'),
             __('chatbot.workspace.campaigns.export_col_source_phone'),
             __('chatbot.workspace.campaigns.export_col_group'),
-        ];
+        ]];
+        foreach ($rows as $row) {
+            $table[] = [
+                (string) ($row->phone_normalized ?: $row->phone),
+                (string) ($row->source_name ?? ''),
+                (string) ($row->source_phone ?? ''),
+                $groupLabel,
+            ];
+        }
 
-        return response()->streamDownload(function () use ($rows, $groupLabel, $headers): void {
-            $out = fopen('php://output', 'wb');
-            if ($out === false) {
-                return;
-            }
-            fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, $headers);
-            foreach ($rows as $row) {
-                fputcsv($out, [
-                    (string) ($row->phone_normalized ?: $row->phone),
-                    (string) ($row->source_name ?? ''),
-                    (string) ($row->source_phone ?? ''),
-                    $groupLabel,
-                ]);
-            }
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return [
+            'format' => 'csv',
+            'filename' => $filename,
+            'ascii' => $filename,
+            'sheet' => $groupLabel,
+            'widths' => [],
+            'phone_index' => 0,
+            'table' => $table,
+        ];
     }
 
     private function localizedGroupLabel(string $group): string
@@ -436,66 +428,119 @@ class CampaignInsightService
     }
 
     /**
-     * @return array<string, list<int>>
+     * Persist insight_group for repliers whose chat changed, in small batches.
+     * People who never replied are labeled with one SQL update.
      */
-    private function classifyContacts(MalanCampaign $campaign): array
+    public function refreshStaleInsights(MalanCampaign $campaign, int $limit = 400): void
     {
-        $buckets = [
-            self::GROUP_LEADS => [],
-            self::GROUP_NO_RESPONSE => [],
-            self::GROUP_REJECTED => [],
-            self::GROUP_RESPONDED => [],
-        ];
+        MalanCampaignContact::query()
+            ->where('campaign_id', $campaign->id)
+            ->whereNull('insight_group')
+            ->whereNotNull('message_sent_at')
+            ->whereNull('responded_at')
+            ->whereNull('lead_created_at')
+            ->where('status', '!=', MalanCampaignContact::STATUS_LEAD_CREATED)
+            ->update([
+                'insight_group' => self::GROUP_NO_RESPONSE,
+                'updated_at' => now(),
+            ]);
 
-        $contacts = $campaign->contacts()->get([
-            'id',
-            'conversation_id',
-            'status',
-            'message_sent_at',
-            'responded_at',
-            'lead_created_at',
-        ]);
+        MalanCampaignContact::query()
+            ->where('campaign_id', $campaign->id)
+            ->where(function ($q): void {
+                $q->whereNotNull('lead_created_at')
+                    ->orWhere('status', MalanCampaignContact::STATUS_LEAD_CREATED);
+            })
+            ->where(function ($q): void {
+                $q->whereNull('insight_group')
+                    ->orWhere('insight_group', '!=', self::GROUP_LEADS);
+            })
+            ->update([
+                'insight_group' => self::GROUP_LEADS,
+                'updated_at' => now(),
+            ]);
 
-        $needsSentiment = [];
-        foreach ($contacts as $contact) {
-            if ($contact->lead_created_at !== null
-                || $contact->status === MalanCampaignContact::STATUS_LEAD_CREATED) {
-                $buckets[self::GROUP_LEADS][] = (int) $contact->id;
-                continue;
-            }
+        $replied = MalanCampaignContact::query()
+            ->where('malan_campaign_contacts.campaign_id', $campaign->id)
+            ->whereNotNull('malan_campaign_contacts.responded_at')
+            ->whereNull('malan_campaign_contacts.lead_created_at')
+            ->where('malan_campaign_contacts.status', '!=', MalanCampaignContact::STATUS_LEAD_CREATED);
 
-            if ($contact->message_sent_at === null) {
-                continue;
-            }
-
-            if ($contact->responded_at === null) {
-                $buckets[self::GROUP_NO_RESPONSE][] = (int) $contact->id;
-                continue;
-            }
-
-            $conversationId = (int) ($contact->conversation_id ?? 0);
-            if ($conversationId > 0) {
-                $needsSentiment[$conversationId] = (int) $contact->id;
-            } else {
-                $buckets[self::GROUP_RESPONDED][] = (int) $contact->id;
-            }
+        // Small reply sets stay exact on every open. Large sets only re-read
+        // unlabeled rows, chats with a newer message, and open nudge windows.
+        if ((clone $replied)->count() <= 80) {
+            $stale = $replied->get();
+        } else {
+            $stale = (clone $replied)
+                ->where(function ($q): void {
+                    $q->whereNull('malan_campaign_contacts.insight_group')
+                        ->orWhere(function ($inner): void {
+                            $inner->where('malan_campaign_contacts.insight_group', self::GROUP_RESPONDED)
+                                ->whereExists(function ($sub): void {
+                                    $sub->selectRaw('1')
+                                        ->from('ai_chatbot_conversations')
+                                        ->whereColumn('ai_chatbot_conversations.id', 'malan_campaign_contacts.conversation_id')
+                                        ->where('ai_chatbot_conversations.metadata', 'like', '%campaign_followup_nudge_message_id%');
+                                });
+                        })
+                        ->orWhereExists(function ($sub): void {
+                            $sub->selectRaw('1')
+                                ->from('ai_chatbot_messages')
+                                ->whereColumn('ai_chatbot_messages.conversation_id', 'malan_campaign_contacts.conversation_id')
+                                ->whereColumn('ai_chatbot_messages.updated_at', '>', 'malan_campaign_contacts.updated_at');
+                        });
+                })
+                ->orderBy('malan_campaign_contacts.id')
+                ->limit($limit)
+                ->get();
         }
 
-        if ($needsSentiment !== []) {
-            $negativeIds = $this->conversationIdsWithNegativeSignal(array_keys($needsSentiment));
-            $silentIds = $this->conversationIdsWithoutAnswerAfterNudge(array_keys($needsSentiment));
-            foreach ($needsSentiment as $conversationId => $contactId) {
-                if (isset($negativeIds[$conversationId])) {
-                    $buckets[self::GROUP_REJECTED][] = $contactId;
-                } elseif (isset($silentIds[$conversationId])) {
-                    $buckets[self::GROUP_NO_RESPONSE][] = $contactId;
-                } else {
-                    $buckets[self::GROUP_RESPONDED][] = $contactId;
-                }
-            }
+        foreach ($stale as $contact) {
+            $this->syncContactInsight($contact);
+        }
+    }
+
+    public function syncContactInsight(MalanCampaignContact $contact): void
+    {
+        $group = $this->groupForContact($contact);
+        if ($contact->insight_group === $group) {
+            $contact->touch();
+
+            return;
         }
 
-        return $buckets;
+        $contact->forceFill(['insight_group' => $group])->save();
+    }
+
+    private function groupForContact(MalanCampaignContact $contact): ?string
+    {
+        if ($contact->lead_created_at !== null
+            || $contact->status === MalanCampaignContact::STATUS_LEAD_CREATED) {
+            return self::GROUP_LEADS;
+        }
+
+        if ($contact->message_sent_at === null) {
+            return null;
+        }
+
+        if ($contact->responded_at === null) {
+            return self::GROUP_NO_RESPONSE;
+        }
+
+        $conversationId = (int) ($contact->conversation_id ?? 0);
+        if ($conversationId <= 0) {
+            return self::GROUP_RESPONDED;
+        }
+
+        if ($this->conversationIdsWithNegativeSignal([$conversationId]) !== []) {
+            return self::GROUP_REJECTED;
+        }
+
+        if ($this->conversationIdsWithoutAnswerAfterNudge([$conversationId]) !== []) {
+            return self::GROUP_NO_RESPONSE;
+        }
+
+        return self::GROUP_RESPONDED;
     }
 
     /**
@@ -564,7 +609,7 @@ class CampaignInsightService
      * @param  list<int>  $conversationIds
      * @return array<int, true>
      */
-    private function conversationIdsWithNegativeSignal(array $conversationIds): array
+    public function conversationIdsWithNegativeSignal(array $conversationIds): array
     {
         if ($conversationIds === []) {
             return [];

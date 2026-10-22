@@ -596,11 +596,13 @@
             if (key === lastLan) return;
             lastLan = key;
             if (!nodes.length) {
-                host.innerHTML = '<p class="px-4 py-8 text-center text-sm text-[#7c6a56]">' + escapeHtml(t(i18n, 'lan_empty', 'No map yet.')) + '</p>';
+                host.hidden = true;
+                host.innerHTML = '';
                 var emptyDetail = $('[data-lan-detail]', root);
                 if (emptyDetail) emptyDetail.innerHTML = '';
                 return;
             }
+            host.hidden = false;
             var cardW = 132;
             var cardH = 64;
             var gapX = 18;
@@ -738,7 +740,10 @@
             var jobs = jobsEl();
             if (jobs && jobsKey !== lastJobs) {
                 lastJobs = jobsKey;
-                jobs.innerHTML = (json.commands || []).map(function (command) {
+                var commands = json.commands || [];
+                var jobsCard = $('[data-jobs-card]', root);
+                if (jobsCard) jobsCard.hidden = commands.length === 0;
+                jobs.innerHTML = commands.map(function (command) {
                     var summary = command.result && (command.result.summary || command.result.message);
                     return '<li class="rounded-md border border-[#eadfce] px-3 py-2 text-sm">' +
                         '<div class="flex flex-wrap gap-2 text-xs text-[#a78a6c]">' +
@@ -748,8 +753,9 @@
                         '</li>';
                 }).join('');
             }
+            var page = Number(new URLSearchParams(window.location.search).get('page') || '1');
             var logsKey = snapshot(json.logs || []);
-            if (logsEl() && logsKey !== lastLogs) {
+            if (logsEl() && logsKey !== lastLogs && page < 2) {
                 lastLogs = logsKey;
                 paintLogs(root, json.logs || [], null, i18n);
             }
@@ -802,6 +808,15 @@
             }
         });
     }
+
+    document.querySelectorAll('form[data-clean-get]').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            Array.prototype.forEach.call(form.elements, function (el) {
+                if (!el.name || String(el.value || '').trim() !== '') return;
+                el.disabled = true;
+            });
+        });
+    });
 
     document.querySelectorAll('[data-live-board]').forEach(renderBoard);
     document.querySelectorAll('[data-live-console]').forEach(renderConsole);

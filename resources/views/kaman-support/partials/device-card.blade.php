@@ -40,7 +40,9 @@
     <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-[#7c6a56]">
         <span data-card-meta>{{ $device->platform ?: '—' }} · {{ $device->app_version ?: '—' }}</span>
         <span>
-            {{ $device->log_count }} {{ __('kaman-support.log_count') }} ·
+            @unless(auth()->user()?->supportConnectionsOnly())
+                {{ $device->log_count }} {{ __('kaman-support.log_count') }} ·
+            @endunless
             <span data-last-clock>{{ $device->last_seen_at?->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('H:i') }}</span>
             <span data-last-seen>{{ $device->last_seen_at?->diffForHumans() }}</span>
         </span>

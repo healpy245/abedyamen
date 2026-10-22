@@ -68,7 +68,52 @@
             }
         },
 
+        bindMarkUserCreated() {
+            if (this.markUserBound) return;
+            this.markUserBound = true;
+            document.addEventListener('click', (event) => {
+                const button = event.target.closest('.mark-user-created');
+                if (!button || button.disabled) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const root = document.getElementById('workspace-list-pane');
+                const labels = root ? this.listLabels(root) : {};
+                const confirmText = labels.mark_user_created_confirm || '';
+                if (confirmText && !window.confirm(confirmText)) return;
+                const csrf = document.querySelector('[data-csrf]')?.dataset.csrf || '';
+                button.disabled = true;
+                fetch(button.dataset.url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                }).then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || data.ok === false) {
+                        button.disabled = false;
+                        window.alert(data.error || data.delivery?.error || 'تعذر إرسال الرسالة.');
+                        return;
+                    }
+                    const id = button.dataset.id;
+                    document.querySelectorAll(`.mark-user-created[data-id="${id}"]`).forEach((el) => el.remove());
+                }).catch(() => {
+                    button.disabled = false;
+                    window.alert('تعذر إرسال الرسالة.');
+                });
+            });
+        },
+
+        markUserButton(root, c) {
+            if (!c.waiting_account || !c.mark_user_url) return '';
+            const labels = this.listLabels(root);
+            return `<button type="button" class="mark-user-created shrink-0 self-center me-2 rounded-full border border-[#f47a2e]/40 bg-[#f47a2e]/10 px-2 py-1 text-[10px] font-semibold text-[#f16229] hover:bg-[#f47a2e]/20" data-url="${this.escapeHtml(c.mark_user_url)}" data-id="${this.escapeHtml(String(c.id))}">${this.escapeHtml(labels.mark_user_created || 'تم إنشاء المستخدم')}</button>`;
+        },
+
         startListPolling(root) {
+            this.bindMarkUserCreated();
+            this.bindConversationOpen(root);
             if (!root) return;
             let pollSeq = 0;
             let abortCtrl = null;
@@ -87,6 +132,9 @@
                 const url = new URL(root.dataset.pollUrl, window.location.origin);
                 url.searchParams.set('filter', root.dataset.filter || 'all');
                 url.searchParams.set('q', root.dataset.q || '');
+                if (root.dataset.line) {
+                    url.searchParams.set('line', root.dataset.line);
+                }
                 if (filtering) {
                     url.searchParams.set('insight', requestedInsight);
                 } else if (root.dataset.since) {
@@ -103,6 +151,7 @@
 
                     // Drop stale responses (e.g. unfiltered poll finishing after a card tap).
                     if (seq !== pollSeq) return;
+                    this.paintLineHealth(data.lines);
                     const currentInsight = root.dataset.insight || 'all';
                     if (currentInsight !== requestedInsight) return;
 
@@ -132,7 +181,8 @@
         replaceList(root, conversations) {
             const list = root.querySelector('#conversation-list');
             if (!list) return;
-            const activeId = document.querySelector('#workspace-chat')?.dataset?.conversationId
+            const activeId = document.querySelector('#workspace-chat-live')?.dataset?.conversationId
+                || document.querySelector('#workspace-chat')?.dataset?.conversationId
                 || new URLSearchParams(window.location.search).get('conversation')
                 || '';
             list.innerHTML = '';
@@ -140,7 +190,10 @@
                 const empty = document.createElement('p');
                 empty.id = 'list-empty';
                 empty.className = 'p-4 text-xs text-[#a78a6c]';
-                empty.textContent = root.dataset.filterEmptyLabel || root.dataset.emptyLabel || 'No chats in this group.';
+                const filtering = (root.dataset.insight || 'all') !== 'all';
+                empty.textContent = (filtering ? root.dataset.filterEmptyLabel : '')
+                    || root.dataset.emptyLabel
+                    || 'No chats in this group.';
                 list.appendChild(empty);
                 return;
             }
@@ -179,6 +232,16 @@
                 card.classList.toggle('ring-[#f47a2e]', on);
                 card.classList.toggle('shadow-sm', on);
             });
+
+            const pageUrl = new URL(window.location.href);
+            if (next === 'all') pageUrl.searchParams.delete('insight');
+            else pageUrl.searchParams.set('insight', next);
+            if (pageUrl.href !== window.location.href) {
+                history.replaceState(history.state, '', pageUrl);
+            }
+
+            const pager = listRoot.querySelector('#conversation-list-pager');
+            if (pager) pager.classList.toggle('hidden', next !== 'all');
 
             // Instant UI filter from cached conversation ids (before API returns).
             this.applyInsightFilterLocally(listRoot, next);
@@ -270,6 +333,12 @@
                 e.stopPropagation();
                 this.setInsightFilter(listRoot, 'all', '');
             });
+
+            const initial = listRoot.dataset.insight || 'all';
+            if (initial !== 'all') {
+                const card = pageRoot.querySelector(`.analytics-card[data-insight-filter="${initial}"]`);
+                this.setInsightFilter(listRoot, initial, card?.dataset.insightLabel || initial);
+            }
         },
         startAnalyticsPolling(root) {
             if (!root?.dataset?.analyticsUrl) return;
@@ -284,10 +353,11 @@
                     if (!res.ok) return;
                     const data = await res.json();
                     const analytics = data.analytics || {};
-                    ['leads', 'responded', 'messages', 'contacts', 'no_response', 'rejected', 'engaged', 'guardians'].forEach((key) => {
-                        if (analytics[key] === undefined) return;
+                    Object.keys(analytics).forEach((key) => {
+                        const value = analytics[key];
+                        if (value === undefined || value === null || typeof value === 'object') return;
                         document.querySelectorAll(`[data-analytics="${key}"]`).forEach((el) => {
-                            el.textContent = String(analytics[key]);
+                            el.textContent = String(value);
                         });
                     });
                     if (listRoot && analytics.conversation_ids) {
@@ -309,8 +379,71 @@
             });
         },
 
+        paintLineHealth(lines) {
+            if (!Array.isArray(lines)) return;
+            const alerts = [];
+            lines.forEach((line) => {
+                const id = String(line.id ?? '');
+                document.querySelectorAll(`[data-line-stat="${id}"]`).forEach((el) => {
+                    const count = el.querySelector('[data-triggered]');
+                    const risk = el.querySelector('[data-risk]');
+                    if (count) count.textContent = String(line.triggered ?? 0);
+                    const today = el.querySelector('[data-today]');
+                    if (today) today.textContent = 'اليوم ' + String(line.today ?? 0) + '/' + String(line.cap || 24);
+                    if (risk) {
+                        risk.textContent = String(line.percent ?? 0) + '%';
+                        risk.title = line.level_label || '';
+                        risk.classList.remove('is-low', 'is-medium', 'is-high', 'is-critical', 'is-dead');
+                        risk.classList.add('is-' + (line.level || 'low'));
+                    }
+                });
+                document.querySelectorAll(`[data-line-dot="${id}"]`).forEach((dot) => {
+                    const dead = !!line.alert;
+                    dot.classList.toggle('is-dead', dead);
+                    dot.classList.toggle('is-on', !dead && !!line.active);
+                });
+                if (line.alert) alerts.push(line);
+            });
+            const box = document.getElementById('farz-dead');
+            if (box) {
+                if (!alerts.length) {
+                    box.hidden = true;
+                    box.innerHTML = '';
+                } else {
+                    box.hidden = false;
+                    box.innerHTML = '<strong>تنبيه</strong>' + alerts.map((line) => {
+                        const who = line.phone || line.label || ('#' + line.id);
+                        return `<p><b dir="ltr">${this.escapeHtml(who)}</b><span>${this.escapeHtml(line.alert)}</span></p>`;
+                    }).join('');
+                }
+            }
+            this.paintPace(lines);
+        },
+
+        paintPace(lines) {
+            const pace = document.getElementById('farz-pace');
+            if (!pace || !Array.isArray(lines)) return;
+            if (!lines.length) {
+                pace.hidden = true;
+                pace.innerHTML = '';
+                return;
+            }
+            const cap = lines[0].cap || 24;
+            const ranked = lines.slice().sort((a, b) => (b.percent || 0) - (a.percent || 0));
+            const title = pace.dataset.paceTitle || 'حد اليوم';
+            const note = pace.dataset.paceNote || '';
+            pace.hidden = false;
+            pace.innerHTML = `<strong>${this.escapeHtml(title)} · ${this.escapeHtml(String(cap))}</strong>`
+                + (note ? `<em>${this.escapeHtml(note)}</em>` : '')
+                + ranked.map((line) => {
+                    const who = line.phone || line.label || ('#' + line.id);
+                    const level = line.level || 'low';
+                    return `<p data-line-pace="${this.escapeHtml(String(line.id))}"><b dir="ltr">${this.escapeHtml(who)}</b><span data-pace-rate>${this.escapeHtml(String(line.today ?? 0))}/${this.escapeHtml(String(line.cap || cap))}</span><i class="farz-risk is-${this.escapeHtml(level)}" data-pace-risk title="${this.escapeHtml(line.level_label || '')}">${this.escapeHtml(String(line.percent ?? 0))}%</i></p>`;
+                }).join('');
+        },
+
         paintLiveDot(ok) {
-            document.querySelectorAll('#live-sync-dot span.animate-pulse, #live-sync-dot span[aria-hidden="true"]').forEach((dot) => {
+            document.querySelectorAll('#live-sync-dot span[aria-hidden="true"], .live-sync-dot span[aria-hidden="true"]').forEach((dot) => {
                 dot.classList.toggle('bg-emerald-500', !!ok);
                 dot.classList.toggle('bg-amber-500', !ok);
             });
@@ -358,22 +491,26 @@
                 badges.push(`<span class="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-full px-1.5 py-0.5">${this.escapeHtml(labels.needs_attention || 'Needs attention')}</span>`);
             }
 
-            const row = document.createElement('a');
-            row.href = c.url || '#';
-            row.className = 'conversation-row flex gap-3 px-3 py-3 border-b border-[#eadfce]/80 hover:bg-white/70 transition';
+            const row = document.createElement('div');
+            row.className = 'conversation-row flex items-stretch border-b border-[#eadfce]/80 hover:bg-white/70 transition';
             row.dataset.id = String(c.id);
             row.dataset.updated = c.updated_at || '';
             row.dataset.unread = String(unread);
+            const phone = c.contact_phone ? `<p class="text-[11px] text-[#a78a6c] truncate mt-0.5" dir="ltr">${this.escapeHtml(c.contact_phone)}</p>` : '';
             row.innerHTML = `
-                <div class="w-11 h-11 rounded-full bg-[#f1dfc5] text-[#7c6a56] flex items-center justify-center text-sm font-bold shrink-0" aria-hidden="true">${this.escapeHtml(c.initials || '?')}</div>
-                <div class="min-w-0 flex-1">
-                    <div class="flex items-start justify-between gap-2">
-                        <p class="text-sm font-semibold text-[#2b1e11] truncate">${this.escapeHtml(c.display_name || '')}</p>
-                        <time class="text-[10px] text-[#a78a6c] shrink-0" datetime="${this.escapeHtml(c.last_message_at || '')}">${this.escapeHtml(this.formatListTime(c.last_message_at))}</time>
+                <a href="${this.escapeHtml(c.url || '#')}" class="flex gap-3 flex-1 min-w-0 px-3 py-3">
+                    <div class="w-11 h-11 rounded-full bg-[#f1dfc5] text-[#7c6a56] flex items-center justify-center text-sm font-bold shrink-0" aria-hidden="true">${this.escapeHtml(c.initials || '?')}</div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="text-sm font-semibold text-[#2b1e11] truncate">${this.escapeHtml(c.display_name || '')}</p>
+                            <time class="text-[10px] text-[#a78a6c] shrink-0" datetime="${this.escapeHtml(c.last_message_at || '')}">${this.escapeHtml(this.formatListTime(c.last_message_at))}</time>
+                        </div>
+                        ${phone}
+                        <p class="text-xs text-[#7c6a56] truncate mt-0.5">${this.escapeHtml(c.preview || '')}</p>
+                        <div class="mt-1 flex flex-wrap gap-1 row-badges">${badges.join('')}</div>
                     </div>
-                    <p class="text-xs text-[#7c6a56] truncate mt-0.5">${this.escapeHtml(c.preview || '')}</p>
-                    <div class="mt-1 flex flex-wrap gap-1 row-badges">${badges.join('')}</div>
-                </div>`;
+                </a>
+                ${this.markUserButton(root, c)}`;
             return row;
         },
 
@@ -417,6 +554,14 @@
                 parts.push(`<span class="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-full px-1.5 py-0.5">${this.escapeHtml(labels.needs_attention || 'Needs attention')}</span>`);
             }
             badges.innerHTML = parts.join('');
+
+            const existingMark = row.querySelector(':scope > .mark-user-created');
+            const markHtml = this.markUserButton(root, c);
+            if (markHtml && !existingMark) {
+                row.insertAdjacentHTML('beforeend', markHtml);
+            } else if (!markHtml && existingMark) {
+                existingMark.remove();
+            }
         },
 
         mergeList(root, conversations, insertMissing = false) {
@@ -439,8 +584,117 @@
             });
         },
 
+        bindConversationOpen(root) {
+            if (!root || root.dataset.openBound === '1') return;
+            root.dataset.openBound = '1';
+            root.addEventListener('click', (event) => {
+                const link = event.target.closest?.('a[href]');
+                if (!link || !root.contains(link) || !link.closest('.conversation-row')) return;
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+                if (window.matchMedia('(max-width: 767px)').matches) {
+                    const insight = root.dataset.insight || 'all';
+                    if (insight === 'all') return;
+                    event.preventDefault();
+                    const url = new URL(link.href, window.location.origin);
+                    url.searchParams.set('insight', insight);
+                    window.location.assign(url.toString());
+                    return;
+                }
+                event.preventDefault();
+                this.openConversation(link.href, root);
+            });
+            if (!this.boundConversationPop) {
+                this.boundConversationPop = true;
+                window.addEventListener('popstate', () => {
+                    if (/\/conversations\/\d+/.test(window.location.pathname)) {
+                        this.openConversation(window.location.href, document.getElementById('workspace-list-pane'), false);
+                        return;
+                    }
+                    this.closeConversation();
+                });
+            }
+        },
+
+        async openConversation(href, listRoot, push = true) {
+            const list = listRoot || document.getElementById('workspace-list-pane');
+            const fetchUrl = new URL(href, window.location.origin);
+            const insight = list?.dataset.insight || fetchUrl.searchParams.get('insight') || 'all';
+            if (insight !== 'all') fetchUrl.searchParams.set('insight', insight);
+            else fetchUrl.searchParams.delete('insight');
+            const shown = new URL(fetchUrl.href);
+            fetchUrl.searchParams.set('pane', '1');
+            try {
+                const res = await fetch(fetchUrl.toString(), {
+                    headers: { Accept: 'application/json', 'X-Chat-Pane': '1' },
+                    cache: 'no-store',
+                });
+                if (!res.ok) throw new Error('pane');
+                const data = await res.json();
+                if (!data.html) throw new Error('pane');
+                this.mountConversation(data.html);
+                if (list && data.id) this.markOpenRow(list, data.id);
+                if (push) history.pushState({ pane: true }, '', shown);
+            } catch (_) {
+                window.location.assign(shown.toString());
+            }
+        },
+
+        mountConversation(html) {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = html.trim();
+            const pane = wrap.querySelector('#workspace-chat-live');
+            const current = document.getElementById('workspace-chat-live') || document.getElementById('workspace-chat-slot');
+            if (!pane || !current) return;
+            if (current.id === 'workspace-chat-slot' && !this.emptySlotHtml) {
+                this.emptySlotHtml = current.outerHTML;
+            }
+            current.replaceWith(pane);
+            const host = document.getElementById('workspace-chat');
+            if (host) {
+                Object.assign(host.dataset, pane.dataset);
+                this.bindComposer(host);
+                this.bindBotMode(host);
+                this.bindInstructor(host);
+                this.scrollThreadToBottom(host, true);
+                if (host.dataset.readUrl) {
+                    fetch(host.dataset.readUrl, {
+                        method: 'POST',
+                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf(host) },
+                    }).catch(() => {});
+                }
+                return;
+            }
+            this.startConversation(pane);
+        },
+
+        closeConversation() {
+            const current = document.getElementById('workspace-chat-live');
+            if (!current || !this.emptySlotHtml) return;
+            if (this.messageTimer) {
+                clearInterval(this.messageTimer);
+                this.messageTimer = null;
+            }
+            current.outerHTML = this.emptySlotHtml;
+            document.querySelectorAll('#conversation-list .conversation-row').forEach((row) => {
+                row.classList.remove('bg-white', 'border-s-4', 'border-s-[#f47a2e]');
+            });
+        },
+
+        markOpenRow(listRoot, id) {
+            listRoot.querySelectorAll('.conversation-row').forEach((row) => {
+                const on = String(row.dataset.id || '') === String(id);
+                row.classList.toggle('bg-white', on);
+                row.classList.toggle('border-s-4', on);
+                row.classList.toggle('border-s-[#f47a2e]', on);
+            });
+        },
+
         startConversation(root) {
             if (!root) return;
+            if (this.messageTimer) {
+                clearInterval(this.messageTimer);
+                this.messageTimer = null;
+            }
             this.bindComposer(root);
             this.bindBotMode(root);
             this.bindInstructor(root);
@@ -492,11 +746,15 @@
                 }
             };
 
+            this.pollConversation = () => poll();
             poll();
             this.messageTimer = setInterval(poll, MESSAGE_POLL_MS);
-            document.addEventListener('visibilitychange', () => {
-                if (this.visible()) poll();
-            });
+            if (!this.boundConversationVisibility) {
+                this.boundConversationVisibility = true;
+                document.addEventListener('visibilitychange', () => {
+                    if (this.visible()) this.pollConversation?.();
+                });
+            }
         },
 
         isThreadNearBottom(root, threshold = 120) {

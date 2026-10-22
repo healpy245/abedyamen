@@ -34,7 +34,7 @@ Route::get('/kaman-app/v1/apk', ApkDownloadController::class)
     ->name('kaman-app.apk');
 
 Route::prefix('shared-carts')
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:600,1')
     ->name('shared-carts.')
     ->group(function (): void {
         Route::post('/', [SharedCartController::class, 'store'])->name('store');

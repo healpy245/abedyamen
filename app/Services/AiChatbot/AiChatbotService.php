@@ -461,7 +461,17 @@ class AiChatbotService
         bool $dryRun = false,
     ): array {
         $settings = $this->settingsService->all();
-        $apiKey = config('services.openai.api_key') ?: env('OPENAI_API_KEY');
+        $liveBot = null;
+        if ($channel !== ChatbotConversation::CHANNEL_TEST) {
+            $liveBot = match (true) {
+                $instance->isDimaBot() => MowahadaOpenAi::DIMA,
+                $instance->isAppsBot() => MowahadaOpenAi::APPS,
+                default => null,
+            };
+        }
+        $apiKey = $instance->hasMansourIntegration()
+            ? MowahadaOpenAi::key($liveBot)
+            : (config('services.openai.api_key') ?: env('OPENAI_API_KEY'));
         if (! $apiKey) {
             throw new RuntimeException('Missing OpenAI API key. Set services.openai.api_key or OPENAI_API_KEY.');
         }
@@ -469,9 +479,19 @@ class AiChatbotService
         $defaultModel = (string) ($settings['chatbot_model'] ?? 'gpt-4o-mini');
         $voiceModel = trim((string) config('voice.phone.model', ''));
         $malanModel = trim((string) config('openai.malan_chat_model', 'gpt-6-sol'));
+        $speedcomModel = trim((string) config('openai.speedcom_chat_model', 'gpt-6-sol'));
+        $mansourModel = trim((string) config('openai.mansour_chat_model', 'gpt-6-astra'));
+        $speedcomChat = ! $voiceMode && $instance->companyProfile()->isSpeedcom();
         $malanChat = ! $voiceMode && ($instance->hasMalanIntegration() || $conversation->isCampaignLeadBot());
+        $mansourChat = ! $voiceMode && $instance->hasMansourIntegration();
         if ($voiceMode && $voiceModel !== '') {
             $model = $voiceModel;
+        } elseif ($instance->isInviteBot()) {
+            $model = \App\Services\AiChatbot\InvitePrompt::MODEL;
+        } elseif ($mansourChat && $mansourModel !== '') {
+            $model = $mansourModel;
+        } elseif ($speedcomChat && $speedcomModel !== '') {
+            $model = $speedcomModel;
         } elseif ($malanChat && $malanModel !== '') {
             $model = $malanModel;
         } else {
@@ -512,6 +532,8 @@ class AiChatbotService
             if ($tools !== []) {
                 $payload['tools'] = $tools;
                 $payload['tool_choice'] = 'auto';
+            } elseif ($mansourChat) {
+                $payload['reasoning_effort'] = 'high';
             }
 
             $openaiStarted = microtime(true);
@@ -773,9 +795,15 @@ class AiChatbotService
         }
 
         $isCampaignLeadBot = $conversation->isCampaignLeadBot();
-        $systemPrompt = trim((string) ($instance->system_prompt ?? ''));
+        $isMansour = $instance->hasMansourIntegration();
+        $systemPrompt = match (true) {
+            $instance->isDimaBot() => \App\Services\AiChatbot\DimaPrompt::instructions(),
+            $instance->isInviteBot() => \App\Services\AiChatbot\InvitePrompt::instructions(\App\Services\AiChatbot\InvitePrompt::variantOf($instance)),
+            $isMansour => \App\Services\AiChatbot\MansourPrompt::resolve($instance),
+            default => trim((string) ($instance->system_prompt ?? '')),
+        };
 
-        if ($isCampaignLeadBot) {
+        if ($isCampaignLeadBot && ! $isMansour) {
             // Full prompt isolation: never use the central Malan/Sally instance prompt.
             $campaign = $conversation->relationLoaded('campaign')
                 ? $conversation->campaign
@@ -828,7 +856,7 @@ class AiChatbotService
                         ],
                     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             }
-        } elseif ($summary !== null) {
+        } elseif ($summary !== null && ! $isMansour) {
             $systemPrompt = trim($systemPrompt."\n\n".'# Verified server-side conversation context (authoritative — scoped to this conversation only)'."\n".
                 json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n".
                 'This memory belongs only to conversation #'.$conversation->id.'. Never mix with other chats. ');
@@ -849,6 +877,7 @@ class AiChatbotService
         if (
             in_array($channel, [ChatbotConversation::CHANNEL_WHATSAPP, ChatbotConversation::CHANNEL_TEST], true)
             && $instance->hasMalanIntegration()
+            && ! $isMansour
         ) {
             $whatsappPhone = null;
             $normalizer = new \App\Services\Malan\MalanPhoneNormalizer;
@@ -887,7 +916,7 @@ class AiChatbotService
             }
         }
 
-        if ($instructionSection !== null && trim($instructionSection) !== '') {
+        if ($instructionSection !== null && trim($instructionSection) !== '' && ! $isMansour) {
             $systemPrompt = trim($systemPrompt."\n\n".$instructionSection);
         }
 

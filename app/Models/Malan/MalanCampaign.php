@@ -408,10 +408,18 @@ PROMPT;
     {
         return in_array($this->status, [self::STATUS_READY, self::STATUS_STOPPED, self::STATUS_COMPLETED], true)
             && $this->contacts_count > 0
-            && is_string($this->greenapi_url)
-            && trim($this->greenapi_url) !== ''
+            && $this->hasWhatsAppTransport()
             && is_string($this->opening_message)
             && trim($this->opening_message) !== '';
+    }
+
+    public function hasWhatsAppTransport(): bool
+    {
+        if ($this->hasGreenApiCredentials()) {
+            return true;
+        }
+
+        return app(\App\Services\AiChatbot\WhapiCloudClient::class)->isReady();
     }
 
     public function canStop(): bool

@@ -12,8 +12,30 @@
                 </div>
             </div>
 
+            @php
+                $editions = array_values(array_filter($product['items'], fn ($item) => ! empty($item['edition'])));
+                $features = array_values(array_filter($product['items'], fn ($item) => empty($item['edition'])));
+            @endphp
+
+            @if($editions !== [])
+                <ul class="story__editions">
+                    @foreach($editions as $item)
+                        <li @class(['edition', 'is-main' => ($item['edition'] ?? '') === 'main'])>
+                            <span class="edition__mark">
+                                <x-features.icon :name="$item['icon']" />
+                            </span>
+                            @if(! empty($item['label']))
+                                <p class="edition__label">{{ $item['label'] }}</p>
+                            @endif
+                            <h3>{{ $item['title'] }}</h3>
+                            <p>{{ $item['body'] }}</p>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+
             <ul class="story__list">
-                @foreach($product['items'] as $item)
+                @foreach($features as $item)
                     <li @class(['story__row', 'is-wide' => !empty($item['wide'])])>
                         @if(!empty($item['logo']))
                             <img class="story__logo" src="{{ asset($item['logo']) }}" alt="HAAT">

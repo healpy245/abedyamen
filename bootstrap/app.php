@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/app-development.php'));
             Route::middleware('web')
                 ->group(base_path('routes/kaman-support.php'));
+            Route::middleware('web')
+                ->group(base_path('routes/officevision.php'));
+            Route::middleware('api')
+                ->prefix('api/officevision')
+                ->group(base_path('routes/officevision-api.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -33,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
+            \App\Http\Middleware\KeepMowahadaInFarz::class,
         ]);
 
         $middleware->alias([
@@ -40,13 +46,22 @@ return Application::configure(basePath: dirname(__DIR__))
             'project' => \App\Http\Middleware\EnsureUserCanAccessProject::class,
             'kaman-support.key' => \App\Http\Middleware\KamanSupport\AuthenticateSupportKey::class,
             'pos-live-scope' => \App\Http\Middleware\KamanSupport\LimitPosLiveLogViewer::class,
+            'officevision.token' => \App\Http\Middleware\OfficeVision\AuthenticateOfficeVision::class,
         ]);
 
-        $middleware->redirectGuestsTo('/login');
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('ai-chatbot', 'ai-chatbot/*')) {
+                return route('chatbots.login');
+            }
+
+            return route('login');
+        });
 
         $middleware->validateCsrfTokens(except: [
             'api/voice/telnyx/webhook',
             'ai-chatbot/webhook/greenapi/*',
+            'ai-chatbot/webhook/greenapi/*/*',
+            'ai-chatbot/webhook/whapi/*',
             'api/kaman-support/*',
         ]);
     })

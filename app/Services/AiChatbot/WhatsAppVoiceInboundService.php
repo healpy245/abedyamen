@@ -80,13 +80,27 @@ class WhatsAppVoiceInboundService
             return $result;
         }
 
-        $domain = ($instance !== null && $instance->hasKamanWhatsappIntegration()) ? 'kaman' : 'malan';
+        $domain = match (true) {
+            $instance !== null && $instance->hasKamanWhatsappIntegration() => 'kaman',
+            $instance !== null && $instance->isDimaBot() => 'dima',
+            default => 'malan',
+        };
+        $liveBot = match (true) {
+            $instance !== null && $instance->isDimaBot() => MowahadaOpenAi::DIMA,
+            $instance !== null && $instance->isAppsBot() => MowahadaOpenAi::APPS,
+            default => null,
+        };
+        $apiKey = ($instance !== null && $instance->hasMansourIntegration())
+            ? MowahadaOpenAi::key($liveBot)
+            : null;
 
         $transcription = $this->transcriber->transcribe(
             (string) $result['attachment_disk'],
             (string) $result['attachment_path'],
             $result['attachment_mime'],
             $domain,
+            [],
+            $apiKey,
         );
 
         $result['metadata']['transcription_ok'] = (bool) ($transcription['ok'] ?? false);

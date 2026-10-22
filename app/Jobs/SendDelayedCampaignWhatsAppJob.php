@@ -141,7 +141,7 @@ class SendDelayedCampaignWhatsAppJob implements ShouldQueue
         }
 
         $sendUrl = trim((string) $campaign->greenapi_url);
-        if ($sendUrl === '') {
+        if (! $greenApi->whapiTransportReady($sendUrl)) {
             $message->forceFill([
                 'delivery_status' => 'failed',
                 'metadata' => array_merge($meta, [

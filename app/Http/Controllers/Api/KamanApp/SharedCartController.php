@@ -98,7 +98,22 @@ class SharedCartController extends Controller
             return null;
         }
 
-        $decoded = json_decode((string) file_get_contents($path), true);
+        $handle = fopen($path, 'rb');
+        if ($handle === false) {
+            return null;
+        }
+
+        try {
+            if (! flock($handle, LOCK_SH)) {
+                return null;
+            }
+            $raw = stream_get_contents($handle);
+            flock($handle, LOCK_UN);
+        } finally {
+            fclose($handle);
+        }
+
+        $decoded = json_decode((string) $raw, true);
 
         return is_array($decoded) ? $decoded : null;
     }
@@ -113,11 +128,19 @@ class SharedCartController extends Controller
             abort(500, 'Could not store the shared cart.');
         }
 
-        $json = json_encode($doc, JSON_UNESCAPED_UNICODE);
+        $json = json_encode($doc, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         if ($json === false) {
             abort(422, 'Cart body could not be stored.');
         }
 
-        file_put_contents($this->path($code), $json, LOCK_EX);
+        $path = $this->path($code);
+        $temporary = $path.'.tmp';
+        if (file_put_contents($temporary, $json, LOCK_EX) === false) {
+            abort(500, 'Could not store the shared cart.');
+        }
+        if (! rename($temporary, $path)) {
+            @unlink($temporary);
+            abort(500, 'Could not store the shared cart.');
+        }
     }
 }

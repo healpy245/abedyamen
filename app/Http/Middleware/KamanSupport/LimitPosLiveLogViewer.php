@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * A live-log viewer may open the live board and a single device's logs.
+ * A limited support viewer may open the live board and a single device.
  * Tickets, failed-request tools, printer commands, and the support API stay closed.
  */
 class LimitPosLiveLogViewer
@@ -22,12 +22,13 @@ class LimitPosLiveLogViewer
     {
         $user = $request->user();
 
-        if (! $user instanceof User || ! $user->posLiveLogsOnly()) {
+        if (! $user instanceof User || ! $user->limitedSupportConsole()) {
             return $next($request);
         }
 
         $allowed = $request->routeIs(
             'kaman-support.index',
+            'kaman-support.logos',
             'kaman-support.live',
             'kaman-support.liveview',
             'kaman-support.live.feed',

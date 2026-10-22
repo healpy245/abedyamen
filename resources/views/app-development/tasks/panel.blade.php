@@ -8,180 +8,224 @@
     $liveSeconds = $activeEntry
         ? $closedSeconds + $activeEntry->elapsedSeconds()
         : $task->totalDurationSeconds();
+    $ticket = $task->ticket;
+    $apps = $ticket?->appTypes() ?? [];
+    $person = $task->assignee;
+    $initial = $person && trim((string) $person->name) !== ''
+        ? mb_strtoupper(mb_substr(trim($person->name), 0, 1))
+        : '';
+    $info = __('app-development.board.task_info');
+    if ($ticket) {
+        $info .= ' '.$ticket->ticket_number;
+    }
 @endphp
 
-<div data-modal-title="{{ $task->title }}" data-modal-variant="view" class="space-y-3">
-    <div class="flex items-start justify-between gap-2">
-        <div class="min-w-0">
-            <h3 class="text-base font-semibold leading-snug text-[#2b1e11]">{{ $task->title }}</h3>
-            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                @include('app-development.partials.priority-badge', ['priority' => $task->priority])
-                @include('app-development.partials.task-status-badge', ['status' => $task->status])
-                @if($task->isOverdue())
-                    <span class="rounded-md border border-red-200 bg-red-50 px-1.5 text-[10px] font-semibold text-red-800">{{ __('app-development.tasks.overdue') }}</span>
-                @endif
+<div data-modal-title="{{ $info }}" data-modal-variant="view" class="ti task-modal-layout">
+    <div class="ti-main task-modal-main">
+        <h2 class="ti-title" id="modalTaskTitle">{{ $task->title }}</h2>
+
+        @if(filled($task->description))
+            <p class="ti-desc task-description">{{ $task->description }}</p>
+        @endif
+
+        @if($ticket)
+            <div class="ti-meta task-metadata">
+                <a class="task-meta-pill ticket" href="{{ route('app-development.tickets.show', $ticket) }}" data-app-dev-modal>
+                    <bdi dir="ltr">{{ $ticket->ticket_number }}</bdi>
+                </a>
+                @foreach($apps as $app)
+                    <span class="task-meta-pill">{{ $app->label() }}</span>
+                @endforeach
             </div>
-            <p class="mt-1.5 text-xs text-[#7c6a56] {{ $activeEntry ? 'app-dev-live-timer' : '' }}"
-               @if($activeEntry)
-                   data-app-dev-timer
-                   data-started-at="{{ $activeEntry->started_at?->toIso8601String() }}"
-                   data-base-seconds="{{ $closedSeconds }}"
-               @endif>
-                @if($task->ticket)
-                    <a href="{{ route('app-development.tickets.show', $task->ticket) }}" class="font-medium text-[#f16229]" data-app-dev-modal>
-                        {{ $task->ticket->ticket_number }}
-                    </a>
-                    ·
-                @endif
-                {{ $task->assignee?->name ?? __('app-development.tickets.unassigned') }}
-                · {{ __('app-development.tasks.total_time') }}:
-                <bdi class="app-dev-live-timer__clock" data-timer-clock>{{ gmdate('H:i:s', $liveSeconds) }}</bdi>
-                @if($activeEntry)
-                    <span class="app-dev-live-timer__badge">{{ __('app-development.tasks.running') }}</span>
-                @endif
-            </p>
-        </div>
+        @endif
+
+        @if(!empty($suggestCompleteTicket) && $ticket)
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {{ __('app-development.tasks.suggest_complete_ticket', ['ticket' => $ticket->ticket_number]) }}
+            </div>
+        @endif
+
+        @if($ticket && ($ticket->comments->isNotEmpty() || auth()->user()?->can('comment', $ticket)))
+            <section class="ti-block task-section">
+                <h3>{{ __('app-development.tickets.comments') }}</h3>
+                @foreach($ticket->comments as $comment)
+                    <div class="task-comment">
+                        <span class="mini-avatar">{{ mb_strtoupper(mb_substr(trim((string) ($comment->user?->name ?: '?')), 0, 1)) }}</span>
+                        <div class="task-comment-body">
+                    <p class="ti-note">
+                        <b class="task-comment-name">{{ $comment->user?->name }}</b>
+                        <bdi class="task-comment-date" dir="ltr">{{ $comment->created_at?->format('d/m H:i') }}</bdi>
+                        @if(filled($comment->body))
+                            <br>{{ $comment->body }}
+                        @endif
+                    </p>
+                        </div>
+                    </div>
+                @endforeach
+                @can('comment', $ticket)
+                    <form method="post" action="{{ route('app-development.tickets.comments.store', $ticket) }}" class="task-comment-compose">
+                        @csrf
+                        <textarea name="body" rows="2" placeholder="{{ __('app-development.tickets.comment_placeholder') }}"></textarea>
+                        <button type="submit" class="dev-btn dev-btn--primary">{{ __('app-development.tickets.post_comment') }}</button>
+                    </form>
+                @endcan
+            </section>
+        @endif
+
+        @if($ticket && $ticket->attachments->isNotEmpty())
+            <section class="ti-block task-section task-section--files">
+                <h3>{{ __('app-development.tickets.attachments') }}</h3>
+                @foreach($ticket->attachments as $attachment)
+                    <a class="task-file" href="{{ route('app-development.tickets.attachments.download', [$ticket, $attachment]) }}">{{ $attachment->original_name }}</a>
+                @endforeach
+            </section>
+        @endif
+
+        @if($ticket && $ticket->activities->isNotEmpty())
+            <section class="ti-block task-section task-section--activity">
+                <h3>{{ __('app-development.modal.activity') }}</h3>
+                @foreach($ticket->activities as $activity)
+                    <p class="ti-note">
+                        <bdi dir="ltr">{{ $activity->created_at?->format('d/m H:i') }}</bdi>
+                        {{ $activity->message() }}
+                    </p>
+                @endforeach
+            </section>
+        @endif
+
+        @can('update', $task)
+            <details class="kb-fold ti-block">
+                <summary>{{ __('app.edit') }}</summary>
+                <form method="post" action="{{ route('app-development.tasks.update', $task) }}" class="mt-3 space-y-3">
+                    @csrf
+                    @method('PUT')
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.title_label') }}</label>
+                        <input type="text" name="title" value="{{ old('title', $task->title) }}" required class="kaman-input w-full">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.description') }}</label>
+                        <textarea name="description" rows="3" class="kaman-input w-full">{{ old('description', $task->description) }}</textarea>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.assignee') }}</label>
+                            <select name="assignee_id" class="kaman-input w-full">
+                                <option value="">{{ __('app-development.tickets.none') }}</option>
+                                @foreach($developers as $developer)
+                                    <option value="{{ $developer->id }}" @selected((string) old('assignee_id', $task->assignee_id) === (string) $developer->id)>{{ $developer->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tickets.priority') }}</label>
+                            <select name="priority" class="kaman-input w-full">
+                                @foreach(\App\Enums\AppDevelopmentTicketPriority::cases() as $priority)
+                                    <option value="{{ $priority->value }}" @selected(old('priority', $task->priority->value) === $priority->value)>{{ $priority->label() }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <input type="hidden" name="status" value="{{ $task->status->value }}">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.due_at') }}</label>
+                        <input type="datetime-local"
+                               name="due_at"
+                               value="{{ old('due_at', $task->due_at?->format('Y-m-d\TH:i')) }}"
+                               class="kaman-input w-full">
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="kaman-button kaman-button--sm">{{ __('app-development.save') }}</button>
+                    </div>
+                </form>
+            </details>
+        @endcan
+
+        @if($task->timeEntries->isNotEmpty())
+            <details class="kb-fold ti-block">
+                <summary>{{ __('app-development.tasks.time_entries') }}</summary>
+                <div class="mt-2 space-y-2">
+                    @foreach($task->timeEntries as $entry)
+                        <div class="text-sm text-[#2b1e11]">
+                            <p class="text-[11px] text-[#a78a6c]">
+                                {{ $entry->user?->name }}
+                                · {{ $entry->started_at?->format('d/m H:i') }}
+                                @if($entry->ended_at)
+                                    – {{ $entry->ended_at->format('H:i') }}
+                                @else
+                                    · {{ __('app-development.tasks.running') }}
+                                @endif
+                            </p>
+                            <p class="mt-0.5 font-medium">
+                                <bdi>{{ gmdate('H:i:s', $entry->elapsedSeconds()) }}</bdi>
+                                @if($entry->note)
+                                    — {{ $entry->note }}
+                                @endif
+                            </p>
+                        </div>
+                    @endforeach
+                </div>
+            </details>
+        @endif
     </div>
 
-    @if(!empty($suggestCompleteTicket) && $task->ticket)
-        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            {{ __('app-development.tasks.suggest_complete_ticket', ['ticket' => $task->ticket->ticket_number]) }}
+    <aside class="ti-side task-modal-aside">
+        <div class="ti-person">
+            @if($initial !== '')
+                <span class="tc-avatar" title="{{ $person->name }}">{{ $initial }}</span>
+                <span>{{ $person->name }}</span>
+            @else
+                <span>{{ __('app-development.tickets.unassigned') }}</span>
+            @endif
         </div>
-    @endif
 
-    @if(filled($task->description))
-        <p class="whitespace-pre-wrap text-sm leading-relaxed text-[#2b1e11]">{{ $task->description }}</p>
-    @endif
+        @can('update', $task)
+            <label class="ti-field">
+                <span class="task-detail-label">{{ __('app-development.tasks.status') }}</span>
+                <select data-kb-status-select data-status-url="{{ route('app-development.tasks.status', $task) }}" data-current="{{ $task->status->value }}">
+                    @foreach(\App\Enums\AppDevelopmentTaskStatus::cases() as $status)
+                        <option value="{{ $status->value }}" @selected($task->status === $status)>{{ $status->label() }}</option>
+                    @endforeach
+                </select>
+            </label>
+        @else
+            <p class="ti-field"><span>{{ __('app-development.tasks.status') }}</span><b>{{ $task->status->label() }}</b></p>
+        @endcan
 
-    @if($canTimer && ! $task->isCompleted())
-        <div class="flex flex-wrap items-center gap-2 border-t border-[#f1dfc5] pt-3">
+        <p class="ti-field">
+            <span class="task-detail-label">{{ __('app-development.tickets.priority') }}</span>
+            <b class="task-priority">{{ $task->priority->label() }}</b>
+        </p>
+
+        @if($task->due_at)
+            <p class="ti-field">
+                <span>{{ __('app-development.tasks.due_at') }}</span>
+                <b><bdi dir="ltr">{{ $task->due_at->format('Y-m-d H:i') }}</bdi></b>
+            </p>
+        @endif
+
+        @if($canTimer && ! $task->isCompleted())
             @if($activeEntry)
-                <span class="app-dev-live-timer app-dev-live-timer--inline"
-                      data-app-dev-timer
-                      data-started-at="{{ $activeEntry->started_at?->toIso8601String() }}"
-                      data-base-seconds="0">
-                    <span class="app-dev-timer-widget__dot" aria-hidden="true"></span>
-                    <bdi class="app-dev-live-timer__clock" data-timer-clock>{{ gmdate('H:i:s', $activeEntry->elapsedSeconds()) }}</bdi>
-                </span>
                 <form method="post" action="{{ route('app-development.tasks.timer.pause', $task) }}">
                     @csrf
-                    <button type="submit" class="kaman-button-ghost kaman-button--sm">
-                        {{ __('app-development.tasks.pause_timer') }}
-                    </button>
+                    <button type="submit" class="ti-start task-timer running">{{ __('app-development.tasks.pause_timer') }}</button>
                 </form>
             @else
                 <form method="post" action="{{ route('app-development.tasks.timer.start', $task) }}">
                     @csrf
-                    <button type="submit" class="kaman-button kaman-button--sm">
-                        {{ __('app-development.tasks.start_timer') }}
-                    </button>
+                    <button type="submit" class="ti-start task-timer">{{ __('app-development.tasks.start_timer') }}</button>
                 </form>
             @endif
-            <form method="post" action="{{ route('app-development.tasks.timer.complete', $task) }}" class="flex flex-wrap items-center gap-2">
-                @csrf
-                <input type="text"
-                       name="completion_note"
-                       class="kaman-input kaman-input--sm w-40"
-                       placeholder="{{ __('app-development.tasks.completion_note') }}">
-                <button type="submit" class="kaman-button-ghost kaman-button--sm">
-                    {{ __('app-development.tasks.complete') }}
-                </button>
-            </form>
-        </div>
-    @endif
+        @endif
 
-    @can('update', $task)
-        <form method="post" action="{{ route('app-development.tasks.update', $task) }}" class="space-y-3 border-t border-[#f1dfc5] pt-3">
-            @csrf
-            @method('PUT')
-            <div>
-                <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.title_label') }}</label>
-                <input type="text" name="title" value="{{ old('title', $task->title) }}" required class="kaman-input w-full">
-            </div>
-            <div>
-                <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.description') }}</label>
-                <textarea name="description" rows="3" class="kaman-input w-full">{{ old('description', $task->description) }}</textarea>
-            </div>
-            <div class="grid gap-3 sm:grid-cols-3">
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.assignee') }}</label>
-                    <select name="assignee_id" class="kaman-input w-full">
-                        <option value="">{{ __('app-development.tickets.none') }}</option>
-                        @foreach($developers as $developer)
-                            <option value="{{ $developer->id }}" @selected((string) old('assignee_id', $task->assignee_id) === (string) $developer->id)>{{ $developer->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tickets.priority') }}</label>
-                    <select name="priority" class="kaman-input w-full">
-                        @foreach(\App\Enums\AppDevelopmentTicketPriority::cases() as $priority)
-                            <option value="{{ $priority->value }}" @selected(old('priority', $task->priority->value) === $priority->value)>{{ $priority->label() }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.status') }}</label>
-                    <select name="status" class="kaman-input w-full">
-                        @foreach(\App\Enums\AppDevelopmentTaskStatus::cases() as $status)
-                            <option value="{{ $status->value }}" @selected(old('status', $task->status->value) === $status->value)>{{ $status->label() }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-            <div>
-                <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.due_at') }}</label>
-                <input type="datetime-local"
-                       name="due_at"
-                       value="{{ old('due_at', $task->due_at?->format('Y-m-d\TH:i')) }}"
-                       class="kaman-input w-full">
-            </div>
-            <div class="flex justify-end">
-                <button type="submit" class="kaman-button kaman-button--sm">{{ __('app-development.save') }}</button>
-            </div>
-        </form>
-    @endcan
-
-    <div class="space-y-2 border-t border-[#f1dfc5] pt-3">
-        <h4 class="text-xs font-semibold uppercase tracking-wide text-[#7c6a56]">{{ __('app-development.tasks.time_entries') }}</h4>
-        @forelse($task->timeEntries as $entry)
-            <div class="rounded-xl bg-white px-3 py-2 text-sm text-[#2b1e11]">
-                <p class="text-[11px] text-[#a78a6c]">
-                    {{ $entry->user?->name }}
-                    · {{ $entry->started_at?->format('d/m H:i') }}
-                    @if($entry->ended_at)
-                        – {{ $entry->ended_at->format('H:i') }}
-                    @else
-                        · {{ __('app-development.tasks.running') }}
-                    @endif
-                </p>
-                <p class="mt-0.5 font-medium">
-                    <bdi>{{ gmdate('H:i:s', $entry->elapsedSeconds()) }}</bdi>
-                    @if($entry->note)
-                        — {{ $entry->note }}
-                    @endif
-                </p>
-                @can('editTimeEntry', $entry)
-                    @unless($entry->isActive())
-                        <form method="post" action="{{ route('app-development.time-entries.update', $entry) }}" class="mt-2 grid gap-2 sm:grid-cols-3">
-                            @csrf
-                            @method('PUT')
-                            <input type="number" name="duration_seconds" value="{{ $entry->duration_seconds }}" min="0" class="kaman-input kaman-input--sm" required>
-                            <input type="text" name="edit_reason" placeholder="{{ __('app-development.tasks.edit_reason') }}" class="kaman-input kaman-input--sm" required>
-                            <div class="flex gap-1">
-                                <button type="submit" class="kaman-button-ghost kaman-button--sm">{{ __('app.save') }}</button>
-                            </div>
-                        </form>
-                        <form method="post" action="{{ route('app-development.time-entries.destroy', $entry) }}" class="mt-1">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-xs text-red-700 hover:underline">{{ __('app.delete') }}</button>
-                        </form>
-                    @endunless
-                @endcan
-            </div>
-        @empty
-            <p class="text-xs text-[#a78a6c]">{{ __('app-development.tasks.no_time_entries') }}</p>
-        @endforelse
-    </div>
+        <p class="ti-time {{ $activeEntry ? 'app-dev-live-timer' : '' }}"
+           @if($activeEntry)
+               data-app-dev-timer
+               data-started-at="{{ $activeEntry->started_at?->toIso8601String() }}"
+               data-base-seconds="{{ $closedSeconds }}"
+           @endif>
+            <span class="task-elapsed">{{ __('app-development.tasks.total_time') }}
+            <strong class="app-dev-live-timer__clock" data-timer-clock><bdi>{{ gmdate('H:i:s', $liveSeconds) }}</bdi></strong></span>
+        </p>
+    </aside>
 </div>

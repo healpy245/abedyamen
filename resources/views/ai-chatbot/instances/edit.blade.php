@@ -1,6 +1,7 @@
 @php
     /** @var \App\Models\AiChatbot\ChatbotInstance $instance */
     $activeProject = 'ai-chatbot';
+    $waProvider = old('whatsapp_provider', app(\App\Services\AiChatbot\WhapiCloudClient::class)->provider());
 @endphp
 
 @extends('layouts.kaman')
@@ -61,27 +62,31 @@
                         <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_desc') }}</p>
                     </div>
 
-                    <div class="space-y-2">
-                        <label for="greenapi_url" class="kaman-label block">{{ __('chatbot.greenapi_send_url') }}</label>
-                        <input id="greenapi_url" name="greenapi_url" type="url" maxlength="512"
-                               value="{{ old('greenapi_url', $instance->greenapi_url) }}"
-                               placeholder="{{ __('chatbot.greenapi_send_url_placeholder') }}"
-                               class="kaman-input w-full font-mono text-xs">
-                        <p class="text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_send_url_help') }}</p>
-                    </div>
+                    @include('ai-chatbot.partials.whatsapp-provider', ['canEdit' => true])
 
-                    <div class="space-y-2">
-                        <label for="greenapi_webhook_url" class="kaman-label block">{{ __('chatbot.greenapi_webhook_url') }}</label>
-                        <div class="flex flex-wrap gap-2">
-                            <input id="greenapi_webhook_url" type="text" readonly
-                                   value="{{ $greenapiWebhookUrl }}"
-                                   class="kaman-input min-w-0 flex-1 font-mono text-xs bg-[#faf6f0]">
-                            <button type="button" class="kaman-button-ghost kaman-button--sm"
-                                    onclick="navigator.clipboard.writeText(document.getElementById('greenapi_webhook_url').value)">
-                                {{ __('chatbot.copy') }}
-                            </button>
+                    <div data-provider-panel="greenapi" @if($waProvider === 'whapi') hidden @endif class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2 min-w-0">
+                            <label for="greenapi_url" class="kaman-label block">{{ __('chatbot.greenapi_send_url') }}</label>
+                            <input id="greenapi_url" name="greenapi_url" type="url" maxlength="512"
+                                   value="{{ old('greenapi_url', $instance->greenapi_url) }}"
+                                   placeholder="{{ __('chatbot.greenapi_send_url_placeholder') }}"
+                                   class="kaman-input w-full font-mono text-xs">
+                            <p class="text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_send_url_help') }}</p>
                         </div>
-                        <p class="text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_webhook_url_help') }}</p>
+
+                        <div class="space-y-2 min-w-0">
+                            <label for="greenapi_webhook_url" class="kaman-label block">{{ __('chatbot.greenapi_webhook_url') }}</label>
+                            <div class="flex flex-wrap gap-2">
+                                <input id="greenapi_webhook_url" name="greenapi_webhook_url" type="text" maxlength="2000"
+                                       value="{{ old('greenapi_webhook_url', $greenapiWebhookUrl) }}"
+                                       class="kaman-input min-w-0 flex-1 font-mono text-xs">
+                                <button type="button" class="kaman-button-ghost kaman-button--sm"
+                                        onclick="navigator.clipboard.writeText(document.getElementById('greenapi_webhook_url').value)">
+                                    {{ __('chatbot.copy') }}
+                                </button>
+                            </div>
+                            <p class="text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_webhook_url_help') }}</p>
+                        </div>
                     </div>
 
                     <div class="space-y-2">

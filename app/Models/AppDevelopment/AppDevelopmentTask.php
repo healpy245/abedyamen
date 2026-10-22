@@ -20,6 +20,7 @@ class AppDevelopmentTask extends Model
         'ticket_id',
         'title',
         'description',
+        'restaurant_name',
         'assignee_id',
         'priority',
         'status',

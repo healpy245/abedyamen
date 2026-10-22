@@ -1,24 +1,21 @@
 @php
+    $nav = 'live';
     $activeProject = \App\Enums\Project::KamanSupport->value;
     $view = $filters['view'] ?? 'devices';
+    $connectionsOnly = auth()->user()?->supportConnectionsOnly();
+    $logTitle = match ($view) {
+        'bugs' => __('kaman-support.view_bugs'),
+        'api' => __('kaman-support.view_api'),
+        'flutter' => __('kaman-support.source_flutter'),
+        default => __('kaman-support.view_all_logs'),
+    };
     $kind = $filters['kind'] ?? '';
     $queryBase = array_filter([
         'restaurant' => $filters['restaurant'] ?? '',
         'kind' => $kind,
-        'q' => $filters['q'] ?? '',
-        'source' => $filters['source'] ?? '',
-        'from' => $filters['from'] ?? '',
-        'to' => $filters['to'] ?? '',
+        'q' => $view === 'devices' ? '' : ($filters['q'] ?? ''),
     ], static fn ($value) => $value !== '' && $value !== null);
-    $feedQuery = array_filter([
-        'restaurant' => $filters['restaurant'] ?? '',
-        'kind' => $kind,
-        'view' => $view,
-        'q' => $filters['q'] ?? '',
-        'source' => $filters['source'] ?? '',
-        'from' => $filters['from'] ?? '',
-        'to' => $filters['to'] ?? '',
-    ], static fn ($value) => $value !== '' && $value !== null);
+    $feedQuery = $queryBase + ['view' => $view];
     $i18n = [
         'online' => __('kaman-support.online'),
         'offline' => __('kaman-support.offline'),
@@ -36,7 +33,7 @@
     ];
 @endphp
 
-@extends('layouts.kaman')
+@extends('layouts.support')
 
 @section('title', __('kaman-support.live_title'))
 @section('tag', __('kaman-support.tag'))
@@ -52,14 +49,14 @@
             <section class="hero-panel hero-panel--compact">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h1 class="text-xl sm:text-2xl font-semibold text-[#2b1e11]">{{ __('kaman-support.live_title') }}</h1>
-                        <p class="mt-1 text-sm text-[#7c6a56]">{{ __('kaman-support.live_subtitle') }}</p>
+                        <h1 class="text-xl sm:text-2xl font-semibold text-[#2b1e11]">{{ $connectionsOnly ? __('kaman-support.connections_title') : __('kaman-support.live_title') }}</h1>
+                        <p class="mt-1 text-sm text-[#7c6a56]">{{ $connectionsOnly ? __('kaman-support.connections_subtitle') : __('kaman-support.live_subtitle') }}</p>
                     </div>
                     @include('kaman-support.partials.nav', ['nav' => 'live'])
                 </div>
             </section>
 
-            <form method="get" class="kaman-card kaman-card--compact flex flex-wrap items-end gap-2">
+            <form method="get" data-clean-get class="kaman-card kaman-card--compact flex flex-wrap items-end gap-2">
                 <input type="hidden" name="view" value="{{ $view }}">
                 <label class="flex w-56 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
                     {{ __('kaman-support.filter_restaurant') }}
@@ -84,28 +81,13 @@
                         <option value="phone" @selected($kind === 'phone')>{{ __('kaman-support.kind_phone') }}</option>
                     </select>
                 </label>
-                <label class="flex w-36 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
-                    {{ __('kaman-support.log_source') }}
-                    <select name="source" data-log-source class="kaman-input">
-                        <option value="">{{ __('kaman-support.all_sources') }}</option>
-                        <option value="flutter" @selected(($filters['source'] ?? '') === 'flutter')>{{ __('kaman-support.source_flutter') }}</option>
-                        <option value="api" @selected(($filters['source'] ?? '') === 'api')>{{ __('kaman-support.source_api') }}</option>
-                    </select>
-                </label>
-                <label class="flex w-52 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
-                    {{ __('kaman-support.log_from') }}
-                    <input type="datetime-local" name="from" value="{{ $filters['from'] }}" data-log-from class="kaman-input" step="60">
-                </label>
-                <label class="flex w-52 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
-                    {{ __('kaman-support.log_to') }}
-                    <input type="datetime-local" name="to" value="{{ $filters['to'] }}" data-log-to class="kaman-input" step="60">
-                </label>
-                <label class="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
-                    {{ __('kaman-support.log_search') }}
-                    <input type="search" name="q" value="{{ $filters['q'] }}" data-log-search class="kaman-input" placeholder="{{ __('kaman-support.log_search') }}">
-                </label>
+                @if($view !== 'devices')
+                    <label class="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
+                        {{ __('kaman-support.log_search') }}
+                        <input type="search" name="q" value="{{ $filters['q'] }}" data-log-search class="kaman-input" placeholder="{{ __('kaman-support.log_search') }}">
+                    </label>
+                @endif
                 <button type="submit" class="kaman-button">{{ __('kaman-support.filter') }}</button>
-                <p class="w-full text-[11px] text-[#a78a6c]">{{ __('kaman-support.jerusalem_time') }}</p>
                 <p class="ms-auto text-xs text-[#a78a6c]">
                     <span class="inline-block h-2 w-2 rounded-full bg-emerald-500 align-middle"></span>
                     {{ __('kaman-support.live_channel') }} ·
@@ -114,37 +96,16 @@
                 </p>
             </form>
 
+            @unless($connectionsOnly)
             <nav class="flex flex-wrap gap-2">
-                @foreach(['devices' => 'view_devices', 'all' => 'view_all_logs', 'bugs' => 'view_bugs', 'api' => 'view_api', 'debug' => 'view_debug'] as $key => $label)
+                @foreach(['devices' => 'view_devices', 'all' => 'view_all_logs', 'bugs' => 'view_bugs', 'api' => 'view_api', 'flutter' => 'source_flutter'] as $key => $label)
                     <a href="{{ route('kaman-support.live', $queryBase + ['view' => $key]) }}"
                        class="kaman-button-ghost kaman-button--sm {{ $view === $key ? 'ring-1 ring-[#e8b086]' : '' }}">
                         {{ __('kaman-support.'.$label) }}
                     </a>
                 @endforeach
             </nav>
-
-            <div data-log-hints class="flex flex-wrap items-center gap-2">
-                <a href="{{ auth()->user()?->posLiveLogsOnly()
-                    ? route('kaman-support.live', $queryBase + ['view' => 'api'])
-                    : route('kaman-support.failed', array_filter([
-                        'restaurant' => $filters['restaurant'] ?? '',
-                        'type' => $filters['source'] ?? '',
-                        'from' => $filters['from'] ?? '',
-                        'to' => $filters['to'] ?? '',
-                    ], static fn ($value) => $value !== '' && $value !== null)) }}"
-                   data-failed-chip
-                   class="kaman-badge border-rose-200 bg-rose-50 text-rose-800 {{ ($failedHints ?? []) === [] ? 'hidden' : '' }}">
-                    {{ __('kaman-support.failed_requests') }}
-                    <span data-failed-count>{{ count($failedHints ?? []) }}</span>
-                </a>
-                @foreach($failedHints ?? [] as $hint)
-                    <a href="{{ route('kaman-support.live', $queryBase + ['view' => 'api', 'q' => $hint]) }}"
-                       data-hint-chip="{{ $hint }}"
-                       class="kaman-badge border-rose-200 bg-white text-rose-800 {{ ($filters['q'] ?? '') === $hint ? 'ring-1 ring-rose-300' : '' }}">
-                        {{ $hint }}
-                    </a>
-                @endforeach
-            </div>
+            @endunless
 
             <section data-devices-pane class="space-y-4" @if($view !== 'devices') hidden @endif>
                 <div class="space-y-3">
@@ -172,10 +133,9 @@
                 </div>
             </section>
 
-            <section class="kaman-card kaman-card--compact">
-                <h2 class="mb-2 text-sm font-semibold text-[#2b1e11]">
-                    {{ $view === 'devices' ? __('kaman-support.view_all_logs') : __('kaman-support.'.($view === 'all' ? 'view_all_logs' : 'view_'.$view)) }}
-                </h2>
+            @unless($connectionsOnly)
+            <section class="kaman-card kaman-card--compact" @if($view === 'devices') hidden @endif>
+                <h2 class="mb-2 text-sm font-semibold text-[#2b1e11]">{{ $logTitle }}</h2>
                 <p data-logs-empty class="py-8 text-center text-sm text-[#7c6a56]" @if($feedLogs->isNotEmpty()) hidden @endif>
                     {{ __('kaman-support.no_logs') }}
                 </p>
@@ -185,6 +145,7 @@
                     @endforeach
                 </ol>
             </section>
+            @endunless
         </div>
     </div>
 @endsection

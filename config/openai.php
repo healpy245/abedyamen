@@ -70,6 +70,11 @@ return [
     // Latest model that still function-calls on Chat Completions (reasoning_effort=none).
     // GPT-6 Astra is stronger, but tool calling on that model requires the Responses API.
     'malan_chat_model' => env('OPENAI_MALAN_CHAT_MODEL', 'gpt-6-sol'),
+    // Mamdouh (Speedcom) uses CRM tools, so it stays on the latest Chat Completions model that still function-calls.
+    // GPT-6 Astra is stronger, and tool calling on that model requires the Responses API.
+    'speedcom_chat_model' => env('OPENAI_SPEEDCOM_CHAT_MODEL', 'gpt-6-sol'),
+    // Mansour has no tools, so it can use Astra, the strongest chat model on this account.
+    'mansour_chat_model' => env('OPENAI_MANSOUR_CHAT_MODEL', 'gpt-6-astra'),
     // GPT-5.6 is the strongest model that still tool-calls through Chat Completions.
     // GPT-6 Astra is stronger, and it requires the Responses API.
     'menu_agent_model' => env('OPENAI_MENU_AGENT_MODEL', 'gpt-5.6'),

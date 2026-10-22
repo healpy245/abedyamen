@@ -1,0 +1,15 @@
+/*
+ * Semantic names for the existing Kaman theme.
+ * Values come from public/css/kaman.css. This file does not invent colors.
+ */
+
+:root {
+    --kaman-primary: var(--kaman-accent);
+    --kaman-primary-hover: var(--kaman-accent-strong);
+    --kaman-primary-subtle: var(--kaman-accent-light);
+    --kaman-background: var(--kaman-page-from);
+    --kaman-surface-secondary: var(--kaman-surface-sunk);
+    --kaman-border: var(--kaman-line);
+    --kaman-text: var(--kaman-ink);
+    --kaman-text-muted: var(--kaman-ink-soft);
+}

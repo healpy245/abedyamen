@@ -1,0 +1,426 @@
+/* Clean Overview cycle. No illustration, no 3D doors. */
+#hub-scene[hidden] { display: none !important; }
+
+body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
+    overflow: auto;
+    padding: 8px 20px 24px;
+}
+
+.cycle {
+    width: min(100%, 960px);
+    margin-inline: auto;
+}
+
+.cycle-intro {
+    text-align: center;
+    margin: 4px auto 18px;
+}
+
+.cycle-eyebrow {
+    color: var(--ws-orange, #f58220);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.cycle-intro h1 {
+    margin: 10px 0 8px;
+    font: 800 clamp(24px, 3vw, 34px) / 1.1 "Plus Jakarta Sans", Almarai, Heebo, sans-serif;
+    letter-spacing: -0.04em;
+}
+
+.cycle-intro p {
+    margin: 0;
+    color: var(--ws-muted, #9b8876);
+}
+
+.cycle-board {
+    position: relative;
+    height: 420px;
+    max-width: 900px;
+    margin-inline: auto;
+}
+
+.cycle-ring {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px dashed rgba(245, 130, 32, 0.3);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.cycle-ring::after {
+    content: "";
+    position: absolute;
+    inset: 33px;
+    border-radius: 50%;
+    border: 1px solid var(--ws-line, #eedfd0);
+}
+
+.cycle-links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.cycle-link {
+    stroke: rgba(245, 130, 32, 0.22);
+    stroke-width: 0.7;
+    transition: stroke 0.22s ease, stroke-width 0.22s ease;
+}
+
+.cycle.is-support .cycle-link--support,
+.cycle.is-development .cycle-link--development,
+.cycle.is-agents .cycle-link--agents,
+.cycle.is-finance .cycle-link--finance {
+    stroke: #f58220;
+    stroke-width: 1.4;
+}
+
+.cycle-hub {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 1;
+    width: 164px;
+    height: 164px;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 50%;
+    background: var(--ws-surface, #fffdfa);
+    border: 1px solid rgba(245, 130, 32, 0.4);
+    box-shadow: 0 12px 38px rgba(165, 107, 35, 0.1), 0 0 0 12px rgba(245, 130, 32, 0.04);
+}
+
+.cycle-hub img {
+    width: 69px;
+    height: 69px;
+    object-fit: contain;
+    border-radius: 16px;
+}
+
+.cycle-hub b {
+    font: 800 11px/1 "Plus Jakarta Sans", Almarai, Heebo, sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ws-ink, #30271f);
+}
+
+.cycle-door {
+    position: absolute;
+    z-index: 2;
+    width: 242px;
+    min-height: 106px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 17px;
+    text-decoration: none;
+    color: var(--ws-ink, #30271f);
+    background: var(--ws-surface, #fffdfa);
+    border: 1px solid var(--ws-line, #eedfd0);
+    border-radius: 17px;
+    box-shadow: 0 9px 27px rgba(164, 106, 46, 0.05);
+    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+}
+
+.cycle-door:hover,
+.cycle-door:focus-visible {
+    transform: translateY(-4px);
+    border-color: var(--ws-orange, #f58220);
+    box-shadow: 0 15px 36px rgba(245, 130, 32, 0.14);
+    outline: none;
+}
+
+.cycle-door:focus-visible {
+    outline: 2px solid var(--ws-orange, #f58220);
+    outline-offset: 3px;
+}
+
+.cycle-door.is-opening {
+    transform: translateY(-4px);
+    border-color: var(--ws-orange, #f58220);
+}
+
+.cycle-door__icon {
+    width: 43px;
+    height: 43px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    background: var(--ws-surface-2, #fff0e1);
+    color: var(--ws-orange, #f58220);
+    transition: background 0.22s ease;
+}
+
+.cycle-door:hover .cycle-door__icon,
+.cycle-door:focus-visible .cycle-door__icon {
+    background: #ffe4c8;
+}
+
+.cycle-door__icon svg,
+.cycle-door__arr svg,
+.cycle-browse svg {
+    width: 21px;
+    height: 21px;
+    display: block;
+}
+
+.cycle-door__copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.cycle-door__copy strong {
+    display: block;
+    font: 800 13px/1.2 "Plus Jakarta Sans", Almarai, Heebo, sans-serif;
+}
+
+.cycle-door__copy small {
+    display: block;
+    margin-top: 6px;
+    color: var(--ws-muted, #9b8876);
+    font-size: 11px;
+}
+
+.cycle-door__arr {
+    margin-inline-start: auto;
+    color: var(--ws-orange, #f58220);
+    opacity: 0.65;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.cycle-door__arr svg { width: 15px; height: 15px; }
+
+.cycle-door:hover .cycle-door__arr,
+.cycle-door:focus-visible .cycle-door__arr {
+    opacity: 1;
+    transform: translate(3px, -3px);
+}
+
+[dir="rtl"] .cycle-links { transform: scaleX(-1); }
+[dir="rtl"] .cycle-door__arr svg,
+[dir="rtl"] .cycle-browse svg { transform: scaleX(-1); }
+
+[dir="rtl"] .cycle-door:hover .cycle-door__arr,
+[dir="rtl"] .cycle-door:focus-visible .cycle-door__arr {
+    transform: translate(-3px, -3px);
+}
+
+.cycle-door--support { top: 44px; inset-inline-start: 1%; }
+.cycle-door--development { top: 44px; inset-inline-end: 1%; }
+.cycle-door--agents { bottom: 44px; inset-inline-start: 1%; }
+.cycle-door--finance { bottom: 44px; inset-inline-end: 1%; }
+
+.cycle-foot {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+}
+
+.cycle-browse {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 13px 19px;
+    border-radius: 12px;
+    border: 1px solid var(--ws-orange, #f58220);
+    background: var(--ws-orange, #f58220);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rest-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 19px;
+    border-radius: 12px;
+    border: 1px solid var(--ws-orange, #f58220);
+    background: var(--ws-orange, #f58220);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.rest-card__logo--mark {
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    color: var(--ws-orange, #f58220);
+}
+
+.cycle-browse svg { width: 16px; height: 16px; }
+.cycle-browse:hover,
+.cycle-browse:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(245, 130, 32, 0.22);
+    outline: none;
+}
+
+/* Restaurant directory */
+.rest-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.rest-head h1 {
+    margin: 0 0 6px;
+    font: 800 25px/1.1 "Plus Jakarta Sans", Almarai, Heebo, sans-serif;
+}
+
+.rest-head p { margin: 0; color: var(--ws-muted, #9b8876); }
+
+.rest-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.rest-card {
+    width: 100%;
+    padding: 17px;
+    border: 1px solid var(--ws-line, #eedfd0);
+    border-radius: 16px;
+    background: var(--ws-surface, #fffdfa);
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rest-card:hover,
+.rest-card:focus-visible {
+    transform: translateY(-3px);
+    border-color: var(--ws-orange, #f58220);
+    outline: none;
+}
+
+.rest-card__top {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.rest-card__logo {
+    width: 49px;
+    height: 49px;
+    flex: none;
+    border-radius: 13px;
+    object-fit: cover;
+    background: var(--ws-surface-2, #fff0e1);
+}
+
+.rest-card__name {
+    font-weight: 800;
+    font-size: 13px;
+}
+
+.rest-card__city {
+    margin-top: 5px;
+    font-size: 11px;
+    color: var(--ws-muted, #9b8876);
+}
+
+.rest-card__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 13px;
+    border-top: 1px solid var(--ws-line, #eedfd0);
+    font-size: 11px;
+    color: var(--ws-muted, #9b8876);
+}
+
+.rest-card__status {
+    border-radius: 20px;
+    padding: 5px 9px;
+    font-weight: 700;
+    color: #20956d;
+    background: #22a67612;
+}
+
+.rest-card__status.is-pending {
+    color: #bc8420;
+    background: #f4a92317;
+}
+
+html[data-theme="dark"] .cycle-hub,
+html[data-theme="dark"] .cycle-door,
+html[data-theme="dark"] .rest-card {
+    background: var(--ws-surface, #2a221c);
+    border-color: var(--ws-line, rgba(255, 186, 130, 0.18));
+    color: var(--ws-ink, #f6efe6);
+}
+
+html[data-theme="dark"] .cycle-hub b,
+html[data-theme="dark"] .cycle-door { color: var(--ws-ink, #f6efe6); }
+html[data-theme="dark"] .cycle-door__icon { background: var(--ws-surface-2, #3a2e24); }
+html[data-theme="dark"] .cycle-door:hover .cycle-door__icon { background: #4a3828; }
+
+@media (max-width: 1050px) {
+    .cycle-board { max-width: 750px; }
+    .cycle-door { width: 205px; padding: 14px; }
+    .rest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 780px) {
+    .cycle-board {
+        height: auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding-top: 148px;
+    }
+    .cycle-ring,
+    .cycle-links { display: none; }
+    .cycle-hub {
+        top: 68px;
+        width: 118px;
+        height: 118px;
+    }
+    .cycle-hub img { width: 48px; height: 48px; }
+    .cycle-door {
+        position: relative;
+        inset: auto;
+        width: auto;
+        min-height: 96px;
+    }
+    .cycle-door__arr { display: none; }
+    .rest-head { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 560px) {
+    .cycle-board { grid-template-columns: 1fr; }
+    .rest-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cycle-door,
+    .cycle-door__arr,
+    .cycle-link,
+    .cycle-browse,
+    .rest-card { transition: none; }
+}

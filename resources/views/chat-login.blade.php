@@ -99,7 +99,12 @@
         }
     </style>
 </head>
-<body class="antialiased">
+<body class="antialiased {{ auth()->check() ? 'kaman-signed-in' : '' }}">
+    @if(auth()->check())
+    <div class="kaman-shell">
+        @include('partials.sidebar')
+        <div class="kaman-shell__main">
+    @endif
     @include('partials.topbar', [
         'tagText' => 'AI Login Assistant',
     ])
@@ -265,6 +270,10 @@
             });
         })();
     </script>
+    @if(auth()->check())
+        </div>
+    </div>
+    @endif
 </body>
 </html>
 

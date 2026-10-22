@@ -51,6 +51,10 @@ class MalanTaskService
             ];
         }
 
+        if ($instance->companyProfile()->isSpeedcom()) {
+            return app(\App\Services\AiChatbot\SpeedcomDeskNotifier::class)->sendTask($instance, $conversation, $input);
+        }
+
         $context = $this->contextService->getActive($conversation);
         if ($context === null || ! $context->hasVerifiedCustomer()) {
             return [

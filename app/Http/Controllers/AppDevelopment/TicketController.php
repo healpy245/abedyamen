@@ -18,7 +18,9 @@ use App\Models\User;
 use App\Services\AppDevelopment\TicketAttachmentService;
 use App\Services\AppDevelopment\TicketNumberService;
 use App\Services\AppDevelopment\TicketWorkflowService;
+use App\Services\KamanSupport\RestaurantLogoResolver;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,32 +37,57 @@ class TicketController extends Controller
         private readonly \App\Services\AppDevelopment\TicketStagingUploadService $staging,
     ) {}
 
+    public function restaurantLogos(Request $request, RestaurantLogoResolver $logos): JsonResponse
+    {
+        $this->authorize('viewAny', AppDevelopmentTicket::class);
+
+        $slugs = $request->query('restaurants', []);
+        if (! is_array($slugs)) {
+            $slugs = [];
+        }
+
+        return response()->json([
+            'logos' => $logos->resolve(array_slice(array_values(array_map(strval(...), $slugs)), 0, 12)),
+        ]);
+    }
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', AppDevelopmentTicket::class);
 
         $user = $request->user();
         $tab = (string) $request->query('tab', 'all');
+        $state = (string) $request->query('state', '');
+        if (! in_array($state, ['', 'open', 'closed'], true)) {
+            $state = '';
+        }
 
         $query = AppDevelopmentTicket::query()
             ->with([
                 'creator:id,name',
-                'priorityChangedBy:id,name',
-                'statusChangedBy:id,name',
+                'assignedDeveloper:id,name',
                 'appTypeRows',
             ])
             ->withCount('comments');
 
-        match ($tab) {
-            'open' => $query->where('status', AppDevelopmentTicketStatus::Open),
-            'working' => $query->where('status', AppDevelopmentTicketStatus::Working),
-            'qa' => $query->where('status', AppDevelopmentTicketStatus::Qa),
-            'completed' => $query->where('status', AppDevelopmentTicketStatus::Completed),
-            'mine' => $query->where('assigned_to', $user->id),
-            'waiting-qa' => $query->where('status', AppDevelopmentTicketStatus::Qa),
-            'returned' => $query->where('status', AppDevelopmentTicketStatus::Working)->where('qa_rejection_count', '>', 0),
-            default => null,
-        };
+        if ($state === 'closed') {
+            $query->where('status', AppDevelopmentTicketStatus::Completed);
+        } elseif ($state === 'open') {
+            $query->where('status', '!=', AppDevelopmentTicketStatus::Completed->value);
+        } elseif ($tab === 'mine') {
+            $query->where('assigned_to', $user->id);
+        } elseif ($tab === 'waiting-qa' || $tab === 'qa') {
+            $query->where('status', AppDevelopmentTicketStatus::Qa);
+        } elseif ($tab === 'returned') {
+            $query->where('status', AppDevelopmentTicketStatus::Working)
+                ->where('qa_rejection_count', '>', 0);
+        } elseif ($tab === 'completed') {
+            $query->where('status', AppDevelopmentTicketStatus::Completed);
+        } elseif ($tab === 'open') {
+            $query->where('status', AppDevelopmentTicketStatus::Open);
+        } elseif ($tab === 'working') {
+            $query->where('status', AppDevelopmentTicketStatus::Working);
+        }
 
         $selectedAppTypes = collect((array) $request->query('app_type', []))
             ->map(static fn ($value): ?AppDevelopmentAppType => AppDevelopmentAppType::tryFrom((string) $value))
@@ -75,13 +102,6 @@ class TicketController extends Controller
                     $selectedAppTypes->map(static fn (AppDevelopmentAppType $type): string => $type->value)->all(),
                 );
             });
-        }
-
-        if ($request->filled('status')) {
-            $status = AppDevelopmentTicketStatus::tryFrom((string) $request->query('status'));
-            if ($status !== null) {
-                $query->where('status', $status);
-            }
         }
 
         if ($request->filled('type')) {
@@ -116,7 +136,18 @@ class TicketController extends Controller
             });
         }
 
-        $tickets = $query->latest('updated_at')->paginate(20)->withQueryString();
+        $tickets = $query->latest('updated_at')->paginate(30)->withQueryString();
+
+        $completed = AppDevelopmentTicketStatus::Completed->value;
+        $review = AppDevelopmentTicketStatus::Qa->value;
+        $counts = AppDevelopmentTicket::query()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as closed', [$completed])
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as review', [$review])
+            ->first();
+        $total = (int) ($counts->total ?? 0);
+        $closed = (int) ($counts->closed ?? 0);
+        $inReview = (int) ($counts->review ?? 0);
 
         $notifyDevelopers = AppDevelopmentMember::selectableDevelopers()
             ->get()
@@ -130,13 +161,32 @@ class TicketController extends Controller
         return view('app-development.tickets.index', [
             'tickets' => $tickets,
             'tab' => $tab,
+            'state' => $state,
             'search' => $search,
-            'statusCounts' => AppDevelopmentTicket::statusCountsMap(),
-            'appTypeCounts' => AppDevelopmentTicket::appTypeCountsMap(),
-            'selectedAppTypes' => $selectedAppTypes->map(static fn (AppDevelopmentAppType $type): string => $type->value)->all(),
             'notifyDevelopers' => $notifyDevelopers,
             'notifyTesters' => $notifyTesters,
+            'stats' => [
+                'total' => $total,
+                'open' => max(0, $total - $closed - $inReview),
+                'review' => $inReview,
+                'closed' => $closed,
+            ],
         ]);
+    }
+
+    public function updateRestaurant(Request $request, AppDevelopmentTicket $ticket): RedirectResponse
+    {
+        $this->authorize('update', $ticket);
+        $data = $request->validate([
+            'restaurant_name' => ['nullable', 'string', 'max:191'],
+        ]);
+        $ticket->forceFill([
+            'restaurant_name' => filled($data['restaurant_name'] ?? null) ? $data['restaurant_name'] : null,
+        ])->save();
+
+        return redirect()
+            ->route('app-development.tickets.show', $ticket)
+            ->with('success', __('app-development.flash.ticket_updated'));
     }
 
     public function create(Request $request): View
@@ -166,6 +216,7 @@ class TicketController extends Controller
                 'ticket_number' => 'TMP-'.Str::ulid(),
                 'title' => $request->validated('title'),
                 'description' => $description,
+                'restaurant_name' => $request->validated('restaurant_name'),
                 'type' => $request->validated('type') ?? \App\Enums\AppDevelopmentTicketType::Bug,
                 'priority' => $request->validated('priority'),
                 'status' => AppDevelopmentTicketStatus::Open,

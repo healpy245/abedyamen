@@ -228,6 +228,40 @@ class WhatsAppAudioTranscriberTest extends TestCase
         $this->assertSame('no_speech', $result['reason']);
     }
 
+    public function test_dima_voice_stays_arabic_and_keeps_hebrew_and_english(): void
+    {
+        $this->storeVoice('voice.ogg');
+
+        Http::fake([
+            'api.openai.com/v1/audio/transcriptions' => Http::response([
+                'text' => 'بسدر ما بدي اصوت، thanks',
+                'languages' => [['code' => 'ar'], ['code' => 'en']],
+            ], 200),
+        ]);
+
+        $result = (new WhatsAppAudioTranscriber)->transcribe(
+            'local',
+            'malan/whatsapp-media/voice.ogg',
+            'audio/ogg',
+            'dima',
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('بسدر ما بدي اصوت، thanks', $result['transcript']);
+
+        Http::assertSent(function ($request) {
+            $body = $request->body();
+
+            return str_contains($body, 'عامية فلسطينية')
+                && str_contains($body, 'بسدر')
+                && str_contains($body, 'name="languages[]"')
+                && str_contains($body, "\r\nar\r\n")
+                && str_contains($body, "\r\nhe\r\n")
+                && str_contains($body, "\r\nen\r\n")
+                && ! str_contains($body, 'סיב אופטי');
+        });
+    }
+
     public function test_transcribe_marks_empty_as_unclear(): void
     {
         $this->storeVoice('empty.ogg');

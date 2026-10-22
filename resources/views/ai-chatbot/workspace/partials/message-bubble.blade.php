@@ -50,6 +50,9 @@
 
         <div class="mt-1 text-[10px] {{ $isCustomer ? 'text-[#a78a6c]' : 'text-white/70' }} text-end" dir="ltr">
             {{ optional($message->created_at)->timezone(config('app.timezone'))->format('H:i') }}
+            @if(! $isCustomer && $message->delivery_status === 'failed')
+                <span class="ms-1 font-semibold">{{ __('chatbot.workspace.not_delivered') }}</span>
+            @endif
         </div>
     </div>
 </div>

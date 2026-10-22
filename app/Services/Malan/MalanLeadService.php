@@ -89,6 +89,29 @@ class MalanLeadService
             ];
         }
 
+        if ($instance->companyProfile()->isSpeedcom()) {
+            $note = trim((string) ($input['note'] ?? ''));
+            $composed = $this->memoryService->composeLeadNote($conversation);
+            if (is_string($composed) && trim($composed) !== '') {
+                $note = trim($note."\n".trim($composed));
+            }
+
+            $result = app(\App\Services\AiChatbot\SpeedcomDeskNotifier::class)->sendLead($instance, $conversation, [
+                'full_name' => $fullName,
+                'phone' => $phone,
+                'city_name' => $cityName,
+                'with_fiber' => $this->resolveWithFiber($conversation, $input['with_fiber'] ?? null),
+                'note' => $note,
+                'channel' => (string) ($input['channel'] ?? 'web'),
+            ]);
+
+            if (($result['success'] ?? false) === true) {
+                $this->markCampaignLeadIfNeeded($conversation, null);
+            }
+
+            return $result;
+        }
+
         $windowMinutes = (int) config('malan.leads.duplicate_window_minutes', 30);
         $duplicate = MalanSupportReport::query()
             ->where('chatbot_instance_id', $instance->id)

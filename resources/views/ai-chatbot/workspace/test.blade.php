@@ -21,8 +21,10 @@
         'attach_invalid' => __('chatbot.attach_invalid_type'),
         'attachment_file' => __('chatbot.attachment_file'),
     ];
+    $farz = $instance->hasMansourIntegration();
+    $farzIcon = fn (string $name) => \App\Support\FarzUi::svg($name, 'h-5 w-5');
 @endphp
-@extends('layouts.kaman')
+@extends($instance->hasMansourIntegration() ? 'layouts.farz' : 'layouts.kaman')
 
 @section('title', __('chatbot.workspace.test_title').' — '.$instance->name)
 @section('tag', __('chatbot.workspace.tag'))
@@ -39,9 +41,22 @@
          data-stream-url="{{ route('ai-chatbot.instances.voice.stream', $instance) }}"
          data-streaming="{{ config('voice.phone.streaming_enabled', true) ? '1' : '0' }}"
          data-silence-ms="{{ (int) config('voice.phone.silence_ms', 500) }}"
+         data-listen-ms="{{ $instance->isInviteBot() ? 6000 : 0 }}"
          data-latency-overlay="{{ config('voice.latency.overlay', false) ? '1' : '0' }}"
          data-csrf="{{ csrf_token() }}"
          data-i18n='@json($testChatI18n)'>
+        @if($farz)
+        <div class="farz-test__head">
+            <span class="farz-page__ico">{!! $farzIcon('flask') !!}</span>
+            <div class="min-w-0 flex-1">
+                <h2>{{ __('chatbot.workspace.test_title') }}</h2>
+                <p>{{ __('chatbot.workspace.simulation_only') }}</p>
+            </div>
+            <button type="button" id="test-new-chat" class="farz-test__new" title="{{ __('chatbot.workspace.test_new_chat') }}" aria-label="{{ __('chatbot.workspace.test_new_chat') }}">
+                {!! $farzIcon('refresh') !!}
+            </button>
+        </div>
+        @else
         <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-[#eadfce] bg-[#fffaf3]/80 shrink-0">
             <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
@@ -54,6 +69,7 @@
                 {{ __('chatbot.workspace.test_new_chat') }}
             </button>
         </div>
+        @endif
 
         <div id="test-thread"
              class="flex-1 overflow-y-auto kaman-scroll px-4 py-4 space-y-3 bg-[linear-gradient(180deg,#f7efe3_0%,#fffaf3_45%,#f7efe3_100%)] min-h-[20rem]"
@@ -90,10 +106,14 @@
                         id="test-attach"
                         class="kaman-button-ghost kaman-button--sm shrink-0 !px-2.5"
                         title="{{ __('chatbot.attach_image') }}">
+                    @if($farz)
+                        {!! $farzIcon('paperclip') !!}
+                    @else
                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                         <path d="M16.5 10.5V14.25C16.5 15.4926 15.4926 16.5 14.25 16.5H5.75C4.50736 16.5 3.5 15.4926 3.5 14.25V5.75C3.5 4.50736 4.50736 3.5 5.75 3.5H9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                         <path d="M12.5 3.5H16.5V7.5M16.25 3.75L10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
+                    @endif
                     <span class="sr-only">{{ __('chatbot.attach_image') }}</span>
                 </button>
                 <button type="button"
@@ -101,7 +121,7 @@
                         class="kaman-button-ghost kaman-button--sm shrink-0"
                         title="{{ __('chatbot.workspace.test_mic') }}"
                         aria-pressed="false">
-                    <span aria-hidden="true">🎤</span>
+                    @if($farz) {!! $farzIcon('mic') !!} @else <span aria-hidden="true">🎤</span> @endif
                     <span class="sr-only">{{ __('chatbot.workspace.test_mic') }}</span>
                 </button>
                 <button type="button"
@@ -109,7 +129,7 @@
                         class="kaman-button-ghost kaman-button--sm shrink-0"
                         title="{{ __('chatbot.workspace.test_call') }}"
                         aria-pressed="false">
-                    <span aria-hidden="true">📞</span>
+                    @if($farz) {!! $farzIcon('phone') !!} @else <span aria-hidden="true">📞</span> @endif
                     <span class="sr-only">{{ __('chatbot.workspace.test_call') }}</span>
                 </button>
                 <label class="sr-only" for="test-input">{{ __('chatbot.workspace.test_chat_placeholder') }}</label>
@@ -118,11 +138,16 @@
                           maxlength="4000"
                           placeholder="{{ __('chatbot.workspace.test_chat_placeholder') }}"
                           class="kaman-input flex-1 resize-none text-sm min-h-[2.5rem] max-h-28"></textarea>
-                <button type="submit" id="test-send" class="kaman-button shrink-0">{{ __('chatbot.workspace.send') }}</button>
+                <button type="submit" id="test-send" class="kaman-button shrink-0" title="{{ __('chatbot.workspace.send') }}">
+                    @if($farz) {!! $farzIcon('send') !!}<span class="sr-only">{{ __('chatbot.workspace.send') }}</span> @else {{ __('chatbot.workspace.send') }} @endif
+                </button>
             </form>
         </div>
     </div>
 </div>
+@if($instance->hasMansourIntegration())
+    @include('ai-chatbot.workspace.mansour.trigger-modal')
+@endif
 @endsection
 
 @push('scripts')

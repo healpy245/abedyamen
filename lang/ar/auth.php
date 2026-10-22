@@ -11,4 +11,11 @@ return [
     'continue' => 'متابعة',
     'email_placeholder' => 'you@kaman.rest',
     'footer' => 'سترى فقط الأدوات التي يملك حسابك صلاحية الوصول إليها.',
+    'chatbots_login_link' => 'دخول الشات بوت',
+    'kaman_login_link' => 'دخول كمان',
+    'chatbots_title' => 'تسجيل الدخول — الشات بوت',
+    'chatbots_sign_in' => 'الشات بوت',
+    'chatbots_subtitle' => 'لحسابات الشات بوت فقط.',
+    'use_chatbot_login' => 'هذا الحساب يدخل من صفحة الشات بوت.',
+    'use_kaman_login' => 'هذا الحساب يدخل من صفحة كمان.',
 ];

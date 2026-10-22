@@ -44,7 +44,7 @@ class KamanAppWebDownloadTest extends TestCase
         $this->actingAs($user)
             ->get(route('downloads.kaman-app'))
             ->assertOk()
-            ->assertDownload('Kaman-3.0.16.apk');
+            ->assertDownload('Kaman-3.0.20.apk');
 
         @unlink($path);
     }
@@ -56,12 +56,12 @@ class KamanAppWebDownloadTest extends TestCase
         $ahmad = User::query()->where('email', 'ahmad@kaman.rest')->firstOrFail();
 
         $this->actingAs($yamen)
-            ->get(route('home'))
+            ->get(route('form.index'))
             ->assertOk()
             ->assertSee(route('downloads.kaman-app'), false);
 
         $this->actingAs($ahmad)
-            ->get(route('home'))
+            ->get(route('form.index'))
             ->assertOk()
             ->assertDontSee(route('downloads.kaman-app'), false);
     }

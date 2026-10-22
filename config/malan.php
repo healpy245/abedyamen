@@ -45,6 +45,14 @@ return [
         'duplicate_window_minutes' => (int) env('MALAN_LEAD_DUPLICATE_MINUTES', 30),
     ],
 
+    /*
+    | Mamdouh / Speedcom does not store leads or tasks in the Malan CRM.
+    | A fixed WhatsApp template is sent to this desk number instead.
+    */
+    'speedcom' => [
+        'desk_phone' => (string) env('SPEEDCOM_DESK_PHONE', '0584680001'),
+    ],
+
     'media' => [
         'max_bytes' => (int) env('MALAN_MEDIA_MAX_BYTES', 15 * 1024 * 1024),
         'allowed_mimes' => [

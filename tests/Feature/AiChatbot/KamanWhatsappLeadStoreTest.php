@@ -68,7 +68,7 @@ class KamanWhatsappLeadStoreTest extends TestCase
         Queue::assertNotPushed(StoreKamanWhatsappLeadJob::class);
     }
 
-    public function test_regular_reply_queues_idle_lead_store(): void
+    public function test_regular_reply_stores_lead_when_customer_engages(): void
     {
         Queue::fake();
 
@@ -89,6 +89,13 @@ class KamanWhatsappLeadStoreTest extends TestCase
 
         Http::fake([
             '7107.api.greenapi.com/*' => Http::response(['idMessage' => 'idle-1'], 200),
+            'api.openai.com/*' => Http::response([
+                'choices' => [[
+                    'message' => ['content' => '{"fullName":"Yamen","restName":"unknown","city":"unknown","notes":"يسأل عن جهاز فيزا."}'],
+                ]],
+            ], 200),
+            'kamanagents-production.up.railway.app/api/auth/login' => Http::response(['accessToken' => 'lead-token'], 200),
+            'kamanagents-production.up.railway.app/api/leads*' => Http::response(['id' => 'lead-engaged'], 201),
         ]);
 
         (new ProcessKamanConversationJob(
@@ -103,8 +110,87 @@ class KamanWhatsappLeadStoreTest extends TestCase
         );
 
         $conversation->refresh();
-        $this->assertEmpty($conversation->metadata['kaman_agents_lead']['posted_at'] ?? null);
+        $this->assertNotEmpty($conversation->metadata['kaman_agents_lead']['posted_at'] ?? null);
+        $this->assertSame('engaged', $conversation->metadata['kaman_agents_lead']['reason'] ?? null);
+        $this->assertSame('0533046830', $conversation->metadata['kaman_agents_lead']['phoneNumber'] ?? null);
+        $this->assertSame('lead-engaged', $conversation->metadata['kaman_agents_lead']['lead_id'] ?? null);
         Queue::assertNotPushed(StoreKamanWhatsappLeadJob::class);
+        Http::assertSent(function ($request): bool {
+            return $request->method() === 'POST' && str_contains($request->url(), '/api/leads/');
+        });
+    }
+
+    public function test_later_reply_updates_the_stored_lead(): void
+    {
+        $conversation = $this->makeConversation($this->makeInstance(), [
+            'contact_phone' => '972587816661',
+            'contact_name' => 'أسيد',
+            'metadata' => [
+                'kaman_agents_lead' => [
+                    'posted_at' => now()->subHour()->toIso8601String(),
+                    'reason' => 'engaged',
+                    'lead_id' => 'lead-aseed',
+                    'fullName' => 'أسيد',
+                    'restName' => 'unknown',
+                    'city' => 'unknown',
+                    'phoneNumber' => '0587816661',
+                    'notes' => 'ما في طلب واضح غير متابعة المحادثة.',
+                ],
+            ],
+        ]);
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message' => 'كانون',
+        ]);
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message' => 'بيت حنينا',
+        ]);
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message' => 'كلهم',
+        ]);
+
+        Http::fake([
+            'api.openai.com/*' => Http::response([
+                'choices' => [[
+                    'message' => [
+                        'content' => json_encode([
+                            'fullName' => 'أسيد',
+                            'restName' => 'كانون',
+                            'city' => 'بيت حنينا',
+                            'notes' => 'شغله قعدة جوا وتيك أواي وتوصيل.',
+                        ], JSON_UNESCAPED_UNICODE),
+                    ],
+                ]],
+            ], 200),
+            'kamanagents-production.up.railway.app/api/auth/login' => Http::response(['accessToken' => 'lead-token'], 200),
+            'kamanagents-production.up.railway.app/api/leads*' => Http::response(['id' => 'lead-aseed'], 200),
+        ]);
+
+        $result = app(KamanWhatsappLeadStoreService::class)
+            ->storeFromConversation($conversation, KamanWhatsappLeadStoreService::REASON_ENGAGED);
+
+        $this->assertTrue($result['stored']);
+        $this->assertTrue($result['updated'] ?? false);
+        $conversation->refresh();
+        $this->assertSame('كانون', $conversation->metadata['kaman_agents_lead']['restName'] ?? null);
+        $this->assertSame('بيت حنينا', $conversation->metadata['kaman_agents_lead']['city'] ?? null);
+        Http::assertSent(function ($request): bool {
+            return $request->method() === 'PATCH'
+                && str_contains($request->url(), '/api/leads/lead-aseed')
+                && $request['fullName'] === 'أسيد'
+                && $request['restName'] === 'كانون'
+                && $request['city'] === 'بيت حنينا'
+                && $request['phoneNumber'] === '0587816661'
+                && $request['notes'] === 'شغله قعدة جوا وتيك أواي وتوصيل.';
+        });
     }
 
     public function test_stores_lead_with_extracted_fields_and_arabic_notes(): void

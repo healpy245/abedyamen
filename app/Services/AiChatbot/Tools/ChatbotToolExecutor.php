@@ -250,6 +250,11 @@ class ChatbotToolExecutor
             'issue_type' => (string) ($arguments['issue_type'] ?? 'full_outage'),
             'summary' => (string) ($arguments['summary'] ?? ''),
             'channel' => $channel,
+            'customer_name' => (string) ($arguments['customer_name'] ?? ''),
+            'phone' => (string) ($arguments['phone'] ?? ''),
+            'router_power' => (string) ($arguments['router_power'] ?? ''),
+            'router_light' => (string) ($arguments['router_light'] ?? ''),
+            'internet' => (string) ($arguments['internet'] ?? ''),
         ]);
     }
 
@@ -285,6 +290,11 @@ class ChatbotToolExecutor
             'summary' => (string) ($arguments['summary'] ?? $arguments['subject'] ?? ''),
             'status' => (string) ($arguments['status'] ?? 'non_urgent'),
             'channel' => $channel,
+            'customer_name' => (string) ($arguments['customer_name'] ?? ''),
+            'phone' => (string) ($arguments['phone'] ?? ''),
+            'router_power' => (string) ($arguments['router_power'] ?? ''),
+            'router_light' => (string) ($arguments['router_light'] ?? ''),
+            'internet' => (string) ($arguments['internet'] ?? ''),
         ]);
     }
 

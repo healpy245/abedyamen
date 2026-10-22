@@ -58,6 +58,12 @@ class KamanSupportConsoleTest extends TestCase
         $this->actingAs($this->yamen())
             ->get('/kaman-support/')
             ->assertOk()
+            ->assertSee(__('kaman-support.board_title'), false)
+            ->assertDontSee('kaman-sidebar', false);
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.inbox'))
+            ->assertOk()
             ->assertSee('KAM-XSS001', false)
             ->assertSee('طلب 45 لا يطبع', false);
 
@@ -68,6 +74,8 @@ class KamanSupportConsoleTest extends TestCase
             ->assertSee('noMatchingKitchenType', false)
             ->assertSee(__('kaman-support.live_coming'))
             ->assertSee(__('kaman-support.nav.live'), false)
+            ->assertSee('/downloads/kaman-support', false)
+            ->assertSee(__('kaman-support.nav.download'), false)
             ->assertDontSee('<script>alert(1)</script>', false)
             ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false);
 
@@ -177,34 +185,40 @@ class KamanSupportConsoleTest extends TestCase
             ->assertSee(__('kaman-support.live_title'))
             ->assertSee(__('kaman-support.view_all_logs'), false)
             ->assertSee(__('kaman-support.view_api'), false)
+            ->assertSee(__('kaman-support.view_bugs'), false)
             ->assertSee(__('kaman-support.source_flutter'), false)
-            ->assertSee(__('kaman-support.jerusalem_time'), false)
-            ->assertSee('kitchen printer timeout', false)
             ->assertSee('GET /orders 500 kitchen timeout', false)
-            ->assertSee('GET /menu 200 ok', false)
-            ->assertSee('tapped Save order', false)
             ->assertSee('/orders', false)
             ->assertSee('500', false)
             ->assertSee($jerusalemHour, false)
             ->assertSee('null check on bar tablet', false)
             ->assertSee(trans('kaman-support.failed_on_device', ['count' => 1]), false)
+            ->assertDontSee('kitchen printer timeout', false)
+            ->assertDontSee('tapped Save order', false)
+            ->assertDontSee(__('kaman-support.view_debug'), false)
             ->assertDontSee('http-equiv="refresh"', false)
             ->assertDontSee('tap</option>', false)
             ->assertDontSee('print</option>', false);
 
         $this->actingAs($this->yamen())
-            ->get(route('kaman-support.live', ['source' => 'flutter', 'view' => 'all']))
+            ->get(route('kaman-support.live', ['view' => 'flutter']))
             ->assertOk()
             ->assertSee('null check on bar tablet', false)
             ->assertDontSee('tapped Save order', false);
 
-        $from = now()->timezone('Asia/Jerusalem')->subHour()->format('Y-m-d\TH:i');
-        $to = now()->timezone('Asia/Jerusalem')->addHour()->format('Y-m-d\TH:i');
         $this->actingAs($this->yamen())
-            ->get(route('kaman-support.live', ['view' => 'all', 'from' => $from, 'to' => $to, 'source' => 'api']))
+            ->get(route('kaman-support.live', [
+                'view' => 'all',
+                'from' => '2020-01-01T00:00',
+                'to' => '2020-01-01T01:00',
+                'source' => 'flutter',
+                'level' => 'debug',
+            ]))
             ->assertOk()
             ->assertSee('GET /orders 500 kitchen timeout', false)
-            ->assertSee('GET /menu 200 ok', false);
+            ->assertSee('GET /menu 200 ok', false)
+            ->assertSee('tapped Save order', false)
+            ->assertSee('null check on bar tablet', false);
 
         $this->actingAs($this->yamen())
             ->get(route('kaman-support.live', ['view' => 'all']))
@@ -234,27 +248,23 @@ class KamanSupportConsoleTest extends TestCase
 
         $this->actingAs($this->yamen())
             ->get(route('kaman-support.device', $tablet))
-            ->assertOk()
-            ->assertSee('tablet-live', false)
-            ->assertSee(__('kaman-support.search_printers'), false)
-            ->assertSee(__('kaman-support.saved_printers'), false)
-            ->assertSee(__('kaman-support.sync_kitchen_api'), false)
-            ->assertSee(__('kaman-support.live_channel_hint'), false)
-            ->assertSee(__('kaman-support.view_all_logs'), false)
-            ->assertSee(__('kaman-support.device_live_logs'), false)
-            ->assertSee('kitchen printer timeout', false)
-            ->assertSee('GET /orders 500 kitchen timeout', false)
-            ->assertSee('GET /menu 200 ok', false)
-            ->assertSee('tapped Save order', false)
-            ->assertSee('data-live-console', false)
-            ->assertDontSee('http-equiv="refresh"', false);
+            ->assertRedirect(route('kaman-support.index', ['open' => 'kaman']));
 
         $this->actingAs($this->yamen())
             ->get(route('kaman-support.device', [$tablet, 'view' => 'api']))
-            ->assertOk()
-            ->assertSee('GET /orders 500 kitchen timeout', false)
-            ->assertDontSee('kitchen printer timeout', false)
-            ->assertDontSee('tapped Save order', false);
+            ->assertRedirect(route('kaman-support.index', ['open' => 'kaman']));
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.device', [
+                $tablet,
+                'view' => 'api',
+                'q' => '',
+                'level' => '',
+                'source' => '',
+                'from' => '2020-01-01T00:00',
+                'to' => '2020-01-01T01:00',
+            ]))
+            ->assertRedirect(route('kaman-support.index', ['open' => 'kaman']));
 
         $this->actingAs($this->yamen())
             ->get(route('kaman-support.device.feed', $tablet))
@@ -423,7 +433,9 @@ class KamanSupportConsoleTest extends TestCase
             ->assertDontSee('New Branch', false)
             ->assertDontSee('GET /orders 500 on 1.3', false)
             ->assertDontSee(__('kaman-support.nav.tickets'), false)
-            ->assertDontSee('/kaman-support/failed', false);
+            ->assertDontSee('/kaman-support/failed', false)
+            ->assertSee('/downloads/kaman-support', false)
+            ->assertSee(__('kaman-support.nav.download'), false);
 
         $this->actingAs($moaz)
             ->get(route('kaman-support.live.feed'))
@@ -433,9 +445,7 @@ class KamanSupportConsoleTest extends TestCase
 
         $this->actingAs($moaz)
             ->get(route('kaman-support.device', $legacy))
-            ->assertOk()
-            ->assertSee('GET /orders 500 on 1.0', false)
-            ->assertDontSee(__('kaman-support.search_printers'), false);
+            ->assertRedirect(route('kaman-support.live'));
 
         $this->actingAs($moaz)
             ->get(route('kaman-support.device', $current))
@@ -458,5 +468,160 @@ class KamanSupportConsoleTest extends TestCase
             ->assertOk()
             ->assertSee('Old Branch', false)
             ->assertSee('New Branch', false);
+    }
+
+    public function test_connections_user_sees_only_live_app_connections(): void
+    {
+        $sessions = app(SupportDeviceSessionService::class);
+        $legacy = $sessions->heartbeat([
+            'deviceId' => 'tablet-1-0',
+            'restaurant' => 'old-branch',
+            'restaurantName' => 'Old Branch',
+            'cashierName' => 'Legacy Cashier',
+            'platform' => 'android',
+            'deviceKind' => 'tablet',
+            'appVersion' => '1.0.6+12',
+            'loggedIn' => true,
+            'printers' => [['name' => 'Secret Grill', 'ip' => '10.9.9.9', 'port' => 9100, 'role' => 'kitchen']],
+            'logs' => [[
+                'id' => 'old-log',
+                'level' => 'error',
+                'source' => 'api',
+                'message' => 'GET /orders 500 on 1.0',
+            ]],
+        ]);
+        $current = $sessions->heartbeat([
+            'deviceId' => 'phone-3-0',
+            'restaurant' => 'new-branch',
+            'restaurantName' => 'New Branch',
+            'cashierName' => 'Current Cashier',
+            'platform' => 'android',
+            'deviceKind' => 'phone',
+            'appVersion' => '3.0.20+54',
+            'loggedIn' => true,
+            'logs' => [[
+                'id' => 'new-log',
+                'level' => 'error',
+                'source' => 'api',
+                'message' => 'GET /orders 500 on 3.0',
+            ]],
+        ]);
+
+        $user = User::query()->where('email', 'connections@kaman.rest')->firstOrFail();
+        $this->assertTrue($user->supportConnectionsOnly());
+        $this->assertNull($user->posAppVersionPrefix());
+
+        $this->actingAs($user)
+            ->get('/kaman-support/')
+            ->assertRedirect(route('kaman-support.live'));
+
+        $this->actingAs($user)
+            ->get(route('kaman-support.live', ['view' => 'all']))
+            ->assertOk()
+            ->assertSee(__('kaman-support.connections_title'), false)
+            ->assertSee('Old Branch', false)
+            ->assertSee('New Branch', false)
+            ->assertSee('1.0.6+12', false)
+            ->assertSee('3.0.20+54', false)
+            ->assertDontSee('GET /orders 500 on 1.0', false)
+            ->assertDontSee('GET /orders 500 on 3.0', false)
+            ->assertDontSee('Secret Grill', false)
+            ->assertDontSee(__('kaman-support.nav.tickets'), false)
+            ->assertDontSee(__('kaman-support.view_all_logs'), false)
+            ->assertDontSee('/kaman-support/failed', false)
+            ->assertDontSee('/downloads/kaman-support', false);
+
+        $this->actingAs($user)
+            ->get(route('kaman-support.live.feed', ['view' => 'api']))
+            ->assertOk()
+            ->assertJsonPath('logs', [])
+            ->assertJsonPath('live.0.printers', [])
+            ->assertSee('Old Branch', false)
+            ->assertSee('New Branch', false)
+            ->assertDontSee('GET /orders 500', false)
+            ->assertDontSee('Secret Grill', false)
+            ->assertDontSee('10.9.9.9', false);
+
+        $this->actingAs($user)
+            ->get(route('kaman-support.device', $legacy))
+            ->assertRedirect(route('kaman-support.live'));
+
+        $this->actingAs($user)
+            ->get(route('kaman-support.device.feed', $current))
+            ->assertOk()
+            ->assertJsonPath('logs', [])
+            ->assertJsonPath('commands', [])
+            ->assertJsonPath('device.printers', [])
+            ->assertJsonPath('device.failedMessage', null)
+            ->assertDontSee('GET /orders 500 on 3.0', false);
+
+        $this->actingAs($user)->get(route('kaman-support.failed'))->assertForbidden();
+        $this->actingAs($user)->get(route('kaman-support.show', $this->submitTicket()))->assertForbidden();
+        $this->actingAs($user)
+            ->post(route('kaman-support.device.commands', $legacy), ['name' => 'retry_failed_prints'])
+            ->assertForbidden();
+        $this->actingAs($user)->get(route('app-development.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('form.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('ai-chatbot.index'))->assertForbidden();
+    }
+
+    public function test_logs_workspace_groups_loaded_errors_without_dropping_them(): void
+    {
+        $sessions = app(SupportDeviceSessionService::class);
+        $message = 'API POST https://gcp.kaman.rest/api/cashier/print/01a0c484-7849-70a9-83ae-6958b1d5f8b7 -> 400 No kitchen items to print';
+        $sessions->heartbeat([
+            'deviceId' => 'cashier-1',
+            'restaurant' => 'dochan',
+            'restaurantName' => 'Dochan',
+            'cashierName' => 'Cashier',
+            'platform' => 'android',
+            'appVersion' => '1.4.2',
+            'logs' => [[
+                'id' => 'print-1',
+                'level' => 'error',
+                'source' => 'print',
+                'message' => $message,
+            ]],
+        ]);
+        $sessions->heartbeat([
+            'deviceId' => 'cashier-2',
+            'restaurant' => 'dochan',
+            'restaurantName' => 'Dochan',
+            'cashierName' => 'Kitchen',
+            'platform' => 'android',
+            'appVersion' => '1.4.2',
+            'logs' => [[
+                'id' => 'print-2',
+                'level' => 'error',
+                'source' => 'print',
+                'message' => 'API POST https://gcp.kaman.rest/api/cashier/print/9ef35062-c5fe-4a6d-9ad8-12f8b31d9034 -> 400 No kitchen items to print',
+            ], [
+                'id' => 'coupon-1',
+                'level' => 'error',
+                'source' => 'api',
+                'message' => 'API POST https://gcp.kaman.rest/api/cashier/orders/9ef35062-c5fe-4a6d-9ad8-12f8b31d9034 -> 400 Invalid coupon',
+            ]],
+        ]);
+
+        $response = $this->actingAs($this->yamen())->get(route('kaman-support.logs'));
+
+        $response->assertOk();
+        $response->assertSee('sup-inv__stage', false);
+        $response->assertSee('No kitchen items to print', false);
+        $response->assertSee('Invalid coupon', false);
+        $response->assertSee('dir="ltr">×2</span>', false);
+        $response->assertSee('dir="ltr">400</span>', false);
+        $response->assertSee('01a0c484-7849-70a9-83ae-6958b1d5f8b7', false);
+        $response->assertSee('9ef35062-c5fe-4a6d-9ad8-12f8b31d9034', false);
+        $response->assertDontSee('class="sup-entry"', false);
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.logs', ['lane' => 'server']))
+            ->assertOk()
+            ->assertSee(__('kaman-support.ws_inv_server_title'), false)
+            ->assertSee(__('kaman-support.ws_inv_server_sub'), false)
+            ->assertDontSee('No kitchen items to print', false)
+            ->assertDontSee('Invalid coupon', false)
+            ->assertDontSee('sup-inv__issue', false);
     }
 }

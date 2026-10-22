@@ -1,4 +1,5 @@
 @php
+    $nav = 'tickets';
     $activeProject = \App\Enums\Project::KamanSupport->value;
     $tone = $ticket->status?->tone() ?? ['bg' => 'bg-slate-50', 'text' => 'text-slate-700', 'border' => 'border-slate-200'];
     $diagnosis = is_array($ticket->diagnosis) ? $ticket->diagnosis : [];
@@ -6,222 +7,237 @@
     $conversation = is_array($ticket->conversation) ? $ticket->conversation : [];
 @endphp
 
-@extends('layouts.kaman')
+@extends('layouts.support')
 
 @section('title', $ticket->public_id.' · '.__('kaman-support.title'))
 @section('tag', __('kaman-support.tag'))
 
 @section('content')
-    <div class="page-container page-container--tight">
-        <div class="mx-auto w-full max-w-6xl space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <a href="{{ route('kaman-support.index') }}" class="kaman-button-ghost kaman-button--sm">{{ __('kaman-support.back') }}</a>
-                <div class="flex flex-wrap items-center gap-2">
-                    @include('kaman-support.partials.nav', ['nav' => 'tickets'])
-                    <button type="button" class="kaman-button-ghost kaman-button--sm" data-copy-ticket="{{ $ticket->public_id }}">{{ __('kaman-support.copy_id') }}</button>
+    <div class="sup-sr">
+        @include('kaman-support.partials.nav', ['nav' => 'tickets'])
+    </div>
+    <div class="sup-ticket-page">
+        <div class="sup-ticket-head">
+            <div>
+                <div class="sup-ticket-id">
+                    <h1 dir="ltr">{{ $ticket->public_id }}</h1>
+                    <span class="sup-badge">{{ $ticket->status?->label() }}</span>
+                    <button type="button" class="sup-ghost" data-copy-ticket="{{ $ticket->public_id }}">{{ __('kaman-support.copy_id') }}</button>
                 </div>
-            </div>
-
-            @if(session('status'))
-                <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{{ session('status') }}</p>
-            @endif
-
-            <section class="hero-panel hero-panel--compact space-y-2">
-                <div class="flex flex-wrap items-center gap-2">
-                    <h1 class="font-mono text-xl font-semibold text-[#2b1e11]">{{ $ticket->public_id }}</h1>
-                    <span class="kaman-badge {{ $tone['bg'] }} {{ $tone['text'] }} {{ $tone['border'] }}">{{ $ticket->status?->label() }}</span>
-                </div>
-                <p class="text-base text-[#2b1e11]">{{ $ticket->summary }}</p>
-                <p class="text-sm text-[#7c6a56]">
+                <p>{{ $ticket->summary }}</p>
+                <p class="sup-meta">
                     {{ $ticket->restaurant_name ?: $ticket->restaurant }}
                     @if($ticket->cashier_name) · {{ $ticket->cashier_name }} @endif
-                    @if($ticket->locale) · {{ __('kaman-support.locale') }}: {{ $ticket->locale }} @endif
                     · {{ $ticket->created_at?->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('Y-m-d H:i') }}
                 </p>
-            </section>
+            </div>
+            <div class="tk-actions">
+                @if($ticket->status !== \App\Enums\KamanSupport\SupportTicketStatus::Closed)
+                    <form method="post" action="{{ route('kaman-support.escalate', $ticket) }}">
+                        @csrf
+                        <button class="tk-view" type="submit">{{ __('kaman-support.escalate') }}</button>
+                    </form>
+                    <button class="tk-view" type="button" data-close-open="{{ $ticket->public_id }}">{{ __('kaman-support.close_ticket') }}</button>
+                @endif
+                <a class="tk-view" href="{{ route('kaman-support.inbox') }}">{{ __('kaman-support.back') }}</a>
+            </div>
+        </div>
 
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <div class="space-y-4 lg:col-span-2">
-                    <section class="kaman-card kaman-card--compact space-y-2">
-                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.details') }}</h2>
-                        <pre class="whitespace-pre-wrap break-words text-sm text-[#3f2f1d]">{{ $ticket->details ?: '—' }}</pre>
-                    </section>
+        @if(session('status'))
+            <p class="sup-toast" role="status">{{ session('status') }}</p>
+        @endif
 
-                    <section class="kaman-card kaman-card--compact space-y-2">
-                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.conversation') }}</h2>
-                        @if($conversation === [])
-                            <p class="text-sm text-[#7c6a56]">{{ __('kaman-support.no_conversation') }}</p>
-                        @else
-                            <ul class="space-y-1.5 text-sm">
-                                @foreach($conversation as $line)
-                                    <li class="rounded-md bg-[#fff8f0] px-2 py-1.5 text-[#3f2f1d]">{{ is_scalar($line) ? $line : json_encode($line, JSON_UNESCAPED_UNICODE) }}</li>
-                                @endforeach
-                            </ul>
-                        @endif
-                    </section>
+        <div class="sup-ticket-layout">
+            <div>
+                <div class="sup-seg" role="tablist">
+                    <button type="button" class="is-active" data-ticket-tab="overview">{{ __('kaman-support.ws_overview') }}</button>
+                    <button type="button" data-ticket-tab="diagnostics">{{ __('kaman-support.ws_diagnostics') }}</button>
+                    <button type="button" data-ticket-tab="activity">{{ __('kaman-support.ws_activity') }}</button>
+                </div>
 
-                    <section class="kaman-card kaman-card--compact space-y-2">
-                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.diagnosis') }}</h2>
-                        @if($diagnosis === [])
-                            <p class="text-sm text-[#7c6a56]">{{ __('kaman-support.no_diagnosis') }}</p>
-                        @else
-                            <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2 text-sm">
+                <section data-ticket-panel="overview" class="sup-pane">
+                    <h2>{{ __('kaman-support.details') }}</h2>
+                    <pre class="sup-pre">{{ $ticket->details ?: '—' }}</pre>
+                    <h2>{{ __('kaman-support.device') }}</h2>
+                    <p class="sup-meta" dir="ltr">{{ $ticket->device_id ?: '—' }}</p>
+                    @if($diagnosis !== [])
+                        <h2>{{ __('kaman-support.diagnosis') }}</h2>
+                        <ul class="sup-list">
+                            @foreach($diagnosis as $key => $value)
+                                @if(is_scalar($value) || $value === null || is_bool($value))
+                                    <li>{{ is_string($key) ? $key.': ' : '' }}{{ is_bool($value) ? ($value ? 'true' : 'false') : ($value ?? '—') }}</li>
+                                @endif
+                            @endforeach
+                        </ul>
+                    @endif
+                </section>
+
+                <section data-ticket-panel="diagnostics" class="sup-pane" hidden>
+                    <h2>{{ __('kaman-support.diagnosis') }}</h2>
+                    @if($diagnosis === [])
+                        <p class="sup-meta">{{ __('kaman-support.no_diagnosis') }}</p>
+                    @else
+                        <details>
+                            <summary>{{ __('kaman-support.diagnosis') }}</summary>
+                            <dl class="sup-list">
                                 @foreach($diagnosis as $key => $value)
-                                    <div class="rounded-md border border-[#eadfce] px-2 py-1.5">
-                                        <dt class="text-xs uppercase tracking-wide text-[#a78a6c]">{{ is_string($key) ? $key : '' }}</dt>
-                                        <dd class="break-words text-[#2b1e11]">
+                                    <div>
+                                        <dt>{{ is_string($key) ? $key : '' }}</dt>
+                                        <dd>
                                             @if(is_bool($value))
                                                 {{ $value ? 'true' : 'false' }}
                                             @elseif(is_scalar($value) || $value === null)
                                                 {{ $value ?? '—' }}
                                             @else
-                                                <pre class="whitespace-pre-wrap text-xs">{{ json_encode($value, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) }}</pre>
+                                                <pre class="sup-pre" dir="ltr">{{ json_encode($value, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) }}</pre>
                                             @endif
                                         </dd>
                                     </div>
                                 @endforeach
                             </dl>
-                        @endif
-                    </section>
-
-                    <section class="kaman-card kaman-card--compact space-y-2">
-                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.printers') }}</h2>
-                        @if($printers === [])
-                            <p class="text-sm text-[#7c6a56]">{{ __('kaman-support.no_printers') }}</p>
-                        @else
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm">
-                                    <thead>
-                                        <tr class="text-start text-xs uppercase text-[#a78a6c]">
-                                            <th class="px-2 py-1">{{ __('kaman-support.printer.name') }}</th>
-                                            <th class="px-2 py-1">{{ __('kaman-support.printer.role') }}</th>
-                                            <th class="px-2 py-1">{{ __('kaman-support.printer.station') }}</th>
-                                            <th class="px-2 py-1">{{ __('kaman-support.printer.ip') }}</th>
-                                            <th class="px-2 py-1">{{ __('kaman-support.printer.issue') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($printers as $printer)
-                                            @php $row = is_array($printer) ? $printer : []; @endphp
-                                            <tr class="border-t border-[#f3ebe0]">
-                                                <td class="px-2 py-1">{{ $row['name'] ?? '—' }}</td>
-                                                <td class="px-2 py-1">{{ $row['role'] ?? '—' }}</td>
-                                                <td class="px-2 py-1">{{ $row['station'] ?? '—' }}</td>
-                                                <td class="px-2 py-1 font-mono text-xs">{{ $row['ip'] ?? '—' }}</td>
-                                                <td class="px-2 py-1">{{ $row['issue'] ?? '—' }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @endif
-                    </section>
-
-                    <section class="kaman-card kaman-card--compact space-y-3">
-                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.events') }}</h2>
-                        @if($ticket->events->isEmpty())
-                            <p class="text-sm text-[#7c6a56]">{{ __('kaman-support.no_events') }}</p>
-                        @else
-                            <ol class="space-y-2">
-                                @foreach($ticket->events as $event)
-                                    <li class="rounded-md border border-[#eadfce] px-3 py-2 text-sm">
-                                        <div class="flex flex-wrap items-center gap-2 text-xs text-[#a78a6c]">
-                                            <span class="font-semibold text-[#c2410c]">{{ $event->type?->label() }}</span>
-                                            <span>{{ $event->actor_name }}</span>
-                                            <span>{{ $event->created_at?->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('Y-m-d H:i') }}</span>
-                                        </div>
-                                        @if($event->message)
-                                            <p class="mt-1 whitespace-pre-wrap text-[#2b1e11]">{{ $event->message }}</p>
-                                        @endif
-                                    </li>
-                                @endforeach
-                            </ol>
-                        @endif
-                    </section>
-                </div>
-
-                <div class="space-y-4">
-                    <section class="kaman-card kaman-card--compact space-y-3">
-                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.update') }}</h2>
-                        <form method="post" action="{{ route('kaman-support.update', $ticket) }}" class="space-y-3">
-                            @csrf
-                            @method('PATCH')
-                            <label class="flex flex-col gap-1 text-xs font-medium text-[#7c6a56]">
-                                {{ __('kaman-support.filter_status') }}
-                                <select name="status" class="kaman-input">
-                                    @foreach($statuses as $status)
-                                        <option value="{{ $status->value }}" @selected($ticket->status === $status)>{{ $status->label() }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
-                            <label class="flex flex-col gap-1 text-xs font-medium text-[#7c6a56]">
-                                {{ __('kaman-support.assignee') }}
-                                <input type="text" name="assignee" value="{{ old('assignee', $ticket->assignee) }}" class="kaman-input">
-                            </label>
-                            <label class="flex flex-col gap-1 text-xs font-medium text-[#7c6a56]">
-                                {{ __('kaman-support.note') }}
-                                <textarea name="note" rows="3" class="kaman-input" placeholder="{{ __('kaman-support.note_placeholder') }}">{{ old('note') }}</textarea>
-                            </label>
-                            <button type="submit" class="kaman-button w-full">{{ __('kaman-support.save') }}</button>
-                        </form>
-                    </section>
-
-                    <section class="kaman-card kaman-card--compact space-y-3">
-                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.add_note') }}</h2>
-                        <form method="post" action="{{ route('kaman-support.events.store', $ticket) }}" class="space-y-3">
-                            @csrf
-                            <input type="hidden" name="type" value="note">
-                            <textarea name="message" rows="4" required class="kaman-input" placeholder="{{ __('kaman-support.note_placeholder') }}">{{ old('message') }}</textarea>
-                            <button type="submit" class="kaman-button-ghost w-full">{{ __('kaman-support.add_note') }}</button>
-                        </form>
-                    </section>
-
-                    @if($device)
-                        @include('kaman-support.partials.command-form', [
-                            'action' => route('kaman-support.tickets.commands', $ticket),
-                            'commands' => $commands,
-                            'commandNames' => $commandNames,
-                        ])
+                        </details>
                     @endif
-
-                    <section class="kaman-card kaman-card--compact space-y-2">
-                        <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.live_session') }}</h2>
-                        <p class="text-sm text-[#7c6a56]">{{ __('kaman-support.live_coming') }}</p>
-                        @if($device)
-                            <a href="{{ route('kaman-support.device', $device) }}" class="kaman-button-ghost kaman-button--sm inline-flex">{{ __('kaman-support.view_device_logs') }}</a>
-                        @endif
-                        <dl class="space-y-1 text-sm">
-                            <div>
-                                <dt class="text-xs text-[#a78a6c]">{{ __('kaman-support.live_device') }}</dt>
-                                <dd>{{ $ticket->device_id ?: '—' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-xs text-[#a78a6c]">{{ __('kaman-support.last_seen') }}</dt>
-                                <dd>
-                                    @if($device?->last_seen_at)
-                                        {{ $device->last_seen_at->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('Y-m-d H:i') }}
-                                        ({{ $device->isRecentlySeen() ? __('kaman-support.online') : __('kaman-support.offline') }})
-                                    @else
-                                        {{ __('kaman-support.never_seen') }}
-                                    @endif
-                                </dd>
-                            </div>
-                            @if($device?->last_ticket_id)
-                                <div>
-                                    <dt class="text-xs text-[#a78a6c]">{{ __('kaman-support.live_last_ticket') }}</dt>
-                                    <dd class="font-mono text-xs">{{ $device->last_ticket_id }}</dd>
+                    <h2>{{ __('kaman-support.printers') }}</h2>
+                    @if($printers === [])
+                        <p class="sup-meta">{{ __('kaman-support.no_printers') }}</p>
+                    @else
+                        <div class="sup-logs">
+                            @foreach($printers as $printer)
+                                @php $row = is_array($printer) ? $printer : []; @endphp
+                                <div class="sup-row sup-row--static">
+                                    <span>{{ $row['name'] ?? '—' }}</span>
+                                    <span class="sup-muted">{{ $row['role'] ?? '' }}</span>
+                                    <span class="sup-muted">{{ $row['station'] ?? '' }}</span>
+                                    <span dir="ltr">{{ $row['ip'] ?? '' }}</span>
+                                    <strong>{{ $row['issue'] ?? '' }}</strong>
                                 </div>
+                            @endforeach
+                        </div>
+                    @endif
+                    <h2>{{ __('kaman-support.live_session') }}</h2>
+                    <p class="sup-meta">{{ __('kaman-support.live_coming') }}</p>
+                    @if($device)
+                        <a class="sup-ghost" href="{{ route('kaman-support.logs', ['restaurants' => [$ticket->restaurant]]) }}">{{ __('kaman-support.view_device_logs') }}</a>
+                        <p class="sup-meta">
+                            {{ __('kaman-support.last_seen') }}:
+                            @if($device->last_seen_at)
+                                {{ $device->last_seen_at->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('Y-m-d H:i') }}
+                                ({{ $device->isRecentlySeen() ? __('kaman-support.online') : __('kaman-support.offline') }})
+                            @else
+                                {{ __('kaman-support.never_seen') }}
                             @endif
-                        </dl>
-                    </section>
-                </div>
+                        </p>
+                    @endif
+                </section>
+
+                <section data-ticket-panel="activity" class="sup-pane" hidden>
+                    <h2>{{ __('kaman-support.conversation') }}</h2>
+                    @if($conversation === [])
+                        <p class="sup-meta">{{ __('kaman-support.no_conversation') }}</p>
+                    @else
+                        <ul class="sup-list">
+                            @foreach($conversation as $line)
+                                <li>{{ is_scalar($line) ? $line : json_encode($line, JSON_UNESCAPED_UNICODE) }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+                    <h2>{{ __('kaman-support.events') }}</h2>
+                    @if($ticket->events->isEmpty())
+                        <p class="sup-meta">{{ __('kaman-support.no_events') }}</p>
+                    @else
+                        <ol class="sup-list">
+                            @foreach($ticket->events as $event)
+                                <li>
+                                    <strong>{{ $event->type?->label() }}</strong>
+                                    <span class="sup-meta">{{ $event->actor_name }} · {{ $event->created_at?->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('Y-m-d H:i') }}</span>
+                                    @if($event->message)<p>{{ $event->message }}</p>@endif
+                                </li>
+                            @endforeach
+                        </ol>
+                    @endif
+                </section>
             </div>
+
+            <aside class="sup-pane sup-ticket-side">
+                <form method="post" action="{{ route('kaman-support.update', $ticket) }}" class="sup-list">
+                    @csrf
+                    @method('PATCH')
+                    <label class="sup-field">
+                        {{ __('kaman-support.filter_status') }}
+                        <select name="status">
+                            @foreach($statuses as $status)
+                                <option value="{{ $status->value }}" @selected($ticket->status === $status)>{{ $status->label() }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="sup-field">
+                        {{ __('kaman-support.assignee') }}
+                        <input type="text" name="assignee" value="{{ old('assignee', $ticket->assignee) }}">
+                    </label>
+                    <label class="sup-field">
+                        {{ __('kaman-support.note') }}
+                        <textarea name="note" rows="3" placeholder="{{ __('kaman-support.note_placeholder') }}">{{ old('note') }}</textarea>
+                    </label>
+                    <button type="submit" class="sup-primary">{{ __('kaman-support.save') }}</button>
+                </form>
+                <form method="post" action="{{ route('kaman-support.events.store', $ticket) }}" class="sup-list">
+                    @csrf
+                    <input type="hidden" name="type" value="note">
+                    <textarea name="message" rows="3" required placeholder="{{ __('kaman-support.note_placeholder') }}">{{ old('message') }}</textarea>
+                    <button type="submit" class="sup-ghost">{{ __('kaman-support.add_note') }}</button>
+                </form>
+                @if($device)
+                    @include('kaman-support.partials.command-form', [
+                        'action' => route('kaman-support.tickets.commands', $ticket),
+                        'commands' => $commands,
+                        'commandNames' => $commandNames,
+                    ])
+                @endif
+            </aside>
         </div>
     </div>
+    <dialog class="tk-assure" data-close-dialog>
+        <form method="post" action="{{ route('kaman-support.close', $ticket) }}">
+            @csrf
+            <div class="tk-assure__head">
+                <div class="tk-assure__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12.5l3.2 3.2L18 8"/><circle cx="12" cy="12" r="9"/></svg></div>
+                <div>
+                    <h2>{{ __('kaman-support.close_title') }}</h2>
+                    <p>{{ $ticket->summary }}</p>
+                </div>
+                <button class="tk-assure__x" type="button" data-close-cancel aria-label="{{ __('app-development.cancel') }}">×</button>
+            </div>
+            <label>
+                {{ __('kaman-support.close_note') }}
+                <textarea name="note" rows="4"></textarea>
+            </label>
+            <div class="tk-assure__foot">
+                <button class="tk-view" type="button" data-close-cancel>{{ __('app-development.cancel') }}</button>
+                <button class="tk-new" type="submit">{{ __('kaman-support.close_ticket') }}</button>
+            </div>
+        </form>
+    </dialog>
 @endsection
 
 @push('scripts')
     <script>
+        document.querySelectorAll('[data-ticket-tab]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const tab = button.getAttribute('data-ticket-tab');
+                document.querySelectorAll('[data-ticket-tab]').forEach((item) => item.classList.toggle('is-active', item === button));
+                document.querySelectorAll('[data-ticket-panel]').forEach((panel) => {
+                    panel.hidden = panel.getAttribute('data-ticket-panel') !== tab;
+                });
+            });
+        });
+        const closeDialog = document.querySelector('[data-close-dialog]');
+        document.addEventListener('click', (event) => {
+            if (event.target.closest('[data-close-open]') && closeDialog?.showModal) closeDialog.showModal();
+            if (event.target.closest('[data-close-cancel]') && closeDialog) (window.kamanCloseDialog || function (d) { d.close(); })(closeDialog);
+        });
+        closeDialog?.addEventListener('click', (event) => {
+            if (event.target === closeDialog) (window.kamanCloseDialog || function (d) { d.close(); })(closeDialog);
+        });
         document.querySelectorAll('[data-copy-ticket]').forEach((button) => {
             button.addEventListener('click', async () => {
                 const id = button.getAttribute('data-copy-ticket') || '';

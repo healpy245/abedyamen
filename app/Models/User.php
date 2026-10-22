@@ -97,6 +97,23 @@ class User extends Authenticatable
     }
 
     /**
+     * Live app connections only. Every version. No logs, tickets, commands,
+     * or other workspace projects.
+     */
+    public function supportConnectionsOnly(): bool
+    {
+        return strcasecmp((string) $this->email, 'connections@kaman.rest') === 0;
+    }
+
+    /**
+     * Support console is limited to the live board. Tickets and commands stay closed.
+     */
+    public function limitedSupportConsole(): bool
+    {
+        return $this->posLiveLogsOnly() || $this->supportConnectionsOnly();
+    }
+
+    /**
      * App-version prefix this user may see on the live log board.
      * Null means every version.
      */
@@ -107,7 +124,7 @@ class User extends Authenticatable
 
     public function projectEntryUrl(Project $project): string
     {
-        if ($project === Project::KamanSupport && $this->posLiveLogsOnly()) {
+        if ($project === Project::KamanSupport && $this->limitedSupportConsole()) {
             return route('kaman-support.live');
         }
 
@@ -169,5 +186,41 @@ class User extends Authenticatable
     {
         return $this->isAppDevelopmentAdmin()
             || $this->appDevelopmentRole() === AppDevelopmentRole::Developer;
+    }
+
+    public const MOWAHADA_EMAIL = 'mowahada@workspace.com';
+
+    public function isMowahada(): bool
+    {
+        return strcasecmp((string) $this->email, self::MOWAHADA_EMAIL) === 0;
+    }
+
+    /**
+     * Chatbot project only. Kaman-world accounts, including admins, stay on the main login.
+     */
+    public function isChatbotOnly(): bool
+    {
+        if ($this->is_admin) {
+            return false;
+        }
+
+        return $this->projectKeys() === [Project::AiChatbot->value];
+    }
+
+    public function afterLoginUrl(): string
+    {
+        if ($this->isMowahada()) {
+            return route('ai-chatbot.farz.dashboard');
+        }
+
+        if ($this->isChatbotOnly()) {
+            return route('ai-chatbot.index');
+        }
+
+        if ($this->accessibleProjects() !== []) {
+            return route('design.modern-light');
+        }
+
+        return route('login');
     }
 }

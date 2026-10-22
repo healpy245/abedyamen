@@ -39,6 +39,8 @@ class WhatsAppAudioTranscriber
 
     private const KAMAN_CONTEXT_PROMPT = 'رسالة صوتية على واتساب من صاحب مطعم أو مخبز أو كشك برد على KAMAN POS. الحكي عربي عامية فلسطينية مخلوط عبري عن كاشير وكوباه ومعريخت وهات وأفيف وتسيود ومطبخ وتوصيل وشليح.';
 
+    private const DIMA_CONTEXT_PROMPT = 'رسالة صوتية على واتساب. اللغة الأساسية عربي عامية فلسطينية، انسخها حرفيا وبجودة عالية ومن دون ترجمة. المتحدث ممكن يخلط عبري وانجليزي بنفس الجملة: خلي العبري بحروفه اذا انحكى عبري، والانجليزي انجليزي اذا انحكى انجليزي. كلمات عبري شائعة بتنحكى وبتتنسخ بحروف عربي خليها كما انسمعت، لا تصححها لعبري: بسدر، تودا، سبابا، ستام، بديوك، ممش، ما بيتاه، كنيست، بحيروت، تصويت، موحدة، مشتركة.';
+
     /**
      * Literal terms that come back mangled without a hint.
      *
@@ -48,6 +50,7 @@ class WhatsAppAudioTranscriber
         'ملان',
         'سبيدكوم',
         'سالي',
+        'ممدوح',
         'الطيبة',
         'رهط',
         'اللقية',
@@ -112,6 +115,37 @@ class WhatsAppAudioTranscriber
         'مخبز',
         'مطعم',
         'شيقل',
+    ];
+
+    /**
+     * @var list<string>
+     */
+    private const DIMA_KEYWORDS = [
+        'تصويت',
+        'انتخابات',
+        'موحدة',
+        'مشتركة',
+        'كنيست',
+        'بحيروت',
+        'בסדר',
+        'תודה',
+        'סבבה',
+        'סתם',
+        'בדיוק',
+        'ממש',
+        'כנסת',
+        'בחירות',
+        'רע״ם',
+        'ודם',
+        'بسدر',
+        'تودا',
+        'سبابا',
+        'ستام',
+        'بديوك',
+        'ممش',
+        'vote',
+        'okay',
+        'thanks',
     ];
 
     /**
@@ -196,10 +230,15 @@ class WhatsAppAudioTranscriber
         ?string $mimeType = null,
         ?string $domain = null,
         array $conversationContext = [],
+        ?string $apiKey = null,
     ): array {
-        $this->domain = $domain === 'kaman' ? 'kaman' : 'malan';
+        $this->domain = match ($domain) {
+            'kaman' => 'kaman',
+            'dima' => 'dima',
+            default => 'malan',
+        };
         $this->conversationContext = $conversationContext;
-        $apiKey = (string) (config('services.openai.api_key') ?: env('OPENAI_API_KEY', ''));
+        $apiKey = trim((string) ($apiKey ?? (config('services.openai.api_key') ?: env('OPENAI_API_KEY', ''))));
         if ($apiKey === '') {
             return $this->failure('missing_api_key');
         }
@@ -544,12 +583,20 @@ class WhatsAppAudioTranscriber
      */
     private function keywords(): array
     {
-        return $this->domain === 'kaman' ? self::KAMAN_KEYWORDS : self::KEYWORDS;
+        return match ($this->domain) {
+            'kaman' => self::KAMAN_KEYWORDS,
+            'dima' => self::DIMA_KEYWORDS,
+            default => self::KEYWORDS,
+        };
     }
 
     private function contextPrompt(): string
     {
-        return $this->domain === 'kaman' ? self::KAMAN_CONTEXT_PROMPT : self::CONTEXT_PROMPT;
+        return match ($this->domain) {
+            'kaman' => self::KAMAN_CONTEXT_PROMPT,
+            'dima' => self::DIMA_CONTEXT_PROMPT,
+            default => self::CONTEXT_PROMPT,
+        };
     }
 
     /**
@@ -638,9 +685,13 @@ class WhatsAppAudioTranscriber
 
     public function applyDomainSpelling(string $text, ?string $domain = null): string
     {
-        $active = $domain === 'kaman' || ($domain === null && $this->domain === 'kaman')
-            ? 'kaman'
-            : 'malan';
+        $active = $domain ?? $this->domain;
+        if (! in_array($active, ['kaman', 'dima', 'malan'], true)) {
+            $active = 'malan';
+        }
+        if ($active === 'dima') {
+            return $text;
+        }
 
         $map = self::TERM_SPELLINGS;
         if ($active === 'kaman') {
@@ -672,6 +723,10 @@ class WhatsAppAudioTranscriber
      */
     private function languages(): array
     {
+        if ($this->domain === 'dima') {
+            return ['ar', 'he', 'en'];
+        }
+
         $configured = (string) config('malan.voice.transcription_languages', 'ar,he');
         $codes = array_map('trim', explode(',', $configured));
 

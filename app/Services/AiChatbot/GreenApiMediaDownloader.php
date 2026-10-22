@@ -29,9 +29,16 @@ class GreenApiMediaDownloader
         $directory = trim((string) config('malan.media.directory', 'malan/payment-proofs'), '/');
 
         try {
-            $response = Http::timeout($timeout)
-                ->withOptions(['allow_redirects' => false])
-                ->get($url);
+            $pending = Http::timeout($timeout)
+                ->withOptions(['allow_redirects' => false]);
+            $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+            if ($host === 'gate.whapi.cloud' || str_ends_with($host, '.whapi.cloud')) {
+                $token = app(WhapiCloudClient::class)->token();
+                if ($token !== '') {
+                    $pending = $pending->withToken($token);
+                }
+            }
+            $response = $pending->get($url);
         } catch (Throwable $e) {
             Log::warning('Green API media download failed', ['error' => $e->getMessage()]);
 
@@ -116,6 +123,8 @@ class GreenApiMediaDownloader
             'digitaloceanspaces.com',
             'amazonaws.com',
             'cloudfront.net',
+            'wasabisys.com',
+            'whapi.cloud',
         ];
         $hostTrusted = false;
         foreach ($trustedSuffixes as $suffix) {

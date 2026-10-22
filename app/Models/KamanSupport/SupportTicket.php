@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Models\KamanSupport;
 
 use App\Enums\KamanSupport\SupportTicketStatus;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -30,6 +32,10 @@ class SupportTicket extends Model
         'status',
         'assignee',
         'client_created_at',
+        'closed_at',
+        'closed_by',
+        'close_note',
+        'escalated_ticket_id',
     ];
 
     /**
@@ -44,7 +50,33 @@ class SupportTicket extends Model
             'extra' => 'array',
             'status' => SupportTicketStatus::class,
             'client_created_at' => 'datetime',
+            'closed_at' => 'datetime',
         ];
+    }
+
+    public function closedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    public function closeDurationLabel(): ?string
+    {
+        if ($this->closed_at === null || $this->created_at === null) {
+            return null;
+        }
+
+        $minutes = (int) floor($this->created_at->diffInSeconds($this->closed_at) / 60);
+        if ($minutes < 60) {
+            return $minutes.'m';
+        }
+
+        $hours = intdiv($minutes, 60);
+        $rest = $minutes % 60;
+        if ($hours < 48) {
+            return $hours.'h '.$rest.'m';
+        }
+
+        return intdiv($hours, 24).'d '.($hours % 24).'h';
     }
 
     public function getRouteKeyName(): string

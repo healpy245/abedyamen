@@ -88,10 +88,70 @@ class TaskTimerTest extends TestCase
     public function test_reports_are_admin_only(): void
     {
         $admin = $this->member(AppDevelopmentRole::Admin);
+        $admin->forceFill(['is_admin' => true])->save();
         $dev = $this->member(AppDevelopmentRole::Developer);
 
         $this->actingAs($dev)->get(route('app-development.reports.index'))->assertForbidden();
         $this->actingAs($admin)->get(route('app-development.reports.index'))->assertOk();
+    }
+
+    public function test_reports_dashboard_uses_the_selected_period(): void
+    {
+        $admin = $this->member(AppDevelopmentRole::Admin);
+        $admin->forceFill(['is_admin' => true])->save();
+        $ticket = $this->ticket($admin);
+
+        $done = AppDevelopmentTask::query()->create([
+            'ticket_id' => $ticket->id,
+            'title' => 'Finished checkout',
+            'assignee_id' => $admin->id,
+            'priority' => AppDevelopmentTicketPriority::High,
+            'status' => AppDevelopmentTaskStatus::Completed,
+            'created_by' => $admin->id,
+            'completed_at' => now()->subDay(),
+        ]);
+        $done->forceFill(['created_at' => now()->subDays(3)])->save();
+
+        $open = AppDevelopmentTask::query()->create([
+            'ticket_id' => $ticket->id,
+            'title' => 'Still open',
+            'assignee_id' => $admin->id,
+            'priority' => AppDevelopmentTicketPriority::Normal,
+            'status' => AppDevelopmentTaskStatus::Todo,
+            'created_by' => $admin->id,
+        ]);
+        $open->forceFill(['created_at' => now()->subDays(2)])->save();
+
+        $old = AppDevelopmentTask::query()->create([
+            'ticket_id' => $ticket->id,
+            'title' => 'Old completed',
+            'assignee_id' => $admin->id,
+            'priority' => AppDevelopmentTicketPriority::Normal,
+            'status' => AppDevelopmentTaskStatus::Completed,
+            'created_by' => $admin->id,
+            'completed_at' => now()->subDays(40),
+        ]);
+        $old->forceFill(['created_at' => now()->subDays(50)])->save();
+
+        $this->actingAs($admin)
+            ->get(route('app-development.reports.index', ['preset' => 'last_7']))
+            ->assertOk()
+            ->assertSee('Finished checkout')
+            ->assertDontSee('Old completed')
+            ->assertDontSee(__('app-development.nav.team'))
+            ->assertSee(__('app-development.nav.reports'));
+
+        $week = $this->actingAs($admin)
+            ->get(route('app-development.reports.export.summary', ['preset' => 'last_7']));
+        $week->assertOk();
+        $weekBody = $week->streamedContent();
+        $this->assertStringContainsString('tasks_completed,1', $weekBody);
+        $this->assertStringContainsString('open_tasks,1', $weekBody);
+
+        $quarter = $this->actingAs($admin)
+            ->get(route('app-development.reports.export.summary', ['preset' => 'last_90']));
+        $quarter->assertOk();
+        $this->assertStringContainsString('tasks_completed,2', $quarter->streamedContent());
     }
 
     private function member(AppDevelopmentRole $role): User

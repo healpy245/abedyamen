@@ -1,5 +1,6 @@
 @php
     $activeProject = 'ai-chatbot';
+    $botOnly = auth()->user()?->isChatbotOnly() ?? false;
 @endphp
 @extends('layouts.kaman')
 
@@ -20,7 +21,9 @@
     <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
             <h2 class="text-xl font-semibold text-[#2b1e11]">{{ __('chatbot.workspace.campaigns.title') }}</h2>
-            <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.leads_only_note') }}</p>
+            @unless($botOnly)
+                <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.leads_only_note') }}</p>
+            @endunless
         </div>
     </div>
 
@@ -30,29 +33,37 @@
                 <span class="text-sm font-semibold text-[#2b1e11]">{{ __('chatbot.workspace.campaigns.create') }}</span>
                 <span class="text-[#f16229] text-lg leading-none group-open:rotate-45 transition">+</span>
             </summary>
-            <form method="post" action="{{ route('ai-chatbot.workspace.campaigns.store', $instance) }}" enctype="multipart/form-data" class="mt-4 space-y-3">
+            <form method="post" action="{{ route('ai-chatbot.workspace.campaigns.store', $instance) }}" enctype="multipart/form-data" class="mt-4 {{ $botOnly ? 'grid grid-cols-1 items-end gap-3 lg:grid-cols-4' : 'space-y-3' }}">
                 @csrf
-                <div>
+                <div class="min-w-0">
                     <label class="kaman-label block" for="name">{{ __('chatbot.workspace.campaigns.name') }}</label>
                     <input id="name" name="name" type="text" value="{{ old('name') }}" required maxlength="160" class="kaman-input w-full">
                 </div>
-                <div>
+                <div class="min-w-0">
                     <label class="kaman-label block" for="greenapi_url">{{ __('chatbot.workspace.campaigns.greenapi_url') }}</label>
-                    <input id="greenapi_url" name="greenapi_url" type="url" value="{{ old('greenapi_url') }}" required class="kaman-input w-full font-mono text-xs" placeholder="{{ __('chatbot.greenapi_send_url_placeholder') }}">
-                    <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.greenapi_url_help') }}</p>
-                    <p class="mt-1 text-xs text-amber-700">{{ __('chatbot.workspace.campaigns.separate_greenapi_note') }}</p>
+                    <input id="greenapi_url" name="greenapi_url" type="url" value="{{ old('greenapi_url') }}" class="kaman-input w-full font-mono text-xs" placeholder="{{ __('chatbot.greenapi_send_url_placeholder') }}">
+                    @unless($botOnly)
+                        <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.greenapi_url_help') }}</p>
+                        <p class="mt-1 text-xs text-amber-700">{{ __('chatbot.workspace.campaigns.separate_greenapi_note') }}</p>
+                    @endunless
                 </div>
-                <div>
+                <div class="min-w-0 {{ $botOnly ? 'lg:col-span-2' : '' }}">
                     <label class="kaman-label block" for="opening_message">{{ __('chatbot.workspace.campaigns.opening_message') }}</label>
-                    <textarea id="opening_message" name="opening_message" rows="4" class="kaman-input w-full">{{ old('opening_message', $defaultOpeningMessage) }}</textarea>
-                    <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.opening_message_help') }}</p>
+                    <textarea id="opening_message" name="opening_message" rows="{{ $botOnly ? 2 : 4 }}" class="kaman-input w-full">{{ old('opening_message', $defaultOpeningMessage) }}</textarea>
+                    @unless($botOnly)
+                        <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.opening_message_help') }}</p>
+                    @endunless
                 </div>
-                <div>
+                <div class="min-w-0">
                     <label class="kaman-label block" for="excel">{{ __('chatbot.workspace.campaigns.excel') }}</label>
                     <input id="excel" name="excel" type="file" accept=".xlsx,.csv,.txt" required class="kaman-input w-full">
-                    <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.excel_help') }}</p>
+                    @unless($botOnly)
+                        <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.excel_help') }}</p>
+                    @endunless
                 </div>
-                <button type="submit" class="kaman-button">{{ __('chatbot.workspace.campaigns.create') }}</button>
+                <div class="{{ $botOnly ? 'lg:col-span-4 flex justify-end' : '' }}">
+                    <button type="submit" class="kaman-button">{{ __('chatbot.workspace.campaigns.create') }}</button>
+                </div>
             </form>
         </details>
     @endif
@@ -77,6 +88,11 @@
                 @endphp
                 <article class="kaman-card overflow-hidden flex flex-col">
                     <a href="{{ route('ai-chatbot.workspace.campaigns.show', [$instance, $campaign]) }}" class="block p-4 hover:bg-[#f7efe3]/50 transition">
+                        @if($botOnly && isset($campaignLines[$campaign->id]))
+                            <div class="mb-3">
+                                @include('ai-chatbot.workspace.partials.whatsapp-line-card', ['line' => $campaignLines[$campaign->id], 'fallback' => $campaign->name, 'bare' => true])
+                            </div>
+                        @endif
                         <div class="flex items-start justify-between gap-2">
                             <h3 class="text-base font-semibold text-[#2b1e11] truncate">{{ $campaign->name }}</h3>
                             <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 border

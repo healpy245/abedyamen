@@ -6,8 +6,11 @@ use App\Http\Controllers\AiChatbot\ChatbotInstanceController;
 use App\Http\Controllers\AiChatbot\ChatbotMemberController;
 use App\Http\Controllers\AiChatbot\ChatbotSettingsController;
 use App\Http\Controllers\AiChatbot\ChatbotWorkspaceController;
+use App\Http\Controllers\AiChatbot\FarzDashboardController;
 use App\Http\Controllers\AiChatbot\KamanPosDemoController;
 use App\Http\Controllers\AiChatbot\MalanCampaignController;
+use App\Http\Controllers\AiChatbot\MansourBotController;
+use App\Http\Controllers\AiChatbot\MowahadaLinesController;
 use App\Http\Controllers\AiChatbot\MalanCampaignWebhookController;
 use App\Http\Controllers\AiChatbot\RealtimeCallController;
 use App\Http\Controllers\AiChatbot\VoiceCallController;
@@ -28,6 +31,25 @@ Route::post('/ai-chatbot/webhook/greenapi/campaign/{token}', [MalanCampaignWebho
     ])
     ->name('ai-chatbot.greenapi.campaign-webhook');
 
+Route::post('/ai-chatbot/webhook/whapi/{token}', [ChatbotGreenApiWebhookController::class, 'handleShared'])
+    ->withoutMiddleware([
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+    ])
+    ->name('ai-chatbot.whapi.webhook');
+
+Route::post('/ai-chatbot/webhook/greenapi/{token}/{line}', [ChatbotGreenApiWebhookController::class, 'handle'])
+    ->where('line', '[A-Za-z0-9]+')
+    ->withoutMiddleware([
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+    ])
+    ->name('ai-chatbot.greenapi.line-webhook');
+
 Route::post('/ai-chatbot/webhook/greenapi/{token}', [ChatbotGreenApiWebhookController::class, 'handle'])
     ->withoutMiddleware([
         ValidateCsrfToken::class,
@@ -46,6 +68,15 @@ Route::middleware(['web', 'auth', 'project:ai-chatbot'])
     ->name('ai-chatbot.')
     ->group(function () {
         Route::get('/', [ChatbotController::class, 'landing'])->name('index');
+        Route::get('/farz', [FarzDashboardController::class, 'show'])->name('farz.dashboard');
+        Route::get('/farz/numbers', [MowahadaLinesController::class, 'index'])->name('farz.numbers');
+        Route::post('/farz/numbers', [MowahadaLinesController::class, 'store'])->name('farz.numbers.store');
+        Route::post('/farz/numbers/check', [MowahadaLinesController::class, 'check'])->name('farz.numbers.check');
+        Route::get('/farz/numbers/status', [MowahadaLinesController::class, 'status'])->name('farz.numbers.status');
+        Route::post('/farz/numbers/warm', [MowahadaLinesController::class, 'warm'])->name('farz.numbers.warm');
+        Route::post('/farz/numbers/{line}/assign', [MowahadaLinesController::class, 'assign'])->name('farz.numbers.assign');
+        Route::post('/farz/numbers/{line}', [MowahadaLinesController::class, 'update'])->name('farz.numbers.update');
+        Route::delete('/farz/numbers/{line}', [MowahadaLinesController::class, 'destroy'])->name('farz.numbers.destroy');
 
         Route::prefix('instances/{instance}')->group(function () {
             Route::get('/', [ChatbotController::class, 'index'])->name('instances.show');
@@ -84,10 +115,16 @@ Route::middleware(['web', 'auth', 'project:ai-chatbot'])
                 Route::get('/', [ChatbotWorkspaceController::class, 'index'])->name('index');
                 Route::get('/conversations', [ChatbotWorkspaceController::class, 'conversations'])->name('conversations');
                 Route::get('/conversations/poll', [ChatbotWorkspaceController::class, 'pollConversations'])->name('conversations.poll');
+                Route::get('/analytics', [ChatbotWorkspaceController::class, 'pollAnalytics'])->name('analytics');
+                Route::post('/green-sync', [ChatbotWorkspaceController::class, 'previewGreenSync'])->name('green-sync');
+                Route::post('/green-sync/apply', [ChatbotWorkspaceController::class, 'applyGreenSync'])->name('green-sync.apply');
+                Route::get('/analytics/downloads/{group}', [ChatbotWorkspaceController::class, 'downloadHistory'])->name('analytics.downloads');
+                Route::get('/analytics/export/{group}', [ChatbotWorkspaceController::class, 'exportAnalytics'])->name('analytics.export');
                 Route::get('/conversations/{conversation}', [ChatbotWorkspaceController::class, 'showConversation'])->name('conversations.show');
                 Route::get('/conversations/{conversation}/messages', [ChatbotWorkspaceController::class, 'pollMessages'])->name('conversations.messages');
                 Route::post('/conversations/{conversation}/read', [ChatbotWorkspaceController::class, 'markRead'])->name('conversations.read');
                 Route::post('/conversations/{conversation}/reply', [ChatbotWorkspaceController::class, 'reply'])->name('conversations.reply');
+                Route::post('/conversations/{conversation}/user-created', [ChatbotWorkspaceController::class, 'markUserCreated'])->name('conversations.user-created');
                 Route::post('/conversations/{conversation}/bot-mode', [ChatbotWorkspaceController::class, 'updateBotMode'])->name('conversations.bot-mode');
 
                 Route::get('/conversations/{conversation}/instructions', [ChatbotWorkspaceController::class, 'listInstructions'])->name('conversations.instructions.index');
@@ -97,6 +134,20 @@ Route::middleware(['web', 'auth', 'project:ai-chatbot'])
                 Route::delete('/conversations/{conversation}/instructions/{instruction}', [ChatbotWorkspaceController::class, 'destroyInstruction'])->name('conversations.instructions.destroy');
 
                 Route::get('/settings', [ChatbotWorkspaceController::class, 'settings'])->name('settings');
+                Route::put('/mansour/settings', [MansourBotController::class, 'updateSettings'])->name('mansour.settings.update');
+                Route::post('/mansour/lines/check', [MansourBotController::class, 'checkLines'])->name('mansour.lines.check');
+                Route::get('/mansour/lines/state', [MansourBotController::class, 'lineStates'])->name('mansour.lines.state');
+                Route::post('/mansour/lines/active', [MansourBotController::class, 'setLinesActive'])->name('mansour.lines.active');
+                Route::post('/mansour/lines/assign', [MansourBotController::class, 'assignLines'])->name('mansour.lines.assign');
+                Route::post('/mansour/lines/{line}/active', [MansourBotController::class, 'setLineActive'])->name('mansour.line-active');
+                Route::get('/mansour/contacts', [MansourBotController::class, 'contacts'])->name('mansour.contacts');
+                Route::get('/mansour/followups', [MansourBotController::class, 'followups'])->name('mansour.followups');
+                Route::post('/mansour/contacts', [MansourBotController::class, 'storeContacts'])->name('mansour.contacts.store');
+                Route::post('/mansour/contacts/custom', [MansourBotController::class, 'storeCustomContact'])->name('mansour.contacts.custom');
+                Route::delete('/mansour/contacts', [MansourBotController::class, 'destroyContacts'])->name('mansour.contacts.destroy');
+                Route::post('/mansour/trigger', [MansourBotController::class, 'trigger'])->name('mansour.trigger');
+                Route::get('/mansour/sends', [MansourBotController::class, 'sends'])->name('mansour.sends');
+                Route::post('/mansour/copy', [MansourBotController::class, 'copy'])->name('mansour.copy');
                 Route::put('/settings', [ChatbotWorkspaceController::class, 'updateSettings'])->name('settings.update');
                 Route::post('/settings/pos-demo', [ChatbotWorkspaceController::class, 'storePosDemo'])
                     ->middleware(ExtendUploadTimeout::class)
@@ -117,6 +168,7 @@ Route::middleware(['web', 'auth', 'project:ai-chatbot'])
                 Route::post('/campaigns/{campaign}/conversations/{conversation}/read', [MalanCampaignController::class, 'markRead'])->name('campaigns.conversations.read');
                 Route::post('/campaigns/{campaign}/conversations/{conversation}/reply', [MalanCampaignController::class, 'reply'])->name('campaigns.conversations.reply');
                 Route::get('/campaigns/{campaign}/analytics', [MalanCampaignController::class, 'pollAnalytics'])->name('campaigns.analytics');
+                Route::get('/campaigns/{campaign}/analytics/downloads/{group}', [MalanCampaignController::class, 'downloadHistory'])->name('campaigns.analytics.downloads');
                 Route::get('/campaigns/{campaign}/analytics/export/{group}', [MalanCampaignController::class, 'exportAnalytics'])->name('campaigns.analytics.export');
                 Route::get('/campaigns/{campaign}/settings', [MalanCampaignController::class, 'settings'])->name('campaigns.settings');
                 Route::put('/campaigns/{campaign}/settings', [MalanCampaignController::class, 'updateSettings'])->name('campaigns.settings.update');

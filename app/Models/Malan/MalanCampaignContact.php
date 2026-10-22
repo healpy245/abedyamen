@@ -34,6 +34,7 @@ class MalanCampaignContact extends Model
         'city',
         'chat_id',
         'status',
+        'insight_group',
         'conversation_id',
         'message_sent_at',
         'responded_at',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AiChatbot;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AiChatbot\UpdateChatbotInstanceRequest;
+use App\Services\AiChatbot\WhapiCloudClient;
 use App\Models\AiChatbot\ChatbotInstance;
 use App\Services\AiChatbot\AiChatbotInstanceService;
 use App\Services\AiChatbot\ChatbotGreenApiService;
@@ -32,6 +33,20 @@ class ChatbotInstanceController extends Controller
         $this->instanceService->authorizeForUser($instance, $request->user());
 
         $validated = $request->validated();
+        $whapi = app(WhapiCloudClient::class);
+        $whapiError = $whapi->consumeSettingsRequest($validated);
+        if ($whapiError !== null) {
+            return back()
+                ->withInput()
+                ->withErrors([$this->whapiErrorField($whapiError) => __($whapiError)]);
+        }
+
+        $webhookError = $this->greenApiService->assignWebhookToken($instance, $validated['greenapi_webhook_url'] ?? null);
+        if ($webhookError !== null) {
+            return back()
+                ->withInput()
+                ->withErrors(['greenapi_webhook_url' => __($webhookError)]);
+        }
 
         $settings = is_array($instance->integration_settings) ? $instance->integration_settings : [];
         $phonesRaw = trim((string) ($validated['allowed_reply_phones'] ?? ''));
@@ -53,8 +68,18 @@ class ChatbotInstanceController extends Controller
             'integration_settings' => $settings,
         ]);
 
+        $status = 'Instance updated.';
+        if ($whapi->webhookWarning) {
+            $status .= ' '.__('chatbot.whapi_webhook_failed');
+        }
+
         return redirect()
             ->route('ai-chatbot.instances.show', $instance)
-            ->with('status', 'Instance updated.');
+            ->with('status', $status);
+    }
+
+    private function whapiErrorField(string $key): string
+    {
+        return str_contains($key, 'webhook') ? 'whapi_webhook_url' : 'whapi_token';
     }
 }

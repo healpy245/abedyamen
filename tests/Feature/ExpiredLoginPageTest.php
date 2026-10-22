@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Database\Seeders\WorkspaceUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,14 +21,16 @@ class ExpiredLoginPageTest extends TestCase
 
     public function test_stale_login_page_still_signs_the_user_in(): void
     {
+        $user = User::where('email', 'yamen@kaman.rest')->firstOrFail();
+
         $this->post('/login', [
             '_token' => 'stale-token',
             'email' => 'yamen@kaman.rest',
             'password' => 'yam1234@',
-        ])->assertRedirect(route('home'));
+        ])->assertRedirect($user->afterLoginUrl());
 
         $this->assertAuthenticated();
-        $this->get(route('home'))->assertOk();
+        $this->get($user->afterLoginUrl())->assertOk();
     }
 
     public function test_stale_login_page_with_a_wrong_password_returns_to_sign_in(): void

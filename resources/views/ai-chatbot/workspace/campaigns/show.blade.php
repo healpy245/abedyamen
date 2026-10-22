@@ -337,6 +337,7 @@
     </div>
 
     <div id="toast" class="fixed bottom-4 inset-x-0 mx-auto w-fit max-w-sm hidden z-50 rounded-xl bg-[#2b1e11] text-white text-sm px-4 py-2 shadow-lg" role="status"></div>
+    @include('ai-chatbot.workspace.partials.download-history-modal')
 </div>
 @endsection
 

@@ -263,13 +263,7 @@ html.dark .tablet {
 
 @media (min-width: 800px) {
     .app-rail {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (min-width: 1100px) {
-    .app-rail {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
@@ -392,6 +386,86 @@ html.dark .tablet {
     font-size: 0.86rem;
 }
 
+.story__editions {
+    display: grid;
+    gap: 0.85rem;
+    margin: 1.6rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+@media (min-width: 800px) {
+    .story__editions {
+        grid-template-columns: 1.15fr 0.92fr 0.92fr;
+    }
+}
+
+.edition {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.55rem;
+    min-height: 100%;
+    padding: 1.35rem 1.25rem 1.45rem;
+    border-radius: 32px;
+    background: var(--org-bg);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--org-accent) 45%, transparent);
+}
+
+.edition.is-main {
+    background: var(--org-accent);
+    color: #fff6ec;
+    box-shadow: var(--org-shadow);
+}
+
+.edition__mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.4rem;
+    height: 3.4rem;
+    border-radius: 16px;
+    color: var(--org-accent-deep);
+    background: var(--org-surface);
+}
+
+.edition.is-main .edition__mark {
+    color: var(--org-accent);
+    background: #fff6ec;
+}
+
+.edition__mark .feat-svg {
+    width: 1.55rem;
+    height: 1.55rem;
+}
+
+.edition__label {
+    margin: 0.35rem 0 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--org-olive);
+}
+
+.edition.is-main .edition__label {
+    color: #fff6ec;
+}
+
+.edition h3 {
+    margin: 0;
+    font-size: clamp(1.45rem, 2vw, 1.85rem);
+}
+
+.edition p:last-child {
+    margin: 0;
+    font-size: 0.98rem;
+    line-height: 1.6;
+    color: var(--org-muted);
+}
+
+.edition.is-main p:last-child {
+    color: color-mix(in srgb, #fff6ec 88%, transparent);
+}
+
 .story__list {
     display: grid;
     gap: 0.85rem;
@@ -507,8 +581,31 @@ html.dark .tablet {
     transform: translateY(12px);
 }
 
+@media print {
+    .feat-reveal,
+    .feat-reveal.is-in {
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
+    }
+}
+
 .feat-reveal.is-in {
     animation: feat-in 0.6s ease both;
+}
+
+.more-apps {
+    margin-top: 4.5rem;
+}
+
+.more-apps > h2 {
+    margin: 0;
+    font-size: clamp(2.2rem, 4vw, 3.4rem);
+    color: var(--org-text);
+}
+
+.more-apps .story {
+    margin-top: 2.2rem;
 }
 
 .feat-close {

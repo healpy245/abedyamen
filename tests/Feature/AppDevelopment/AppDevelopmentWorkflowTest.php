@@ -476,6 +476,12 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->assertTrue($moaz->posLiveLogsOnly());
         $this->assertFalse($moaz->canAccessProject(Project::AppDevelopment));
         $this->assertNull($moaz->appDevelopmentRole());
+
+        $connections = User::query()->where('email', 'connections@kaman.rest')->firstOrFail();
+        $this->assertSame(['kaman-support'], $connections->projectKeys());
+        $this->assertTrue($connections->supportConnectionsOnly());
+        $this->assertFalse($connections->posLiveLogsOnly());
+        $this->assertFalse($connections->canAccessProject(Project::AppDevelopment));
     }
 
     public function test_qa_queue_redirects_to_tickets_qa_tab(): void
@@ -504,10 +510,12 @@ class AppDevelopmentWorkflowTest extends TestCase
 
         $this->actingAs($admin)->get(route('app-development.index'))->assertOk()
             ->assertSee(__('app-development.nav.new_ticket'))
-            ->assertSee(__('app-development.nav.upload_apk'))
+            ->assertDontSee(__('app-development.nav.upload_apk'))
             ->assertDontSee('kaman-filter-chip--mine', false)
             ->assertDontSee('kaman-filter-chip--returned', false)
-            ->assertSee(__('app-development.tabs.qa'));
+            ->assertSee(__('app-development.tickets.open_state'))
+            ->assertSee(__('app-development.tickets.closed_state'))
+            ->assertDontSee('data-kb-board', false);
 
         $this->actingAs($admin)->get(route('app-development.tickets.create'))->assertOk();
         $this->actingAs($admin)->get(route('app-development.releases.create'))->assertOk();
@@ -584,10 +592,10 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->actingAs($qa)
             ->get(route('app-development.index'))
             ->assertOk()
-            ->assertSee('data-kaman-inline', false)
-            ->assertSee('data-field="priority"', false)
-            ->assertSee('data-field="status"', false)
-            ->assertSee('app-development-inline.js', false);
+            ->assertSee(__('app-development.tickets.open_state'))
+            ->assertSee(__('app-development.tickets.closed_state'))
+            ->assertDontSee('data-kb-board', false)
+            ->assertDontSee('data-field="status"', false);
     }
 
     public function test_qa_can_change_priority_inline_from_table(): void

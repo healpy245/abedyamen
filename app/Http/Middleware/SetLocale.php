@@ -19,6 +19,13 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $user = $request->user();
+        if ($user !== null && $user->isMowahada()) {
+            App::setLocale('ar');
+
+            return $next($request);
+        }
+
         $locale = session('locale', config('app.locale', 'ar'));
 
         if (!in_array($locale, self::SUPPORTED, true)) {

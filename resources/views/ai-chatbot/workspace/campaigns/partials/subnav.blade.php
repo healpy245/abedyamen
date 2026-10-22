@@ -9,7 +9,9 @@
     <div class="min-w-0">
         <a href="{{ route('ai-chatbot.workspace.campaigns', $instance) }}" class="text-xs text-[#a78a6c] hover:text-[#f16229]">← {{ __('chatbot.workspace.campaigns.back') }}</a>
         <h2 class="text-lg font-semibold text-[#2b1e11] truncate">{{ $campaign->name }}</h2>
-        <p class="text-[11px] text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.leads_only_note') }}</p>
+        @unless(auth()->user()?->isChatbotOnly())
+            <p class="text-[11px] text-[#a78a6c]">{{ __('chatbot.workspace.campaigns.leads_only_note') }}</p>
+        @endunless
     </div>
     <div class="flex flex-wrap items-center gap-1.5">
         <a href="{{ route('ai-chatbot.workspace.campaigns.show', [$instance, $campaign]) }}"

@@ -39,6 +39,18 @@ class ChatbotController extends Controller
      */
     public function landing(Request $request): View|RedirectResponse
     {
+        if ($request->user()->isMowahada()) {
+            app(\App\Services\AiChatbot\MansourBotService::class)->ensureAppsBot($request->user());
+            app(\App\Services\AiChatbot\MansourBotService::class)->ensureDimaBot($request->user());
+            app(\App\Services\AiChatbot\MansourBotService::class)->ensureInviteBot($request->user());
+            app(\App\Services\AiChatbot\MansourBotService::class)->ensureYouthInviteBot($request->user());
+        }
+        app(\App\Services\AiChatbot\MansourBotService::class)->shareInviteBot();
+
+        if ($request->user()->isMowahada()) {
+            return redirect()->route('ai-chatbot.farz.dashboard');
+        }
+
         $instances = $this->authorizationService->instancesForUser($request->user());
 
         if ($instances->isEmpty()) {
@@ -47,7 +59,12 @@ class ChatbotController extends Controller
             ]);
         }
 
-        if ($instances->count() === 1) {
+        $allFarz = $instances->every(fn (ChatbotInstance $bot): bool => $bot->hasMansourIntegration());
+        if ($allFarz && ! $request->boolean('list')) {
+            return redirect()->route('ai-chatbot.farz.dashboard');
+        }
+
+        if ($instances->count() === 1 && ! $request->boolean('list')) {
             return redirect()->route('ai-chatbot.workspace.conversations', $instances->first());
         }
 

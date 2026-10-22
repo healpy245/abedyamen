@@ -27,6 +27,8 @@ class AppDevelopmentTicket extends Model
         'ticket_number',
         'title',
         'description',
+        'restaurant_name',
+        'support_ticket_id',
         'type',
         'priority',
         'status',

@@ -215,6 +215,28 @@ class ChatbotConversation extends Model
     }
 
     /**
+     * Chats that belong to one WhatsApp line. Untagged chats stay on the live line.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeOnLine(Builder $query, string $lineId, bool $includeUntagged = false): Builder
+    {
+        $lineId = trim($lineId);
+        if ($lineId === '') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $inner) use ($lineId, $includeUntagged): void {
+            $inner->where('metadata->mansour_line', $lineId);
+            if ($includeUntagged) {
+                $inner->orWhereNull('metadata->mansour_line')
+                    ->orWhere('metadata->mansour_line', '');
+            }
+        });
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */

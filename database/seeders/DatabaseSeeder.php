@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
             KamanWhatsappChatbotInstanceSeeder::class,
             MalanCompanyMemberSeeder::class,
             KamanCompanyMemberSeeder::class,
+            SpeedcomCompanyMemberSeeder::class,
+            MowahadaViewerSeeder::class,
+            InvitationViewerSeeder::class,
             KamanSupportWorkerSeeder::class,
         ]);
     }

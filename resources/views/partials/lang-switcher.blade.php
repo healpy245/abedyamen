@@ -1,4 +1,7 @@
 @php
+    if (auth()->user()?->isMowahada()) {
+        return;
+    }
     $currentLocale = app()->getLocale();
     $locales = [
         'ar' => __('form.arabic'),
@@ -7,14 +10,18 @@
     ];
 @endphp
 
-<div class="kaman-lang-switcher">
-    @foreach($locales as $code => $label)
-        <a href="{{ route('lang.switch', $code) }}"
-           class="kaman-lang-link rounded-[7px] px-2.5 py-1 {{ $currentLocale === $code
-               ? 'is-active bg-[#f47a2e] text-white shadow-sm'
-               : 'text-[#a78a6c] hover:text-[#f16229] hover:bg-[#f47a2e]/8' }}"
-           @if($currentLocale === $code) aria-current="true" @endif>
-            {{ $code === 'he' ? 'עב' : ($code === 'ar' ? 'ع' : 'EN') }}
-        </a>
-    @endforeach
-</div>
+<details class="ws-lang">
+    <summary aria-label="{{ $locales[$currentLocale] ?? 'Language' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M3 12h18M12 3c2.5 2.8 3.8 5.8 3.8 9s-1.3 6.2-3.8 9c-2.5-2.8-3.8-5.8-3.8-9S9.5 5.8 12 3z"/>
+        </svg>
+    </summary>
+    <div class="ws-lang__menu">
+        @foreach($locales as $code => $label)
+            <a href="{{ route('lang.switch', $code) }}" @if($currentLocale === $code) aria-current="true" @endif>
+                {{ $label }}
+            </a>
+        @endforeach
+    </div>
+</details>

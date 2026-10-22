@@ -8,9 +8,9 @@
         {{ __('app.support_downloads') }}
     </p>
     <div class="mt-3">
-        <a href="{{ route('downloads.kaman-support') }}?v=1.0.10"
+        <a href="{{ route('downloads.kaman-support') }}?v=1.0.11"
            class="kaman-button w-full"
-           download="KamanSupport-1.0.10.apk">
+           download="KamanSupport-1.0.11.apk">
             @include('app-development.partials.icon', ['name' => 'apk'])
             <span>{{ __('app.support_apk') }}</span>
             <span class="text-[11px] font-medium opacity-80">{{ __('app.support_apk_meta') }}@if($supportApkKb !== null) · {{ $supportApkKb }} KB @endif</span>

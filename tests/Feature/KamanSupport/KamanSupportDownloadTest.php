@@ -34,7 +34,7 @@ class KamanSupportDownloadTest extends TestCase
         $this->actingAs($user)
             ->get(route('downloads.kaman-support'))
             ->assertOk()
-            ->assertDownload('KamanSupport-1.0.10.apk');
+            ->assertDownload('KamanSupport-1.0.11.apk');
 
         @unlink($path);
     }

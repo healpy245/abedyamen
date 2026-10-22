@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\FormWorkflowRun;
+use App\Models\User;
 use App\Services\AI\FormWorkflowRunner;
 use App\Services\AI\FullAiAutomationService;
+use App\Services\Form\FormRestaurantTokenStore;
 use App\Services\Form\FormWorkflowRunService;
 use App\Support\KamanUrl;
 use Illuminate\Http\Client\ConnectionException;
@@ -835,10 +837,7 @@ class FormController extends Controller
         ]);
 
         $subdomain = KamanUrl::normalizeSubdomain($validated['subdomain']);
-        $tld = KamanUrl::tldFromEnvironment($validated['environment'] ?? null);
-        $expectedBaseUrl = rtrim(KamanUrl::managerApi($subdomain, $tld), '/');
-
-        $auth = $this->resolveFullAiAuth($request);
+        $auth = $this->matchingKamanSession($request, $subdomain, $validated['environment'] ?? null);
 
         if ($auth === null) {
             return response()->json([
@@ -847,20 +846,51 @@ class FormController extends Controller
             ]);
         }
 
-        $storedBaseUrl = rtrim($auth['base_url'], '/');
-
-        if ($storedBaseUrl !== $expectedBaseUrl) {
-            return response()->json([
-                'success' => true,
-                'authenticated' => false,
-                'message' => 'No active session for this subdomain. Sign in with your username and password.',
-            ]);
-        }
-
         return $this->formJsonSuccess(
             'You are already signed in for this restaurant.',
             ['authenticated' => true]
         );
+    }
+
+    public function restaurantTokens(Request $request, FormRestaurantTokenStore $tokens): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['success' => false, 'error' => 'Sign in first.'], 401);
+        }
+
+        return response()->json([
+            'success' => true,
+            'restaurants' => $tokens->listFor($user),
+        ]);
+    }
+
+    public function forgetRestaurantToken(Request $request, FormRestaurantTokenStore $tokens): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['success' => false, 'error' => 'Sign in first.'], 401);
+        }
+
+        $validated = $request->validate([
+            'subdomain' => 'required|string|max:64',
+            'environment' => 'nullable|string|in:dev,rest',
+        ]);
+
+        $subdomain = KamanUrl::normalizeSubdomain($validated['subdomain']);
+        $environment = KamanUrl::tldFromEnvironment($validated['environment'] ?? null);
+        $tokens->forget($user, $subdomain, $environment);
+
+        $expected = rtrim(KamanUrl::managerApi($subdomain, $environment), '/');
+        $auth = $this->resolveFullAiAuth($request);
+        if ($auth !== null && rtrim($auth['base_url'], '/') === $expected) {
+            $request->session()->forget(['full_ai_kaman_token', 'full_ai_kaman_base_url']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'restaurants' => $tokens->listFor($user),
+        ]);
     }
 
     /**
@@ -950,9 +980,9 @@ class FormController extends Controller
                 return $this->formJsonError('Login succeeded but no token was returned.', 502);
             }
 
-            if (! $this->persistFullAiAuth($request, $token, $baseUrl)) {
+            if (! $this->persistFullAiAuth($request, $token, $baseUrl, $username)) {
                 return $this->formJsonError(
-                    'Login succeeded but credentials could not be stored. Ensure storage/framework/sessions is writable or set SESSION_DRIVER=file.',
+                    'Login succeeded but the restaurant token could not be saved. Try again.',
                     503
                 );
             }
@@ -1023,21 +1053,27 @@ class FormController extends Controller
             return null;
         }
 
+        $tld = KamanUrl::tldFromEnvironment($environment ?? $request->input('environment'));
+        $expected = rtrim(KamanUrl::managerApi($subdomain, $tld), '/');
+
         $auth = $this->resolveFullAiAuth($request);
-        if ($auth === null) {
+        if ($auth !== null && rtrim($auth['base_url'], '/') === $expected) {
+            return $auth;
+        }
+
+        $user = $request->user();
+        if (! $user instanceof User) {
             return null;
         }
 
-        $expected = rtrim(KamanUrl::managerApi(
-            $subdomain,
-            KamanUrl::tldFromEnvironment($environment ?? $request->input('environment'))
-        ), '/');
-
-        if (rtrim($auth['base_url'], '/') !== $expected) {
+        $saved = app(FormRestaurantTokenStore::class)->recall($user, $subdomain, $tld);
+        if ($saved === null) {
             return null;
         }
 
-        return $auth;
+        $this->persistFullAiAuth($request, $saved['token'], $saved['base_url']);
+
+        return $saved;
     }
 
     /**
@@ -1090,23 +1126,38 @@ class FormController extends Controller
         ];
     }
 
-    private function persistFullAiAuth(Request $request, string $token, string $baseUrl): bool
+    private function persistFullAiAuth(Request $request, string $token, string $baseUrl, ?string $username = null): bool
     {
+        $baseUrl = rtrim($baseUrl, '/');
+        $sessionStored = false;
+
         try {
             $request->session()->put([
                 'full_ai_kaman_token' => $token,
-                'full_ai_kaman_base_url' => rtrim($baseUrl, '/'),
+                'full_ai_kaman_base_url' => $baseUrl,
             ]);
             $request->session()->save();
-
-            return $request->session()->get('full_ai_kaman_token') === $token;
+            $sessionStored = $request->session()->get('full_ai_kaman_token') === $token;
         } catch (Throwable $e) {
-            Log::error('Full AI auth could not be stored', [
+            Log::error('Full AI auth could not be stored in the session', [
                 'error' => $e->getMessage(),
             ]);
-
-            return false;
         }
+
+        $durableStored = false;
+        $user = $request->user();
+        if ($user instanceof User) {
+            try {
+                app(FormRestaurantTokenStore::class)->remember($user, $baseUrl, $token, $username);
+                $durableStored = true;
+            } catch (Throwable $e) {
+                Log::error('Full AI restaurant token could not be stored', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $sessionStored || $durableStored;
     }
 
     private function formJsonSuccess(string $message, array $extra = []): JsonResponse
@@ -1817,7 +1868,7 @@ class FormController extends Controller
             if ($loggedIn !== null) {
                 $token = $loggedIn['token'];
                 $payload['kaman_base_url'] = $loggedIn['base_url'];
-                $this->persistFullAiAuth($request, $loggedIn['token'], $loggedIn['base_url']);
+                $this->persistFullAiAuth($request, $loggedIn['token'], $loggedIn['base_url'], $username !== '' ? $username : null);
             }
         }
         if ($token === null || $token === '') {

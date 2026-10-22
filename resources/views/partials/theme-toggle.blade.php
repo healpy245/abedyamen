@@ -19,22 +19,28 @@
     function current() {
         return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
     }
-    function apply(theme) {
+    function paint(theme) {
         document.documentElement.classList.toggle('dark', theme === 'dark');
         document.documentElement.setAttribute('data-theme', theme);
-        try { localStorage.setItem(KEY, theme); } catch (e) {}
         document.querySelectorAll('[data-kaman-theme-toggle]').forEach(function (btn) {
             var dark = theme === 'dark';
             btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
             btn.setAttribute('aria-label', dark ? btn.dataset.labelLight : btn.dataset.labelDark);
         });
     }
+    function apply(theme) {
+        paint(theme);
+        try { localStorage.setItem(KEY, theme); } catch (e) {}
+    }
     document.querySelectorAll('[data-kaman-theme-toggle]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             apply(current() === 'dark' ? 'light' : 'dark');
         });
     });
-    apply(current());
+    paint(current());
+    requestAnimationFrame(function () {
+        document.documentElement.classList.add('ws-theme-ready');
+    });
 })();
 </script>
 @endonce

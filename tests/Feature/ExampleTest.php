@@ -10,9 +10,14 @@ class ExampleTest extends TestCase
     public function test_the_welcome_page_is_public(): void
     {
         $this->get('/')
+            ->assertRedirect(route('login'));
+
+        $this->get(route('login'))
             ->assertOk()
-            ->assertSee(__('features.hero_title'))
-            ->assertSee(__('auth.sign_in'))
-            ->assertDontSee('id="your-tools"', false);
+            ->assertSee(__('auth.sign_in'));
+
+        $this->get(route('chatbots.login'))
+            ->assertOk()
+            ->assertSee(__('auth.chatbots_sign_in'));
     }
 }

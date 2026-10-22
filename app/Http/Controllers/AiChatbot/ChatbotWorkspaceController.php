@@ -17,19 +17,31 @@ use App\Models\AiChatbot\ChatbotConversation;
 use App\Models\AiChatbot\ChatbotConversationInstruction;
 use App\Models\AiChatbot\ChatbotInstance;
 use App\Models\AiChatbot\ChatbotMessage;
+use App\Services\AiChatbot\AnalyticsDownloadService;
 use App\Services\AiChatbot\AiChatbotService;
+use App\Services\AiChatbot\AppsPrompt;
 use App\Services\AiChatbot\ChatbotAuditService;
 use App\Services\AiChatbot\ChatbotAuthorizationService;
 use App\Services\AiChatbot\ChatbotGreenApiService;
 use App\Services\AiChatbot\ChatbotInstructionService;
 use App\Services\AiChatbot\ChatbotTestService;
+use App\Services\AiChatbot\KamanBotInsightService;
+use App\Services\AiChatbot\AppsInsightService;
+use App\Services\AiChatbot\DimaInsightService;
+use App\Services\AiChatbot\InviteInsightService;
+use App\Services\AiChatbot\MansourInsightService;
+use App\Services\AiChatbot\MansourLines;
 use App\Services\AiChatbot\KamanPosDemoVideoService;
 use App\Services\AiChatbot\PromptCompiler;
+use App\Services\AiChatbot\WhapiCloudClient;
 use App\Services\Malan\MalanConversationContextService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use RuntimeException;
 use Throwable;
 
@@ -44,6 +56,12 @@ class ChatbotWorkspaceController extends Controller
         protected ChatbotTestService $testService,
         protected ChatbotAuditService $auditService,
         protected MalanConversationContextService $contextService,
+        protected KamanBotInsightService $kamanInsights,
+        protected MansourInsightService $mansourInsights,
+        protected AppsInsightService $appsInsights,
+        protected DimaInsightService $dimaInsights,
+        protected InviteInsightService $inviteInsights,
+        protected AnalyticsDownloadService $downloads,
     ) {}
 
     public function index(Request $request, ChatbotInstance $instance): RedirectResponse
@@ -57,10 +75,12 @@ class ChatbotWorkspaceController extends Controller
     {
         $user = $request->user();
         $this->authz->authorize($user, $instance, ChatbotAuthorizationService::ABILITY_VIEW);
+        $this->queueAppsGreenCatchUp($instance);
 
         $filter = (string) $request->query('filter', 'all');
         $search = (string) $request->query('q', '');
-        $conversations = $this->paginateWorkspaceConversations($instance, $filter, $search);
+        $chatLine = $this->chatLine($request, $instance);
+        $conversations = $this->paginateWorkspaceConversations($instance, $filter, $search, $chatLine);
 
         $activeId = $request->query('conversation');
         $active = null;
@@ -78,6 +98,10 @@ class ChatbotWorkspaceController extends Controller
             'activeConversation' => $active,
             'filter' => $filter,
             'search' => $search,
+            'lines' => $chatLine['lines'],
+            'line' => $chatLine['line'],
+            'insight' => (string) $request->query('insight', 'all'),
+            'analytics' => $this->inboxAnalytics($instance, $chatLine),
             'canReply' => $this->authz->can($user, $instance, ChatbotAuthorizationService::ABILITY_REPLY),
             'canControlBot' => $this->authz->can($user, $instance, ChatbotAuthorizationService::ABILITY_CONTROL_BOT),
             'canManageInstructions' => $this->authz->can($user, $instance, ChatbotAuthorizationService::ABILITY_MANAGE_INSTRUCTIONS),
@@ -87,7 +111,7 @@ class ChatbotWorkspaceController extends Controller
         ]);
     }
 
-    public function showConversation(Request $request, ChatbotInstance $instance, ChatbotConversation $conversation): View|RedirectResponse
+    public function showConversation(Request $request, ChatbotInstance $instance, ChatbotConversation $conversation): View|RedirectResponse|JsonResponse
     {
         $user = $request->user();
         $this->authz->authorize($user, $instance, ChatbotAuthorizationService::ABILITY_VIEW);
@@ -95,9 +119,30 @@ class ChatbotWorkspaceController extends Controller
 
         $conversation->markRead();
 
+        if ($request->boolean('pane')) {
+            $context = $instance->hasMalanIntegration()
+                ? $this->contextService->getActive($conversation)
+                : null;
+
+            return response()->json([
+                'id' => $conversation->id,
+                'html' => view('ai-chatbot.workspace.partials.conversation-pane', [
+                    'instance' => $instance,
+                    'conversation' => $conversation,
+                    'messages' => $conversation->messages()->orderBy('id')->get(),
+                    'analytics' => null,
+                    'contextSummary' => $this->contextService->toPromptSummary($context, $instance),
+                    'canReply' => $this->authz->can($user, $instance, ChatbotAuthorizationService::ABILITY_REPLY),
+                    'canControlBot' => $this->authz->can($user, $instance, ChatbotAuthorizationService::ABILITY_CONTROL_BOT),
+                    'canManageInstructions' => $this->authz->can($user, $instance, ChatbotAuthorizationService::ABILITY_MANAGE_INSTRUCTIONS),
+                ])->render(),
+            ]);
+        }
+
         $filter = (string) $request->query('filter', 'all');
         $search = (string) $request->query('q', '');
-        $conversations = $this->paginateWorkspaceConversations($instance, $filter, $search);
+        $chatLine = $this->chatLine($request, $instance, $conversation);
+        $conversations = $this->paginateWorkspaceConversations($instance, $filter, $search, $chatLine);
 
         $messages = $conversation->messages()->orderBy('id')->get();
         $instructions = $this->instructionService->listForConversation($conversation);
@@ -106,12 +151,16 @@ class ChatbotWorkspaceController extends Controller
             : null;
         $contextSummary = $this->contextService->toPromptSummary($context, $instance);
 
-        return view('ai-chatbot.workspace.conversation', [
+        $data = [
             'instance' => $instance,
             'conversation' => $conversation,
             'conversations' => $conversations,
             'filter' => $filter,
             'search' => $search,
+            'lines' => $chatLine['lines'],
+            'line' => $chatLine['line'],
+            'insight' => (string) $request->query('insight', 'all'),
+            'analytics' => $this->inboxAnalytics($instance, $chatLine),
             'messages' => $messages,
             'instructions' => $instructions,
             'instructionTemplates' => $this->instructionService->templates(),
@@ -122,16 +171,34 @@ class ChatbotWorkspaceController extends Controller
             'role' => $this->authz->resolveRole($user, $instance),
             'showInstanceSwitcher' => $this->authz->instancesForUser($user)->count() > 1,
             'instances' => $this->authz->instancesForUser($user),
-        ]);
+        ];
+
+        if ($request->boolean('pane')) {
+            return response()->json([
+                'id' => $conversation->id,
+                'html' => view('ai-chatbot.workspace.partials.conversation-pane', $data)->render(),
+            ]);
+        }
+
+        return view('ai-chatbot.workspace.conversation', $data);
     }
 
     public function pollConversations(Request $request, ChatbotInstance $instance): JsonResponse
     {
         $this->authz->authorize($request->user(), $instance, ChatbotAuthorizationService::ABILITY_VIEW);
+        $this->queueAppsGreenCatchUp($instance);
 
         $since = $request->query('since');
         $filter = (string) $request->query('filter', 'all');
         $search = (string) $request->query('q', '');
+        $chatLine = $this->chatLine($request, $instance);
+        $lineHealth = $this->lineHealth($instance, $chatLine['lines']);
+        $insight = strtolower(trim((string) $request->query('insight', 'all')));
+        $insightService = $this->insightService($instance);
+        $filtering = ($instance->hasKamanWhatsappIntegration() || $instance->hasMansourIntegration())
+            && $insight !== ''
+            && $insight !== 'all'
+            && $insightService->isValidGroup($insight);
 
         $query = ChatbotConversation::query()
             ->where('instance_id', $instance->id)
@@ -140,25 +207,63 @@ class ChatbotWorkspaceController extends Controller
             ->filterWorkspace($filter === 'all' ? null : $filter)
             ->with('latestMessage')
             ->orderByDesc('last_message_at')
-            ->orderByDesc('id')
-            ->limit(50);
+            ->orderByDesc('id');
+        $this->applyChatLine($query, $chatLine);
 
-        if ($since) {
-            $query->where(function ($q) use ($since): void {
-                $q->where('updated_at', '>', $since)
-                    ->orWhere('last_message_at', '>', $since);
-            });
+        if ($filtering) {
+            $ids = array_values(array_map(
+                'intval',
+                (array) data_get($this->inboxAnalytics($instance, $chatLine), 'conversation_ids.'.$insight, []),
+            ));
+            if ($ids === []) {
+                return response()->json([
+                    'conversations' => [],
+                    'insight' => $insight,
+                    'lines' => $lineHealth,
+                    'server_time' => now()->toIso8601String(),
+                ]);
+            }
+            $query->whereIn('id', $ids)->limit(200);
+        } else {
+            $query->limit(50);
+            if ($since) {
+                $query->where(function ($q) use ($since): void {
+                    $q->where('updated_at', '>', $since)
+                        ->orWhere('last_message_at', '>', $since);
+                });
+            }
         }
 
-        $rows = $query->get()->map(fn (ChatbotConversation $c) => $this->conversationPayload($c));
+        $waitingIds = [];
+        if ($instance->isAppsBot()) {
+            $waitingIds = array_flip(array_map(
+                'intval',
+                (array) data_get($this->inboxAnalytics($instance, $chatLine), 'conversation_ids.'.AppsPrompt::GROUP_WAITING, []),
+            ));
+        }
+        $rows = $query->get()->map(function (ChatbotConversation $c) use ($instance, $waitingIds, $chatLine): array {
+            $viewLine = ($chatLine['line']['id'] ?? null) === 'all' ? 'all' : $chatLine['lineId'];
+            $payload = $this->conversationPayload($c, $viewLine);
+            $waiting = isset($waitingIds[(int) $c->id]);
+            $payload['waiting_account'] = $waiting;
+            $payload['mark_user_url'] = $waiting
+                ? route('ai-chatbot.workspace.conversations.user-created', [$instance, $c])
+                : null;
+
+            return $payload;
+        });
 
         return response()->json([
             'conversations' => $rows,
+            'insight' => $filtering ? $insight : 'all',
+            'lines' => $lineHealth,
             'server_time' => now()->toIso8601String(),
-            'unread_total' => ChatbotConversation::query()
-                ->where('instance_id', $instance->id)
-                ->customerFacing()
-                ->sum('unread_count'),
+            'unread_total' => $this->applyChatLine(
+                ChatbotConversation::query()
+                    ->where('instance_id', $instance->id)
+                    ->customerFacing(),
+                $chatLine,
+            )->sum('unread_count'),
         ]);
     }
 
@@ -185,6 +290,74 @@ class ChatbotWorkspaceController extends Controller
             'conversation' => $this->conversationPayload($conversation->fresh()),
             'server_time' => now()->toIso8601String(),
         ]);
+    }
+
+    public function pollAnalytics(Request $request, ChatbotInstance $instance): JsonResponse
+    {
+        $this->authz->authorize($request->user(), $instance, ChatbotAuthorizationService::ABILITY_VIEW);
+        if ($instance->hasMansourIntegration()) {
+            $chatLine = $this->chatLine($request, $instance);
+
+            return response()->json([
+                'ok' => true,
+                'analytics' => $this->withSendQuota(
+                    $this->insightService($instance)->summarize(
+                        $instance,
+                        $chatLine['lineId'],
+                        $chatLine['includeUntagged'],
+                    ),
+                    $instance,
+                ),
+                'server_time' => now()->toIso8601String(),
+            ]);
+        }
+        $this->assertKamanBot($instance);
+
+        return response()->json([
+            'ok' => true,
+            'analytics' => $this->kamanInsights->summarize($instance),
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
+    public function downloadHistory(Request $request, ChatbotInstance $instance, string $group): JsonResponse
+    {
+        $this->authz->authorize($request->user(), $instance, ChatbotAuthorizationService::ABILITY_VIEW);
+
+        return response()->json($this->downloads->history(
+            $instance,
+            $group,
+            $this->downloads->lineKey($request),
+            null,
+            fn (): array => $this->analyticsBundle($request, $instance, $group),
+        ));
+    }
+
+    public function exportAnalytics(Request $request, ChatbotInstance $instance, string $group): StreamedResponse
+    {
+        $this->authz->authorize($request->user(), $instance, ChatbotAuthorizationService::ABILITY_VIEW);
+        if ((int) $request->query('download', 0) > 0 || $request->boolean('save') || $request->boolean('fresh')) {
+            return $this->downloads->deliver(
+                $request,
+                $instance,
+                $group,
+                null,
+                fn (): array => $this->analyticsBundle($request, $instance, $group),
+            );
+        }
+        if ($instance->hasMansourIntegration()) {
+            $chatLine = $this->chatLine($request, $instance);
+
+            return $this->insightService($instance)->exportCsv(
+                $instance,
+                $group,
+                $chatLine['lineId'],
+                $chatLine['includeUntagged'],
+            );
+        }
+        $this->assertKamanBot($instance);
+
+        return $this->kamanInsights->exportCsv($instance, $group);
     }
 
     public function markRead(Request $request, ChatbotInstance $instance, ChatbotConversation $conversation): JsonResponse
@@ -268,6 +441,91 @@ class ChatbotWorkspaceController extends Controller
         ], $delivery['delivered'] ? 200 : 502);
     }
 
+    public function markUserCreated(Request $request, ChatbotInstance $instance, ChatbotConversation $conversation): JsonResponse
+    {
+        $user = $request->user();
+        $this->authz->authorize($user, $instance, ChatbotAuthorizationService::ABILITY_REPLY);
+        $this->assertConversation($instance, $conversation);
+        if (! $instance->isAppsBot()) {
+            abort(404);
+        }
+
+        $turns = $conversation->messages()
+            ->orderBy('id')
+            ->get(['role', 'message'])
+            ->map(fn (ChatbotMessage $message): array => [
+                'role' => (string) $message->role,
+                'message' => (string) $message->message,
+            ])
+            ->all();
+        if (! in_array(AppsPrompt::GROUP_WAITING, AppsPrompt::result($turns)['groups'], true)) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'المحادثة مش مصنّفة إنها بتنتظر مستخدم.',
+            ], 422);
+        }
+
+        $text = AppsPrompt::accountCreatedFor($conversation->contact_name);
+        $assistant = $conversation->messages()->create([
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'sent_by_user_id' => $user->id,
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'message' => $text,
+            'delivery_status' => $conversation->isWhatsApp() ? 'pending' : 'local',
+        ]);
+        $conversation->forceFill([
+            'bot_mode' => ChatbotConversation::BOT_MODE_ACTIVE,
+            'attention_status' => ChatbotConversation::ATTENTION_NORMAL,
+        ])->save();
+        AppsPrompt::recordAccountVerified($conversation);
+        $conversation->recordAssistantActivity();
+
+        $delivery = [
+            'channel' => $conversation->channel,
+            'delivered' => true,
+            'status' => 'local',
+            'error' => null,
+        ];
+        if ($conversation->isWhatsApp()) {
+            try {
+                $send = $this->greenApiService->sendStaffReply($instance, $conversation, $text);
+                $ok = ($send['status'] ?? 0) >= 200 && ($send['status'] ?? 0) < 300;
+                $assistant->forceFill([
+                    'delivery_status' => $ok ? 'sent' : 'failed',
+                ])->save();
+                $delivery = [
+                    'channel' => 'whatsapp',
+                    'delivered' => $ok,
+                    'status' => $ok ? 'sent' : 'failed',
+                    'error' => $ok ? null : $this->whatsAppSendErrorMessage($send),
+                ];
+            } catch (Throwable $e) {
+                $assistant->forceFill(['delivery_status' => 'failed'])->save();
+                $delivery = [
+                    'channel' => 'whatsapp',
+                    'delivered' => false,
+                    'status' => 'failed',
+                    'error' => 'ما قدرت أرسل الرسالة على واتساب. تأكد من إعدادات Green API.',
+                ];
+                report($e);
+            }
+        }
+
+        $this->auditService->log($instance, 'conversation.user_created', $user, $conversation, [
+            'message_id' => $assistant->id,
+            'delivery' => $delivery,
+        ]);
+
+        return response()->json([
+            'ok' => $delivery['delivered'],
+            'message' => $this->messagePayload($assistant->fresh(), $instance),
+            'conversation' => $this->conversationPayload($conversation->fresh()),
+            'delivery' => $delivery,
+        ], $delivery['delivered'] ? 200 : 502);
+    }
+
     /**
      * @param  array{status?:int,body?:mixed}  $send
      */
@@ -314,6 +572,15 @@ class ChatbotWorkspaceController extends Controller
         $user = $request->user();
         $this->authz->authorize($user, $instance, ChatbotAuthorizationService::ABILITY_VIEW);
 
+        if ($instance->hasMansourIntegration()) {
+            return view('ai-chatbot.workspace.mansour.settings', [
+                'instance' => $instance,
+                'canManageSettings' => $this->authz->can($user, $instance, ChatbotAuthorizationService::ABILITY_MANAGE_SETTINGS),
+                'canControlBot' => $this->authz->can($user, $instance, ChatbotAuthorizationService::ABILITY_CONTROL_BOT),
+                'showInstanceSwitcher' => $this->authz->instancesForUser($user)->count() > 1,
+            ]);
+        }
+
         $sections = $this->promptCompiler->normalize($instance->prompt_sections);
         if ($instance->hasMalanIntegration() && $this->promptCompiler->activeSectionNames($sections) === []) {
             $sections = $this->promptCompiler->sallyMalanDefaultSections();
@@ -333,12 +600,17 @@ class ChatbotWorkspaceController extends Controller
                 'greenapi_configured' => filled($instance->greenapi_url),
                 'webhook_configured' => filled($instance->greenapi_webhook_token),
                 'is_active' => $instance->isBotGloballyActive(),
+                'whatsapp_provider' => app(WhapiCloudClient::class)->provider(),
+                'whapi_ready' => app(WhapiCloudClient::class)->isReady(),
             ],
             'greenapiWebhookUrl' => $this->greenApiService->webhookUrl($instance),
             'showInstanceSwitcher' => $this->authz->instancesForUser($user)->count() > 1,
             'instances' => $this->authz->instancesForUser($user),
             'posDemo' => app(KamanPosDemoVideoService::class)->settings($instance),
             'posDemoReady' => app(KamanPosDemoVideoService::class)->isReady($instance),
+            'whatsappLines' => $user->isChatbotOnly()
+                ? $this->greenApiService->connectedProfiles($instance)
+                : [],
         ]);
     }
 
@@ -405,12 +677,27 @@ class ChatbotWorkspaceController extends Controller
         $this->authz->authorize($user, $instance, ChatbotAuthorizationService::ABILITY_MANAGE_SETTINGS);
 
         $validated = $request->validated();
-        $sections = $this->promptCompiler->normalize($validated['prompt_sections'] ?? []);
+        $whapi = app(WhapiCloudClient::class);
+        $whapiError = $whapi->consumeSettingsRequest($validated);
+        if ($whapiError !== null) {
+            return back()
+                ->withInput()
+                ->withErrors([str_contains($whapiError, 'webhook') ? 'whapi_webhook_url' : 'whapi_token' => __($whapiError)]);
+        }
+
+        $webhookError = $this->greenApiService->assignWebhookToken($instance, $validated['greenapi_webhook_url'] ?? null);
+        if ($webhookError !== null) {
+            return back()
+                ->withInput()
+                ->withErrors(['greenapi_webhook_url' => __($webhookError)]);
+        }
 
         $settings = is_array($instance->integration_settings) ? $instance->integration_settings : [];
-        $settings['ignored_reply_phones'] = ChatbotInstance::parsePhoneList(
-            $validated['ignored_reply_phones'] ?? ''
-        );
+        if (array_key_exists('ignored_reply_phones', $validated)) {
+            $settings['ignored_reply_phones'] = ChatbotInstance::parsePhoneList(
+                (string) $validated['ignored_reply_phones']
+            );
+        }
 
         $instance->forceFill([
             'disabled_message' => $validated['disabled_message'] ?? $instance->disabled_message,
@@ -430,17 +717,32 @@ class ChatbotWorkspaceController extends Controller
             $this->greenApiService->ensureOutgoingPhoneWebhook($instance);
         }
 
-        $this->promptCompiler->applyToInstance($instance, $sections);
+        $sectionNames = [];
+        if (array_key_exists('prompt_sections', $validated)) {
+            $sections = $this->promptCompiler->normalize($validated['prompt_sections']);
+            $this->promptCompiler->applyToInstance($instance, $sections);
+            $sectionNames = $this->promptCompiler->activeSectionNames($sections);
+        } elseif (array_key_exists('system_prompt', $validated)) {
+            $prompt = trim((string) $validated['system_prompt']);
+            if ($prompt !== '') {
+                $instance->forceFill(['system_prompt' => $prompt])->save();
+            }
+        }
 
         $this->auditService->log($instance, 'instance.settings_updated', $user, null, [
-            'sections' => $this->promptCompiler->activeSectionNames($sections),
-            'ignored_reply_phones_count' => count($settings['ignored_reply_phones']),
+            'sections' => $sectionNames,
+            'ignored_reply_phones_count' => count($settings['ignored_reply_phones'] ?? []),
             'greenapi_configured' => filled($instance->greenapi_url),
         ]);
 
+        $status = __('chatbot.workspace.settings_saved');
+        if ($whapi->webhookWarning) {
+            $status .= ' '.__('chatbot.whapi_webhook_failed');
+        }
+
         return redirect()
             ->route('ai-chatbot.workspace.settings', $instance)
-            ->with('status', __('chatbot.workspace.settings_saved'));
+            ->with('status', $status);
     }
 
     public function updateBotActive(Request $request, ChatbotInstance $instance): RedirectResponse
@@ -620,18 +922,327 @@ class ChatbotWorkspaceController extends Controller
     /**
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, ChatbotConversation>
      */
-    private function paginateWorkspaceConversations(ChatbotInstance $instance, string $filter, string $search)
+    /**
+     * @param  array{lines: list<array<string, string>>, line: ?array<string, string>, lineId: ?string, includeUntagged: bool}  $chatLine
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, ChatbotConversation>
+     */
+    private function paginateWorkspaceConversations(ChatbotInstance $instance, string $filter, string $search, array $chatLine)
     {
-        return ChatbotConversation::query()
+        $query = ChatbotConversation::query()
             ->where('instance_id', $instance->id)
             ->customerFacing()
             ->searchContact($search !== '' ? $search : null)
             ->filterWorkspace($filter === 'all' ? null : $filter)
             ->with('latestMessage')
             ->orderByDesc('last_message_at')
-            ->orderByDesc('id')
-            ->paginate(30)
-            ->withQueryString();
+            ->orderByDesc('id');
+        $this->applyChatLine($query, $chatLine);
+
+        return $query->paginate(30)->withQueryString();
+    }
+
+    /**
+     * @return array{format:string,filename:string,ascii:string,sheet:string,widths:list<int>,phone_index:int,table:list<list<string>>}
+     */
+    private function analyticsBundle(Request $request, ChatbotInstance $instance, string $group): array
+    {
+        if ($instance->hasMansourIntegration()) {
+            $chatLine = $this->chatLine($request, $instance);
+
+            return $this->insightService($instance)->exportBundle(
+                $instance,
+                $group,
+                $chatLine['lineId'],
+                $chatLine['includeUntagged'],
+            );
+        }
+        $this->assertKamanBot($instance);
+
+        return $this->kamanInsights->exportBundle($instance, $group);
+    }
+
+    private function insightService(ChatbotInstance $instance): MansourInsightService|AppsInsightService|DimaInsightService|InviteInsightService|KamanBotInsightService
+    {
+        if ($instance->isInviteBot()) {
+            return $this->inviteInsights;
+        }
+
+        if ($instance->isDimaBot()) {
+            return $this->dimaInsights;
+        }
+
+        if ($instance->isAppsBot()) {
+            return $this->appsInsights;
+        }
+
+        return $instance->hasMansourIntegration() ? $this->mansourInsights : $this->kamanInsights;
+    }
+
+    /**
+     * @param  array{lineId: ?string, includeUntagged: bool}  $chatLine
+     * @return array<string, mixed>|null
+     */
+    private function inboxAnalytics(ChatbotInstance $instance, array $chatLine): ?array
+    {
+        $build = function () use ($instance, $chatLine): ?array {
+            if ($instance->hasMansourIntegration()) {
+                return $this->withSendQuota(
+                    $this->insightService($instance)->summarize(
+                        $instance,
+                        $chatLine['lineId'],
+                        $chatLine['includeUntagged'],
+                    ),
+                    $instance,
+                );
+            }
+
+            return $this->kamanAnalytics($instance);
+        };
+
+        if (app()->runningUnitTests()) {
+            return $build();
+        }
+
+        $key = 'inbox-analytics:'.$instance->id.':'.($chatLine['lineId'] ?? 'all').':'.(($chatLine['includeUntagged'] ?? false) ? '1' : '0');
+
+        return Cache::remember($key, now()->addSeconds(20), $build);
+    }
+
+    private function kamanAnalytics(ChatbotInstance $instance): ?array
+    {
+        if (! $instance->hasKamanWhatsappIntegration()) {
+            return null;
+        }
+
+        return $this->kamanInsights->summarize($instance);
+    }
+
+    public function previewGreenSync(Request $request, ChatbotInstance $instance): JsonResponse
+    {
+        $this->assertMowahadaOperator($request, $instance);
+        $chats = $this->greenApiService->missingIncoming($instance);
+        $token = Str::random(40);
+        Cache::put($this->greenSyncKey($instance, $token), $chats, now()->addMinutes(20));
+
+        return response()->json([
+            'ok' => true,
+            'token' => $token,
+            'chats' => array_map(static function (array $chat): array {
+                unset($chat['items']);
+
+                return $chat;
+            }, $chats),
+        ]);
+    }
+
+    public function applyGreenSync(Request $request, ChatbotInstance $instance): JsonResponse
+    {
+        $this->assertMowahadaOperator($request, $instance);
+        $token = trim((string) $request->input('token', ''));
+        $stored = $token === '' ? null : Cache::get($this->greenSyncKey($instance, $token));
+        if (! is_array($stored)) {
+            return response()->json(['ok' => false, 'error' => 'انتهت المعاينة. اضغط مزامنة مرة ثانية.'], 422);
+        }
+
+        $choices = $request->input('choices', []);
+        if (! is_array($choices)) {
+            $choices = [];
+        }
+        $byKey = [];
+        foreach ($stored as $chat) {
+            if (is_array($chat) && isset($chat['key'])) {
+                $byKey[(string) $chat['key']] = $chat;
+            }
+        }
+
+        $continued = 0;
+        $skipped = 0;
+        foreach ($choices as $key => $action) {
+            $action = (string) $action;
+            if (! in_array($action, ['continue', 'skip'], true) || ! isset($byKey[(string) $key])) {
+                continue;
+            }
+            $result = $this->greenApiService->applyMissingChat($instance, $byKey[(string) $key], $action);
+            if ($action === 'continue') {
+                $continued += (int) ($result['stored'] ?? 0);
+            } else {
+                $skipped += (int) ($result['stored'] ?? 0);
+            }
+        }
+
+        Cache::forget($this->greenSyncKey($instance, $token));
+
+        return response()->json([
+            'ok' => true,
+            'continued' => $continued,
+            'skipped' => $skipped,
+        ]);
+    }
+
+    private function assertMowahadaOperator(Request $request, ChatbotInstance $instance): void
+    {
+        $this->authz->authorize($request->user(), $instance, ChatbotAuthorizationService::ABILITY_CONTROL_BOT);
+        if (! $instance->user?->isMowahada() || ! $instance->hasMansourIntegration()) {
+            abort(404);
+        }
+    }
+
+    private function greenSyncKey(ChatbotInstance $instance, string $token): string
+    {
+        return 'green-sync:'.$instance->id.':'.$token;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $analytics
+     * @return array<string, mixed>|null
+     */
+    private function withSendQuota(?array $analytics, ChatbotInstance $instance): ?array
+    {
+        if (! is_array($analytics) || ! $instance->hasMansourIntegration()) {
+            return $analytics;
+        }
+
+        $analytics['numbers_sent'] = $instance->mansourContacts()->whereNotNull('triggered_at')->count();
+        $analytics['numbers_available'] = $instance->mansourContacts()->whereNull('triggered_at')->count();
+
+        return $analytics;
+    }
+
+    /**
+     * Pull the apps bot's Green API queue into the CRM without blocking the page.
+     */
+    private function queueAppsGreenCatchUp(ChatbotInstance $instance): void
+    {
+        if (app()->runningUnitTests() || ! $instance->isAppsBot() || $instance->outboundHeld()) {
+            return;
+        }
+
+        $key = 'apps-green-drain:'.$instance->id;
+        if (! Cache::add($key, 1, 90)) {
+            return;
+        }
+
+        $instanceId = (int) $instance->id;
+        dispatch(function () use ($instanceId, $key): void {
+            try {
+                $bot = ChatbotInstance::query()->find($instanceId);
+                if ($bot instanceof ChatbotInstance) {
+                    $green = app(ChatbotGreenApiService::class);
+                    $green->drainIncomingNotifications($bot, 24);
+                    if (Cache::add('apps-green-import:'.$instanceId, 1, 600)) {
+                        $green->importRecentIncoming($bot, 240);
+                    }
+                }
+            } catch (Throwable $e) {
+                report($e);
+            } finally {
+                Cache::forget($key);
+            }
+        })->afterResponse();
+    }
+
+    /**
+     * Triggered-chat counts and logout/restriction alerts for each WhatsApp line.
+     *
+     * @param  list<array<string, mixed>>|null  $choices
+     * @return list<array{id: string, phone: string, label: string, active: bool, triggered: int, today: int, level: string, level_label: string, alert: ?string}>
+     */
+    private function lineHealth(ChatbotInstance $instance, ?array $choices = null): array
+    {
+        if (! $instance->hasMansourIntegration()) {
+            return [];
+        }
+
+        $lines = app(MansourLines::class);
+        $choices ??= $lines->choices($instance);
+
+        return array_values(array_map(static function (array $line): array {
+            return [
+                'id' => (string) $line['id'],
+                'phone' => (string) ($line['phone'] ?? ''),
+                'label' => (string) ($line['label'] ?? ''),
+                'active' => (bool) ($line['active'] ?? false),
+                'triggered' => (int) ($line['triggered'] ?? 0),
+                'today' => (int) ($line['today'] ?? 0),
+                'cap' => (int) ($line['cap'] ?? \App\Services\AiChatbot\MansourLines::DAY_CAP),
+                'percent' => (int) ($line['percent'] ?? 0),
+                'level' => (string) ($line['level'] ?? 'low'),
+                'level_label' => (string) ($line['level_label'] ?? ''),
+                'alert' => $line['alert'] ?? null,
+            ];
+        }, $choices));
+    }
+
+    /**
+     * The WhatsApp number open on this chats page. Empty when the bot has no lines.
+     *
+     * @return array{lines: list<array<string, string>>, line: ?array<string, string>, lineId: ?string, includeUntagged: bool}
+     */
+    private function chatLine(Request $request, ChatbotInstance $instance, ?ChatbotConversation $conversation = null): array
+    {
+        $empty = ['lines' => [], 'line' => null, 'lineId' => null, 'includeUntagged' => false];
+        if (! $instance->hasMansourIntegration()) {
+            return $empty;
+        }
+
+        $lines = app(MansourLines::class);
+        $choices = $lines->choices($instance);
+        if ($choices === []) {
+            return $empty;
+        }
+        $requested = $request->query('line');
+        if (! is_string($requested) || trim($requested) === '') {
+            $requested = 'all';
+        }
+        if (trim($requested) === 'all') {
+            return [
+                'lines' => $choices,
+                'line' => [
+                    'id' => 'all',
+                    'status' => 'all',
+                    'name' => '',
+                    'phone' => '',
+                    'label' => 'كل الأرقام',
+                    'avatar' => '',
+                    'active' => true,
+                ],
+                'lineId' => null,
+                'includeUntagged' => false,
+            ];
+        }
+        $line = $lines->selected($instance, $requested);
+        if ($line === null) {
+            return $empty;
+        }
+
+        return [
+            'lines' => $choices,
+            'line' => $line,
+            'lineId' => $line['id'],
+            'includeUntagged' => $line['id'] === (string) $lines->idOfLive($instance),
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<ChatbotConversation>  $query
+     * @param  array{lineId: ?string, includeUntagged: bool}  $chatLine
+     * @return \Illuminate\Database\Eloquent\Builder<ChatbotConversation>
+     */
+    private function applyChatLine($query, array $chatLine)
+    {
+        $lineId = $chatLine['lineId'] ?? null;
+        if (! is_string($lineId) || $lineId === '') {
+            return $query;
+        }
+
+        return $query->onLine($lineId, (bool) ($chatLine['includeUntagged'] ?? false));
+    }
+
+    private function assertKamanBot(ChatbotInstance $instance): void
+    {
+        if (! $instance->hasKamanWhatsappIntegration()) {
+            abort(404);
+        }
     }
 
     private function assertConversation(ChatbotInstance $instance, ChatbotConversation $conversation): void
@@ -655,7 +1266,7 @@ class ChatbotWorkspaceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function conversationPayload(ChatbotConversation $conversation): array
+    private function conversationPayload(ChatbotConversation $conversation, ?string $lineId = null): array
     {
         $latest = $conversation->relationLoaded('latestMessage')
             ? $conversation->latestMessage
@@ -674,10 +1285,11 @@ class ChatbotWorkspaceController extends Controller
             'last_message_at' => optional($conversation->last_message_at)?->toIso8601String(),
             'updated_at' => optional($conversation->updated_at)?->toIso8601String(),
             'preview' => $latest ? \Illuminate\Support\Str::limit((string) $latest->message, 80) : '',
-            'url' => route('ai-chatbot.workspace.conversations.show', [
+            'url' => route('ai-chatbot.workspace.conversations.show', array_filter([
                 'instance' => $conversation->instance_id,
                 'conversation' => $conversation->id,
-            ]),
+                'line' => $lineId,
+            ])),
         ];
     }
 

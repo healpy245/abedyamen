@@ -6,6 +6,8 @@
     $res = $sections['restrictions'] ?? [];
     $wf = $sections['malan_workflows'] ?? [];
     $adv = $sections['advanced'] ?? [];
+    $waProvider = old('whatsapp_provider', app(\App\Services\AiChatbot\WhapiCloudClient::class)->provider());
+    $botOnly = auth()->user()?->isChatbotOnly() ?? false;
 @endphp
 @extends('layouts.kaman')
 
@@ -13,7 +15,7 @@
 @section('tag', __('chatbot.workspace.tag'))
 
 @section('content')
-<div class="w-full max-w-4xl mx-auto px-3 sm:px-4 pb-10">
+<div class="w-full {{ $botOnly ? 'max-w-6xl' : 'max-w-4xl' }} mx-auto px-3 sm:px-4 pb-10">
     @include('ai-chatbot.workspace.partials.nav')
 
     @if(session('status'))
@@ -23,6 +25,9 @@
         <div class="mb-4 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 text-sm text-red-600">{{ $errors->first() }}</div>
     @endif
 
+    @if($botOnly)
+        @include('ai-chatbot.workspace.partials.settings-simple')
+    @else
     {{-- Global bot power — green active / red inactive --}}
     <div class="mb-4">
         @include('ai-chatbot.workspace.partials.bot-power-toggle', [
@@ -38,9 +43,19 @@
         <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
             <div><dt class="text-[#a78a6c] text-xs">{{ __('chatbot.workspace.integration_type') }}</dt><dd>{{ $integrationStatus['type'] ?: '—' }}</dd></div>
             <div>
+                <dt class="text-[#a78a6c] text-xs">{{ __('chatbot.whapi_provider') }}</dt>
+                <dd class="font-semibold {{ ($integrationStatus['whapi_ready'] ?? false) ? 'text-emerald-700' : 'text-[#2b1e11]' }}">
+                    {{ ($integrationStatus['whatsapp_provider'] ?? '') === 'whapi' ? __('chatbot.whapi_whapi') : __('chatbot.whapi_green') }}
+                </dd>
+            </div>
+            <div>
                 <dt class="text-[#a78a6c] text-xs">{{ __('chatbot.workspace.greenapi') }}</dt>
-                <dd class="font-semibold {{ $integrationStatus['greenapi_configured'] ? 'text-emerald-700' : 'text-red-600' }}">
-                    {{ $integrationStatus['greenapi_configured'] ? __('chatbot.workspace.configured') : __('chatbot.workspace.not_configured') }}
+                <dd class="font-semibold {{ ($integrationStatus['greenapi_configured'] || ($integrationStatus['whapi_ready'] ?? false)) ? 'text-emerald-700' : 'text-red-600' }}">
+                    @if(($integrationStatus['whapi_ready'] ?? false) && ! $integrationStatus['greenapi_configured'])
+                        {{ __('chatbot.whapi_green_optional') }}
+                    @else
+                        {{ $integrationStatus['greenapi_configured'] ? __('chatbot.workspace.configured') : __('chatbot.workspace.not_configured') }}
+                    @endif
                 </dd>
             </div>
             <div>
@@ -110,33 +125,38 @@
                 <h2 class="text-sm font-semibold text-[#2b1e11]">{{ __('chatbot.greenapi_title') }}</h2>
                 <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_desc') }}</p>
             </div>
-            <div>
-                <label class="kaman-label block" for="greenapi_url">{{ __('chatbot.greenapi_send_url') }}</label>
-                <input id="greenapi_url"
-                       name="greenapi_url"
-                       type="url"
-                       maxlength="2000"
-                       value="{{ old('greenapi_url', $instance->greenapi_url) }}"
-                       placeholder="{{ __('chatbot.greenapi_send_url_placeholder') }}"
-                       class="kaman-input w-full font-mono text-xs"
-                       @disabled(! ($canManageIntegration || $canManageSettings))>
-                <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_send_url_help') }}</p>
-            </div>
-            <div>
-                <label class="kaman-label block" for="greenapi_webhook_url">{{ __('chatbot.greenapi_webhook_url') }}</label>
-                <div class="flex flex-wrap gap-2">
-                    <input id="greenapi_webhook_url"
-                           type="text"
-                           readonly
-                           value="{{ $greenapiWebhookUrl }}"
-                           class="kaman-input min-w-0 flex-1 font-mono text-xs bg-[#faf6f0]">
-                    <button type="button"
-                            class="kaman-button-ghost kaman-button--sm shrink-0"
-                            onclick="navigator.clipboard.writeText(document.getElementById('greenapi_webhook_url').value)">
-                        {{ __('chatbot.copy') }}
-                    </button>
+            @include('ai-chatbot.partials.whatsapp-provider', ['canEdit' => $canManageIntegration || $canManageSettings])
+            <div data-provider-panel="greenapi" @if($waProvider === 'whapi') hidden @endif class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="min-w-0">
+                    <label class="kaman-label block" for="greenapi_url">{{ __('chatbot.greenapi_send_url') }}</label>
+                    <input id="greenapi_url"
+                           name="greenapi_url"
+                           type="url"
+                           maxlength="2000"
+                           value="{{ old('greenapi_url', $instance->greenapi_url) }}"
+                           placeholder="{{ __('chatbot.greenapi_send_url_placeholder') }}"
+                           class="kaman-input w-full font-mono text-xs"
+                           @disabled(! ($canManageIntegration || $canManageSettings))>
+                    <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_send_url_help') }}</p>
                 </div>
-                <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_webhook_url_help') }}</p>
+                <div class="min-w-0">
+                    <label class="kaman-label block" for="greenapi_webhook_url">{{ __('chatbot.greenapi_webhook_url') }}</label>
+                    <div class="flex flex-wrap gap-2">
+                        <input id="greenapi_webhook_url"
+                               name="greenapi_webhook_url"
+                               type="text"
+                               maxlength="2000"
+                               value="{{ old('greenapi_webhook_url', $greenapiWebhookUrl) }}"
+                               class="kaman-input min-w-0 flex-1 font-mono text-xs"
+                               @disabled(! ($canManageIntegration || $canManageSettings))>
+                        <button type="button"
+                                class="kaman-button-ghost kaman-button--sm shrink-0"
+                                onclick="navigator.clipboard.writeText(document.getElementById('greenapi_webhook_url').value)">
+                            {{ __('chatbot.copy') }}
+                        </button>
+                    </div>
+                    <p class="mt-1 text-xs text-[#a78a6c]">{{ __('chatbot.greenapi_webhook_url_help') }}</p>
+                </div>
             </div>
         </div>
 
@@ -318,6 +338,7 @@
                 </button>
             </form>
         </div>
+    @endif
     @endif
 </div>
 @endsection

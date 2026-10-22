@@ -4,9 +4,13 @@ namespace Tests\Feature\AiChatbot;
 
 use App\Models\AiChatbot\ChatbotConversation;
 use App\Models\AiChatbot\ChatbotInstance;
+use App\Models\AiChatbot\ChatbotMessage;
+use App\Models\AiChatbot\MansourContact;
 use App\Models\User;
+use App\Services\AiChatbot\ChatbotGreenApiService;
 use Database\Seeders\WorkspaceUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -58,6 +62,22 @@ class ChatbotGreenApiTest extends TestCase
 
         $instance->refresh();
         $this->assertSame($sendUrl, $instance->greenapi_url);
+    }
+
+    public function test_instance_settings_can_save_a_manual_webhook_token(): void
+    {
+        $user = $this->user();
+        $instance = ChatbotInstance::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->put(route('ai-chatbot.instances.update', $instance), [
+                'name' => $instance->name,
+                'system_prompt' => $instance->system_prompt,
+                'greenapi_webhook_url' => 'https://kaman-workspace.com/ai-chatbot/webhook/greenapi/manualtoken1234',
+            ])
+            ->assertRedirect(route('ai-chatbot.instances.show', $instance));
+
+        $this->assertSame('manualtoken1234', $instance->fresh()->greenapi_webhook_token);
     }
 
     public function test_new_instance_autogenerates_webhook_token(): void
@@ -513,5 +533,267 @@ class ChatbotGreenApiTest extends TestCase
             ->assertJsonPath('ignored', true);
 
         $this->assertSame(ChatbotConversation::BOT_MODE_ACTIVE, $conversation->fresh()->bot_mode);
+    }
+
+    public function test_apps_drain_continues_a_triggered_chat_after_another_line_times_out(): void
+    {
+        $user = $this->user();
+        $first = 'https://7107.api.greenapi.com/waInstance111/sendMessage/token-a';
+        $second = 'https://7107.api.greenapi.com/waInstance222/sendMessage/token-b';
+        $instance = ChatbotInstance::factory()->create([
+            'user_id' => $user->id,
+            'is_active' => true,
+            'bot_activated_at' => now(),
+            'integration_type' => 'mansour',
+            'greenapi_url' => $first,
+            'greenapi_webhook_token' => 'apps-drain-token',
+            'integration_settings' => [
+                'role' => 'apps',
+                'greenapi_lines' => [
+                    ['url' => $first, 'status' => 'live', 'active' => true],
+                    ['url' => $second, 'status' => 'live', 'active' => true],
+                ],
+            ],
+        ]);
+        MansourContact::query()->create([
+            'instance_id' => $instance->id,
+            'name' => 'سامي',
+            'phone' => '972501112233',
+            'phone_normalized' => '972501112233',
+            'chat_id' => '972501112233@c.us',
+            'triggered_at' => now()->subDay(),
+            'triggered_lines' => ['222' => true],
+        ]);
+
+        $reads = 0;
+        Http::fake(function ($request) use (&$reads) {
+            $url = $request->url();
+            if (str_contains($url, 'waInstance111/receiveNotification')) {
+                throw new ConnectionException('timed out');
+            }
+            if (str_contains($url, 'waInstance222/receiveNotification')) {
+                $reads++;
+                if ($reads === 1) {
+                    return Http::response([
+                        'receiptId' => 55,
+                        'body' => [
+                            'typeWebhook' => 'incomingMessageReceived',
+                            'timestamp' => now()->subHours(3)->timestamp,
+                            'senderData' => [
+                                'chatId' => '972501112233@c.us',
+                                'senderName' => 'سامي',
+                            ],
+                            'messageData' => [
+                                'textMessageData' => ['textMessage' => 'بدي التطبيق'],
+                                'idMessage' => 'queued-1',
+                            ],
+                        ],
+                    ], 200);
+                }
+
+                return Http::response(null, 200);
+            }
+
+            return Http::response(['result' => true], 200);
+        });
+
+        $result = app(ChatbotGreenApiService::class)->drainIncomingNotifications($instance, 4);
+
+        $this->assertSame(2, $result['lines']);
+        $this->assertSame(0, $result['processed']);
+        $this->assertFalse(ChatbotMessage::query()->where('external_message_id', 'queued-1')->exists());
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'waInstance222/deleteNotification') && str_contains($request->url(), '/55'));
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'waInstance111/deleteNotification'));
+    }
+
+    public function test_apps_journal_import_stores_a_missed_triggered_message(): void
+    {
+        $user = $this->user();
+        $url = 'https://7107.api.greenapi.com/waInstance333/sendMessage/token-c';
+        $instance = ChatbotInstance::factory()->create([
+            'user_id' => $user->id,
+            'is_active' => true,
+            'bot_activated_at' => now(),
+            'integration_type' => 'mansour',
+            'greenapi_url' => $url,
+            'integration_settings' => [
+                'role' => 'apps',
+                'greenapi_lines' => [
+                    ['url' => $url, 'status' => 'live', 'active' => true],
+                ],
+            ],
+        ]);
+        MansourContact::query()->create([
+            'instance_id' => $instance->id,
+            'name' => 'ليلى',
+            'phone' => '972509998877',
+            'phone_normalized' => '972509998877',
+            'chat_id' => '972509998877@c.us',
+            'triggered_at' => now()->subDay(),
+            'triggered_lines' => ['333' => true],
+        ]);
+
+        Http::fake([
+            '7107.api.greenapi.com/waInstance333/lastIncomingMessages/*' => Http::response([
+                [
+                    'type' => 'incoming',
+                    'idMessage' => 'journal-1',
+                    'timestamp' => now()->subHour()->timestamp,
+                    'typeMessage' => 'textMessage',
+                    'chatId' => '972509998877@c.us',
+                    'senderName' => 'ليلى',
+                    'textMessage' => 'نزلت التطبيق',
+                ],
+            ], 200),
+            '7107.api.greenapi.com/*' => Http::response(['result' => true], 200),
+        ]);
+
+        $result = app(ChatbotGreenApiService::class)->importRecentIncoming($instance, 240);
+
+        $this->assertSame(0, $result['imported']);
+        $this->assertFalse(ChatbotMessage::query()->where('external_message_id', 'journal-1')->exists());
+    }
+
+    public function test_apps_resume_continues_a_chat_whose_customer_line_has_no_reply(): void
+    {
+        $user = $this->user();
+        $instance = ChatbotInstance::factory()->create([
+            'user_id' => $user->id,
+            'is_active' => true,
+            'integration_type' => 'mansour',
+            'integration_settings' => ['role' => 'apps'],
+        ]);
+        $conversation = ChatbotConversation::query()->create([
+            'user_id' => $user->id,
+            'instance_id' => $instance->id,
+            'channel' => ChatbotConversation::CHANNEL_WHATSAPP,
+            'external_chat_id' => '972501110000@c.us',
+            'bot_mode' => ChatbotConversation::BOT_MODE_ACTIVE,
+            'last_message_at' => now(),
+            'metadata' => ['mansour_conversation_version' => 3, 'mansour_burst_open' => true],
+        ]);
+        $conversation->messages()->create([
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'message' => 'وين الرابط',
+        ]);
+
+        $result = app(ChatbotGreenApiService::class)->resumeUnansweredApps($instance);
+
+        $this->assertSame(1, $result['resumed']);
+    }
+
+    public function test_sync_preview_then_skip_saves_without_continuing(): void
+    {
+        $owner = User::where('email', User::MOWAHADA_EMAIL)->firstOrFail();
+        $url = 'https://7107.api.greenapi.com/waInstance333/sendMessage/token-c';
+        $lineId = app(\App\Services\AiChatbot\MansourLines::class)->idFor($url);
+        $instance = ChatbotInstance::factory()->create([
+            'user_id' => $owner->id,
+            'is_active' => true,
+            'bot_activated_at' => now()->subDay(),
+            'integration_type' => 'mansour',
+            'greenapi_url' => $url,
+            'integration_settings' => [
+                'role' => 'invite',
+                'greenapi_lines' => [
+                    ['url' => $url, 'status' => 'live', 'active' => true],
+                ],
+            ],
+        ]);
+        MansourContact::query()->create([
+            'instance_id' => $instance->id,
+            'name' => 'آية',
+            'phone' => '972501112233',
+            'phone_normalized' => '972501112233',
+            'chat_id' => '972501112233@c.us',
+            'triggered_at' => now()->subHours(3),
+            'triggered_lines' => [$lineId => true],
+        ]);
+
+        Http::fake([
+            '7107.api.greenapi.com/waInstance333/lastIncomingMessages/*' => Http::response([
+                [
+                    'type' => 'incoming',
+                    'idMessage' => 'missed-1',
+                    'timestamp' => now()->subMinutes(20)->timestamp,
+                    'typeMessage' => 'textMessage',
+                    'chatId' => '972501112233@c.us',
+                    'senderName' => 'آية',
+                    'textMessage' => 'صعب ولله',
+                ],
+            ], 200),
+            '7107.api.greenapi.com/*' => Http::response(['result' => true], 200),
+        ]);
+
+        $green = app(ChatbotGreenApiService::class);
+        $chats = $green->missingIncoming($instance);
+
+        $this->assertCount(1, $chats);
+        $this->assertSame('صعب ولله', $chats[0]['preview']);
+        $this->assertFalse(ChatbotMessage::query()->where('external_message_id', 'missed-1')->exists());
+
+        $green->applyMissingChat($instance, $chats[0], 'skip');
+
+        $message = ChatbotMessage::query()->where('external_message_id', 'missed-1')->first();
+        $this->assertNotNull($message);
+        $this->assertSame('user', $message->role);
+        $conversation = $message->conversation;
+        $this->assertFalse((bool) data_get($conversation?->metadata, 'mansour_burst_open'));
+        $this->assertSame(0, $conversation?->messages()->where('role', 'assistant')->count());
+    }
+
+    public function test_sync_continue_opens_the_listening_burst(): void
+    {
+        $owner = User::where('email', User::MOWAHADA_EMAIL)->firstOrFail();
+        $url = 'https://7107.api.greenapi.com/waInstance444/sendMessage/token-d';
+        $lineId = app(\App\Services\AiChatbot\MansourLines::class)->idFor($url);
+        $instance = ChatbotInstance::factory()->create([
+            'user_id' => $owner->id,
+            'is_active' => true,
+            'bot_activated_at' => now()->subDay(),
+            'integration_type' => 'mansour',
+            'greenapi_url' => $url,
+            'integration_settings' => [
+                'role' => 'youth',
+                'greenapi_lines' => [
+                    ['url' => $url, 'status' => 'live', 'active' => true],
+                ],
+            ],
+        ]);
+        MansourContact::query()->create([
+            'instance_id' => $instance->id,
+            'name' => 'يامن',
+            'phone' => '972504445566',
+            'phone_normalized' => '972504445566',
+            'chat_id' => '972504445566@c.us',
+            'triggered_at' => now()->subHours(2),
+            'triggered_lines' => [$lineId => true],
+        ]);
+
+        Http::fake([
+            '7107.api.greenapi.com/*' => Http::response([
+                [
+                    'type' => 'incoming',
+                    'idMessage' => 'missed-2',
+                    'timestamp' => now()->subMinutes(10)->timestamp,
+                    'typeMessage' => 'textMessage',
+                    'chatId' => '972504445566@c.us',
+                    'senderName' => 'يامن',
+                    'textMessage' => 'الله يعافيك',
+                ],
+            ], 200),
+        ]);
+
+        $green = app(ChatbotGreenApiService::class);
+        $chats = $green->missingIncoming($instance);
+        $this->assertCount(1, $chats);
+
+        $green->applyMissingChat($instance, $chats[0], 'continue');
+
+        $message = ChatbotMessage::query()->where('external_message_id', 'missed-2')->first();
+        $this->assertNotNull($message);
+        $this->assertTrue((bool) data_get($message->conversation?->metadata, 'mansour_burst_open'));
     }
 }

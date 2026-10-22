@@ -262,13 +262,13 @@
             color: #f16229;
         }
         .menu-agent__log {
-            flex: 1;
+            flex: 1 1 auto;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
             padding: 0.9rem 0;
-            min-height: 8rem;
+            min-height: 0;
             scroll-behavior: smooth;
         }
         .menu-agent__bubble {
@@ -327,6 +327,7 @@
             animation: menu-agent-pulse 1.1s ease-in-out infinite;
         }
         .menu-agent__composer {
+            flex: 0 1 auto;
             border-top: 1px solid var(--kaman-line, #f1dfc5);
             padding-top: 0.75rem;
             display: flex;
@@ -334,9 +335,14 @@
             gap: 0.55rem;
         }
         .menu-agent__pending {
+            flex: 0 1 auto;
             display: flex;
             flex-wrap: wrap;
+            align-content: flex-start;
             gap: 0.35rem;
+            min-height: 0;
+            max-height: 5.5rem;
+            overflow-y: auto;
         }
         .menu-agent__pending-chip {
             font-size: 0.7rem;
@@ -356,13 +362,23 @@
             border-color: #f7c4a0;
             color: #9a3412;
         }
-        .menu-agent__row {
+        .menu-agent__actions {
+            flex-shrink: 0;
             display: flex;
             flex-wrap: wrap;
             gap: 0.45rem;
+        }
+        .menu-agent__row {
+            flex-shrink: 0;
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 0.45rem;
             align-items: flex-end;
         }
-        .menu-agent__input {
+        .menu-agent__row .menu-agent__input {
+            flex: 1 1 auto;
+            width: auto;
+            min-width: 0;
             min-height: 2.75rem;
             resize: none;
             transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -414,8 +430,14 @@
         }
     </style>
 </head>
-<body class="antialiased">
+<body class="antialiased {{ auth()->check() ? 'kaman-signed-in' : '' }}">
     @include('partials.boot-splash')
+
+    @if(auth()->check())
+    <div class="kaman-shell">
+        @include('partials.sidebar', ['activeProject' => 'form'])
+        <div class="kaman-shell__main">
+    @endif
 
     @include('partials.topbar', [
         'tagText' => __('form.tag'),
@@ -1580,7 +1602,7 @@
                     <form id="menuAgentForm" class="menu-agent__composer">
                         <p id="menuAgentLoginHint" class="text-xs text-amber-700">{{ __('form.agent_need_login') }}</p>
                         <div id="menuAgentPending" class="menu-agent__pending" hidden></div>
-                        <div class="menu-agent__row">
+                        <div class="menu-agent__actions">
                             <label class="kaman-button-ghost shrink-0 cursor-pointer">
                                 <input id="menuAgentFiles" type="file" class="hidden" multiple accept="image/*,application/pdf,.json,.txt,.csv">
                                 {{ __('form.agent_attach') }}
@@ -1589,9 +1611,11 @@
                                 <input id="menuAgentMealFiles" type="file" class="hidden" multiple accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp">
                                 {{ __('form.agent_meal_photos') }}
                             </label>
+                        </div>
+                        <div class="menu-agent__row">
                             <textarea
                                 id="menuAgentInput"
-                                class="kaman-input menu-agent__input w-full"
+                                class="kaman-input menu-agent__input"
                                 rows="2"
                                 placeholder="{{ __('form.agent_placeholder') }}"
                                 disabled
@@ -4131,6 +4155,10 @@
             }
         })();
     </script>
+    @if(auth()->check())
+        </div>
+    </div>
+    @endif
 </body>
 </html>
 

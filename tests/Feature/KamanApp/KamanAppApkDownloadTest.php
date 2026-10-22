@@ -33,7 +33,7 @@ class KamanAppApkDownloadTest extends TestCase
         $this->withToken('other-customer-token')
             ->get('/api/kaman-app/v1/apk')
             ->assertOk()
-            ->assertDownload('Kaman-3.0.16.apk');
+            ->assertDownload('Kaman-3.0.20.apk');
 
         @unlink($path);
     }
@@ -57,7 +57,7 @@ class KamanAppApkDownloadTest extends TestCase
         $this->withToken('yamen-customer-token')
             ->get('/api/kaman-app/v1/apk')
             ->assertOk()
-            ->assertDownload('Kaman-3.0.16.apk');
+            ->assertDownload('Kaman-3.0.20.apk');
 
         @unlink($path);
     }

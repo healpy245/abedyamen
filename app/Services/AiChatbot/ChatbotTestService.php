@@ -93,6 +93,18 @@ class ChatbotTestService
             return $this->recordOriginFactTestReply($instance, $conversation, $message, $campaign);
         }
 
+        if ($instance->isDimaBot()) {
+            return $this->recordDimaTestReply($instance, $conversation, $message);
+        }
+
+        if ($instance->isInviteBot()) {
+            return $this->recordInviteTestReply($instance, $conversation, $message);
+        }
+
+        if ($instance->isAppsBot()) {
+            return $this->recordAppsTestReply($instance, $conversation, $message);
+        }
+
         $closer = app(KamanConversationCloser::class);
         $hasPriorAssistant = $conversation->messages()
             ->where('role', 'assistant')
@@ -347,6 +359,288 @@ class ChatbotTestService
     /**
      * @return array<string, mixed>
      */
+    /**
+     * @return array<string, mixed>
+     */
+    /**
+     * @return array<string, mixed>
+     */
+    private function recordInviteTestReply(ChatbotInstance $instance, ChatbotConversation $conversation, string $userMessage): array
+    {
+        $variant = InvitePrompt::variantOf($instance);
+        $openingMessage = $conversation->messages()->where('role', 'assistant')->orderBy('id')->first();
+        if ($openingMessage === null) {
+            $conversation->messages()->create([
+                'role' => 'assistant',
+                'sender_type' => 'ai',
+                'message_type' => 'text',
+                'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+                'message' => InvitePrompt::greetingFor($conversation->contact_name, $variant),
+                'delivery_status' => 'sent',
+            ]);
+        }
+
+        $conversation->messages()->create([
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_CUSTOMER,
+            'message' => $userMessage,
+        ]);
+
+        $caption = '';
+        $justInvited = false;
+        if (! InvitePrompt::delivered($conversation) && ! InvitePrompt::wantsOut($userMessage)) {
+            $poster = InvitePrompt::posterAttachment($variant);
+            $caption = InvitePrompt::invitationFor(
+                $conversation->contact_name,
+                (string) data_get($instance->integration_settings, 'opening_message'),
+                $variant,
+            );
+            $conversation->messages()->create(array_merge([
+                'role' => 'assistant',
+                'sender_type' => 'ai',
+                'message_type' => is_array($poster) ? 'image' : 'text',
+                'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+                'message' => $caption,
+                'delivery_status' => 'sent',
+            ], $poster ?? []));
+            InvitePrompt::markDelivered($conversation);
+            $justInvited = true;
+        }
+
+        $turns = $conversation->messages()
+            ->whereIn('role', ['user', 'assistant'])
+            ->orderBy('id')
+            ->get(['role', 'message'])
+            ->map(fn (ChatbotMessage $message): array => [
+                'role' => (string) $message->role,
+                'message' => (string) $message->message,
+            ])
+            ->all();
+        $decision = InvitePrompt::nextReply($turns, $conversation->contact_name, InvitePrompt::read($conversation), $variant);
+        if ($justInvited && (trim($decision['text']) === '' || InvitePrompt::invitationIsEnough($decision, $variant))) {
+            InvitePrompt::remember($conversation, InvitePrompt::OPEN, 'انبعتت الدعوة', false);
+            $conversation->recordAssistantActivity();
+
+            return [
+                'ok' => true,
+                'simulation' => true,
+                'conversation_id' => (int) $conversation->id,
+                'user_message' => $userMessage,
+                'assistant_response' => $caption,
+                'duration_ms' => null,
+                'messages' => $this->messageHistory($instance, (int) $conversation->id),
+                'tool_calls' => [],
+                'campaign_id' => null,
+            ];
+        }
+        if (trim($decision['text']) === '') {
+            return [
+                'ok' => false,
+                'simulation' => true,
+                'error' => 'ما في رد من النموذج.',
+                'conversation_id' => (int) $conversation->id,
+            ];
+        }
+
+        InvitePrompt::remember($conversation, $decision['stance'], $decision['note'], $decision['close'], (bool) ($decision['plea'] ?? false));
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'message' => $decision['text'],
+            'delivery_status' => 'sent',
+        ]);
+        if ($decision['close']) {
+            $conversation->forceFill(['bot_mode' => ChatbotConversation::BOT_MODE_PAUSED])->save();
+        }
+        $conversation->recordAssistantActivity();
+
+        return [
+            'ok' => true,
+            'simulation' => true,
+            'conversation_id' => (int) $conversation->id,
+            'user_message' => $userMessage,
+            'assistant_response' => $decision['text'],
+            'duration_ms' => null,
+            'messages' => $this->messageHistory($instance, (int) $conversation->id),
+            'tool_calls' => [],
+            'campaign_id' => null,
+        ];
+    }
+
+    private function recordDimaTestReply(ChatbotInstance $instance, ChatbotConversation $conversation, string $userMessage): array
+    {
+        if (! $conversation->messages()->where('role', 'assistant')->exists()) {
+            $conversation->messages()->create([
+                'role' => 'assistant',
+                'sender_type' => 'ai',
+                'message_type' => 'text',
+                'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+                'message' => DimaEngine::openingFor($conversation->contact_name),
+                'delivery_status' => 'sent',
+            ]);
+        }
+
+        $conversation->messages()->create([
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_CUSTOMER,
+            'message' => $userMessage,
+        ]);
+
+        $turns = $conversation->messages()
+            ->whereIn('role', ['user', 'assistant'])
+            ->orderBy('id')
+            ->get(['role', 'message'])
+            ->map(fn (ChatbotMessage $message): array => [
+                'role' => (string) $message->role,
+                'message' => (string) $message->message,
+            ])
+            ->all();
+        $decision = DimaEngine::nextReply($turns, $conversation->contact_name, DimaEngine::read($conversation));
+        if (trim($decision['text']) === '') {
+            return [
+                'ok' => false,
+                'simulation' => true,
+                'error' => 'ما في رد من النموذج.',
+                'conversation_id' => (int) $conversation->id,
+            ];
+        }
+
+        DimaEngine::remember($conversation, $decision['stance'], $decision['note'], $decision['close'], $decision['memory'] ?? [], $decision['stage'] ?? null, is_array($decision['identity'] ?? null) ? $decision['identity'] : null);
+        foreach (is_array($decision['clips'] ?? null) ? $decision['clips'] : [] as $clip) {
+            if (! is_array($clip) || trim((string) ($clip['path'] ?? '')) === '') {
+                continue;
+            }
+            $conversation->messages()->create([
+                'role' => 'assistant',
+                'sender_type' => 'ai',
+                'message_type' => 'video',
+                'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+                'message' => '',
+                'delivery_status' => 'sent',
+                'attachment_disk' => (string) ($clip['disk'] ?? 'public'),
+                'attachment_path' => (string) $clip['path'],
+                'attachment_mime' => 'video/mp4',
+                'metadata' => ['dima_impact_clip' => (string) ($clip['id'] ?? '')],
+            ]);
+        }
+        if (($decision['video'] ?? false) === true) {
+            $already = $conversation->messages()
+                ->where('role', 'assistant')
+                ->where('message_type', 'video')
+                ->where('metadata->dima_no_vote_video', true)
+                ->exists();
+            if (! $already) {
+                $conversation->messages()->create([
+                    'role' => 'assistant',
+                    'sender_type' => 'ai',
+                    'message_type' => 'video',
+                    'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+                    'message' => '',
+                    'delivery_status' => 'sent',
+                    'attachment_disk' => DimaPrompt::NO_VOTE_VIDEO_DISK,
+                    'attachment_path' => DimaPrompt::NO_VOTE_VIDEO_PATH,
+                    'attachment_mime' => 'video/mp4',
+                    'metadata' => ['dima_no_vote_video' => true],
+                ]);
+            }
+        }
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'message' => $decision['text'],
+            'delivery_status' => 'sent',
+        ]);
+        if ($decision['close']) {
+            $conversation->forceFill(['bot_mode' => ChatbotConversation::BOT_MODE_PAUSED])->save();
+        }
+        $conversation->recordAssistantActivity();
+
+        return [
+            'ok' => true,
+            'simulation' => true,
+            'conversation_id' => (int) $conversation->id,
+            'user_message' => $userMessage,
+            'assistant_response' => $decision['text'],
+            'duration_ms' => null,
+            'messages' => $this->messageHistory($instance, (int) $conversation->id),
+            'tool_calls' => [],
+            'campaign_id' => null,
+        ];
+    }
+
+    private function recordAppsTestReply(ChatbotInstance $instance, ChatbotConversation $conversation, string $userMessage): array
+    {
+        if (! $conversation->messages()->where('role', 'assistant')->exists()) {
+            $conversation->messages()->create([
+                'role' => 'assistant',
+                'sender_type' => 'ai',
+                'message_type' => 'text',
+                'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+                'message' => AppsPrompt::greetingFor($conversation->contact_name),
+                'delivery_status' => 'sent',
+            ]);
+        }
+
+        $conversation->messages()->create([
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_CUSTOMER,
+            'message' => $userMessage,
+        ]);
+
+        $turns = $conversation->messages()
+            ->whereIn('role', ['user', 'assistant'])
+            ->orderBy('id')
+            ->get(['role', 'message'])
+            ->map(fn (ChatbotMessage $message): array => [
+                'role' => (string) $message->role,
+                'message' => (string) $message->message,
+            ])
+            ->all();
+        $memoryVersion = AppsPrompt::memoryVersion($conversation);
+        $decision = AppsPrompt::nextReply(
+            $turns,
+            $conversation->contact_name,
+            AppsPrompt::links($instance),
+            AppsPrompt::memoryOf($conversation),
+            $instance,
+        );
+        AppsPrompt::storeMemory($conversation, $decision['memory'] ?? [], $memoryVersion);
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message_type' => 'text',
+            'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
+            'message' => $decision['text'],
+            'delivery_status' => 'sent',
+        ]);
+        if ($decision['pause']) {
+            $conversation->forceFill(['bot_mode' => ChatbotConversation::BOT_MODE_PAUSED])->save();
+        }
+        $conversation->recordAssistantActivity();
+
+        return [
+            'ok' => true,
+            'simulation' => true,
+            'conversation_id' => (int) $conversation->id,
+            'user_message' => $userMessage,
+            'assistant_response' => $decision['text'],
+            'duration_ms' => null,
+            'messages' => $this->messageHistory($instance, (int) $conversation->id),
+            'tool_calls' => [],
+            'campaign_id' => null,
+        ];
+    }
+
     private function recordPosDemoTestReply(
         ChatbotInstance $instance,
         ChatbotConversation $conversation,

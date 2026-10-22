@@ -10,15 +10,24 @@
     $poweredByAlt = $poweredByAlt ?? 'MFIT';
 
     $navUser = auth()->user();
-    $navProjects = $navUser ? $navUser->accessibleProjects() : [];
-    $activeProject = $activeProject ?? null;
 @endphp
 
-<header class="kaman-topbar sticky top-0 z-30">
+@php
+    $boardWorkspace = ($activeProject ?? null) === \App\Enums\Project::AppDevelopment->value;
+@endphp
+<header class="kaman-topbar sticky top-0 z-40{{ $boardWorkspace ? ' kaman-topbar--board' : '' }}">
     {{-- max-w matches .page-container so the logo lines up with page content. --}}
-    <div class="mx-auto w-full max-w-[90rem] px-4 sm:px-6 py-2 flex items-center justify-between gap-4">
+    <div class="mx-auto flex w-full items-center justify-between gap-3 py-2 {{ $boardWorkspace ? 'kaman-topbar__inner--board px-3 sm:px-4' : 'max-w-[90rem] px-4 sm:px-6' }}">
         <div class="flex items-center gap-3 min-w-0">
-            <a href="{{ $navUser ? route('home') : url('/') }}" class="kaman-logo shrink-0">
+            @if($navUser && ! $navUser->isMowahada() && ! $boardWorkspace)
+                <button type="button"
+                        class="kaman-sidebar-open kaman-button-ghost kaman-button--sm lg:!hidden"
+                        data-kaman-sidebar-open
+                        aria-label="{{ __('app.sidebar_open') }}">
+                    @include('app-development.partials.icon', ['name' => 'menu'])
+                </button>
+            @endif
+            <a href="{{ $navUser ? $navUser->afterLoginUrl() : route('login') }}" class="kaman-logo shrink-0">
                 <span class="kaman-logo__glow" aria-hidden="true"></span>
                 <img src="{{ $logoPath }}" alt="{{ $logoAlt }}" class="kaman-logo__img">
             </a>
@@ -29,7 +38,7 @@
             @endif
         </div>
 
-        <div class="flex items-center gap-2 sm:gap-3">
+        <div class="flex shrink-0 items-center gap-2 sm:gap-3">
             @include('partials.theme-toggle')
             @include('partials.lang-switcher')
 
@@ -37,18 +46,6 @@
                 @if($navUser->canAccessProject(Project::AppDevelopment))
                     @include('app-development.partials.bell')
                 @endif
-                @if(count($navProjects) > 1)
-                    <nav class="hidden lg:flex items-center gap-1" aria-label="{{ __('app.projects') }}">
-                        @foreach($navProjects as $project)
-                            <a href="{{ $project->url() }}"
-                               class="kaman-nav-link"
-                               @if($activeProject === $project->value) aria-current="page" @endif>
-                                {{ $project->label() }}
-                            </a>
-                        @endforeach
-                    </nav>
-                @endif
-
                 <div class="kaman-topbar__rule hidden sm:flex items-center gap-2 ps-2 sm:border-s rtl:border-s-0 rtl:border-e rtl:ps-0 rtl:pe-2">
                     <div class="h-8 w-8 rounded-full bg-[#f47a2e]/12 border border-[#f47a2e]/25 flex items-center justify-center text-[#f16229] text-xs font-bold shrink-0">
                         {{ mb_strtoupper(mb_substr(trim($navUser->name) !== '' ? $navUser->name : $navUser->email, 0, 1)) }}
@@ -79,17 +76,4 @@
         </div>
     </div>
 
-    @if($navUser && count($navProjects) > 1)
-        <div class="kaman-topbar__rule lg:hidden border-t px-4 py-2 overflow-x-auto kaman-scroll">
-            <nav class="flex items-center gap-1 w-max" aria-label="{{ __('app.projects') }}">
-                @foreach($navProjects as $project)
-                    <a href="{{ $project->url() }}"
-                       class="kaman-nav-link"
-                       @if($activeProject === $project->value) aria-current="page" @endif>
-                        {{ $project->label() }}
-                    </a>
-                @endforeach
-            </nav>
-        </div>
-    @endif
 </header>

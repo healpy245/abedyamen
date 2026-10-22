@@ -433,7 +433,7 @@ class ProcessKamanConversationJob implements ShouldQueue
                 continue;
             }
 
-            if ($sendUrl === '') {
+            if (! $greenApi->whapiTransportReady($sendUrl)) {
                 $this->markStale($messageId, 'missing_greenapi_url');
 
                 continue;
@@ -516,38 +516,12 @@ class ProcessKamanConversationJob implements ShouldQueue
 
     private function queueLeadStore(ChatbotConversation $conversation, bool $closed): void
     {
-        if ($closed) {
-            app(KamanWhatsappLeadStoreService::class)->storeFromConversation(
-                $conversation,
-                KamanWhatsappLeadStoreService::REASON_CLOSED,
-            );
-
-            return;
-        }
-
-        $conversationId = (int) $conversation->id;
-        $idleSince = optional($conversation->last_message_at)?->toIso8601String() ?? now()->toIso8601String();
-        $idleMinutes = max(1, (int) config('services.kaman_agents.lead_idle_minutes', 30));
-
-        // Replies already run after the HTTP response. A delayed database job never
-        // runs on this host, so the idle lead has to wait in that same process.
-        dispatch(function () use ($conversationId, $idleSince, $idleMinutes): void {
-            @set_time_limit(($idleMinutes * 60) + 90);
-            sleep($idleMinutes * 60);
-
-            $fresh = ChatbotConversation::query()->find($conversationId);
-            if ($fresh === null) {
-                return;
-            }
-            if ($fresh->last_message_at !== null && $fresh->last_message_at->gt($idleSince)) {
-                return;
-            }
-
-            app(KamanWhatsappLeadStoreService::class)->storeFromConversation(
-                $fresh,
-                KamanWhatsappLeadStoreService::REASON_IDLE,
-            );
-        })->afterResponse();
+        app(KamanWhatsappLeadStoreService::class)->storeFromConversation(
+            $conversation,
+            $closed
+                ? KamanWhatsappLeadStoreService::REASON_CLOSED
+                : KamanWhatsappLeadStoreService::REASON_ENGAGED,
+        );
     }
 
     private function markStale(int $messageId, string $reason): void

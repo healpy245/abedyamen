@@ -13,10 +13,12 @@ use App\Models\AiChatbot\ChatbotInstance;
 use App\Models\AiChatbot\ChatbotMessage;
 use App\Models\Malan\MalanCampaign;
 use App\Models\Malan\MalanCampaignContact;
+use App\Services\AiChatbot\AnalyticsDownloadService;
 use App\Services\AiChatbot\AiChatbotService;
 use App\Services\AiChatbot\ChatbotAuthorizationService;
 use App\Services\AiChatbot\ChatbotGreenApiService;
 use App\Services\AiChatbot\ChatbotTestService;
+use App\Services\AiChatbot\WhapiCloudClient;
 use App\Services\Malan\Campaigns\CampaignInsightService;
 use App\Services\Malan\Campaigns\MalanCampaignService;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +36,7 @@ class MalanCampaignController extends Controller
         protected MalanCampaignService $campaignService,
         protected ChatbotTestService $testService,
         protected CampaignInsightService $insightService,
+        protected AnalyticsDownloadService $downloads,
         protected AiChatbotService $chatbotService,
         protected ChatbotGreenApiService $greenApiService,
     ) {}
@@ -47,8 +50,19 @@ class MalanCampaignController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $campaignLines = [];
+        if ($request->user()?->isChatbotOnly()) {
+            foreach ($campaigns as $campaign) {
+                $campaignLines[$campaign->id] = $this->greenApiService->lineProfile(
+                    (string) $campaign->greenapi_url,
+                    (string) $campaign->name,
+                );
+            }
+        }
+
         return view('ai-chatbot.workspace.campaigns.index', $this->workspaceViewData($request, $instance) + [
             'campaigns' => $campaigns,
+            'campaignLines' => $campaignLines,
             'defaultOpeningMessage' => $this->campaignService->defaultOpeningMessage($instance),
             'hideGlobalBotToggle' => true,
         ]);
@@ -61,7 +75,7 @@ class MalanCampaignController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'greenapi_url' => ['required', 'string', 'max:2000'],
+            'greenapi_url' => ['nullable', 'string', 'max:2000'],
             'opening_message' => ['nullable', 'string', 'max:4000'],
             'system_prompt' => ['nullable', 'string', 'max:100000'],
             'excel' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
@@ -70,7 +84,7 @@ class MalanCampaignController extends Controller
         try {
             $campaign = $this->campaignService->create($instance, $user, [
                 'name' => $validated['name'],
-                'greenapi_url' => $validated['greenapi_url'],
+                'greenapi_url' => (string) ($validated['greenapi_url'] ?? ''),
                 'opening_message' => $validated['opening_message'] ?? null,
                 'system_prompt' => $validated['system_prompt'] ?? null,
                 'excel' => $request->file('excel'),
@@ -205,8 +219,11 @@ class MalanCampaignController extends Controller
             $chatId = $this->campaignWhatsAppChatId($conversation, $campaign);
 
             try {
-                if ($sendUrl === '' || $chatId === '') {
-                    throw new RuntimeException($sendUrl === '' ? 'missing_greenapi_url' : 'missing_chat_id');
+                if ($chatId === '') {
+                    throw new RuntimeException('missing_chat_id');
+                }
+                if (! app(\App\Services\AiChatbot\WhapiCloudClient::class)->transportReady($sendUrl)) {
+                    throw new RuntimeException('missing_greenapi_url');
                 }
                 $send = $this->greenApiService->sendMessage($sendUrl, $chatId, $message);
                 $ok = ($send['status'] ?? 0) >= 200 && ($send['status'] ?? 0) < 300;
@@ -332,6 +349,20 @@ class MalanCampaignController extends Controller
         ]);
     }
 
+    public function downloadHistory(Request $request, ChatbotInstance $instance, MalanCampaign $campaign, string $group): JsonResponse
+    {
+        $this->authorizeMalanWorkspace($request, $instance);
+        $this->assertCampaign($instance, $campaign);
+
+        return response()->json($this->downloads->history(
+            $instance,
+            $group,
+            '',
+            (int) $campaign->id,
+            fn (): array => $this->insightService->exportBundle($campaign, $group),
+        ));
+    }
+
     public function exportAnalytics(
         Request $request,
         ChatbotInstance $instance,
@@ -340,6 +371,15 @@ class MalanCampaignController extends Controller
     ): StreamedResponse {
         $this->authorizeMalanWorkspace($request, $instance);
         $this->assertCampaign($instance, $campaign);
+        if ((int) $request->query('download', 0) > 0 || $request->boolean('save') || $request->boolean('fresh')) {
+            return $this->downloads->deliver(
+                $request,
+                $instance,
+                $group,
+                (int) $campaign->id,
+                fn (): array => $this->insightService->exportBundle($campaign, $group),
+            );
+        }
 
         return $this->insightService->exportExcel($campaign, $group);
     }
@@ -354,6 +394,9 @@ class MalanCampaignController extends Controller
             'webhookUrl' => $this->campaignService->webhookUrl($campaign),
             'canEdit' => ! $campaign->isRunning(),
             'hideGlobalBotToggle' => true,
+            'campaignLine' => $request->user()?->isChatbotOnly()
+                ? $this->greenApiService->lineProfile((string) $campaign->greenapi_url, (string) $campaign->name)
+                : null,
         ]);
     }
 
@@ -364,16 +407,32 @@ class MalanCampaignController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'greenapi_url' => ['required', 'string', 'max:2000'],
+            'greenapi_url' => ['nullable', 'string', 'max:2000'],
             'opening_message' => ['required', 'string', 'max:4000'],
             'system_prompt' => ['required', 'string', 'max:100000'],
             'excel' => ['nullable', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
+            'greenapi_webhook_url' => ['nullable', 'string', 'max:2000'],
+            'whatsapp_provider' => ['sometimes', 'in:greenapi,whapi'],
+            'whapi_token' => ['nullable', 'string', 'max:2000'],
+            'whapi_webhook_url' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        $whapiError = app(WhapiCloudClient::class)->consumeSettingsRequest($validated);
+        if ($whapiError !== null) {
+            return back()->withInput()->withErrors([
+                str_contains($whapiError, 'webhook') ? 'whapi_webhook_url' : 'whapi_token' => __($whapiError),
+            ]);
+        }
+
+        $webhookError = $this->campaignService->assignWebhookToken($campaign, $validated['greenapi_webhook_url'] ?? null);
+        if ($webhookError !== null) {
+            return back()->withInput()->withErrors(['greenapi_webhook_url' => __($webhookError)]);
+        }
 
         try {
             $this->campaignService->updateSettings($campaign, [
                 'name' => $validated['name'],
-                'greenapi_url' => $validated['greenapi_url'],
+                'greenapi_url' => (string) ($validated['greenapi_url'] ?? ''),
                 'opening_message' => $validated['opening_message'],
                 'system_prompt' => $validated['system_prompt'],
                 'excel' => $request->file('excel'),

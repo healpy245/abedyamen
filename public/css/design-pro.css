@@ -1,0 +1,164 @@
+/*
+ * Concept B — Workspace Pro.
+ * Light warm surfaces from the original Kaman page tokens.
+ */
+
+.concept-pro {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--kaman-page-from) 0%, var(--kaman-page-mid) 42%, var(--kaman-page-to) 100%);
+    color: var(--kaman-text);
+    font-family: Poppins, sans-serif;
+}
+
+html[lang="ar"] .concept-pro { font-family: Almarai, sans-serif; }
+html[lang="he"] .concept-pro { font-family: Heebo, sans-serif; }
+
+.pro-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 22px 28px 8px;
+}
+
+.pro-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: inherit;
+    text-decoration: none;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+}
+
+.pro-brand img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+
+.pro-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px 18px;
+}
+
+.pro-links a {
+    color: var(--kaman-text-muted);
+    font-size: 13.5px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.pro-links a:hover { color: var(--kaman-primary-hover); }
+
+.pro {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 56px 28px 120px;
+}
+
+.pro-hello {
+    margin: 0;
+    font-size: clamp(36px, 5vw, 52px);
+    font-weight: 500;
+    letter-spacing: -0.045em;
+    line-height: 1.05;
+}
+
+.pro-lead {
+    margin: 14px 0 0;
+    max-width: 36rem;
+    color: var(--kaman-text-muted);
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+.pro h2 {
+    margin: 48px 0 8px;
+    color: var(--kaman-ink-muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.pro-list {
+    border-top: 1px solid var(--kaman-border);
+}
+
+.pro-list a {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 18px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--kaman-border);
+    color: inherit;
+    text-decoration: none;
+}
+
+.pro-list a:hover strong { color: var(--kaman-primary-hover); }
+
+.pro-list small {
+    padding-top: 3px;
+    color: var(--kaman-primary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pro-list strong {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.pro-list p {
+    margin: 4px 0 0;
+    color: var(--kaman-text-muted);
+    font-size: 14px;
+}
+
+.pro-empty {
+    margin: 0;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--kaman-border);
+    color: var(--kaman-text-muted);
+}
+
+.pro-doors {
+    display: grid;
+    gap: 0;
+}
+
+.pro-doors a {
+    display: block;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--kaman-border);
+    color: inherit;
+    text-decoration: none;
+}
+
+.pro-doors strong {
+    display: block;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+}
+
+.pro-doors a:hover strong { color: var(--kaman-primary-hover); }
+
+.pro-doors p {
+    margin: 6px 0 0;
+    color: var(--kaman-text-muted);
+    font-size: 14px;
+}
+
+@media (max-width: 700px) {
+    .pro-bar { align-items: flex-start; flex-direction: column; }
+    .pro-list a { grid-template-columns: 1fr; gap: 4px; }
+}

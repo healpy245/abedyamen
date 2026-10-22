@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Malan;
 
+use App\Models\AiChatbot\ChatbotConversation;
 use App\Models\AiChatbot\ChatbotInstance;
 use App\Models\Malan\MalanCampaign;
 use App\Models\Malan\MalanCampaignContact;
@@ -102,6 +103,29 @@ class MalanCampaignLoopGuardTest extends TestCase
             MalanCampaign::STATUS_COMPLETED,
         ], true));
         $this->assertGreaterThanOrEqual(1, $started['sent']);
+        $this->assertSame(0, ChatbotConversation::query()->where('campaign_id', $campaign->id)->count());
+
+        $contact = MalanCampaignContact::query()->where('campaign_id', $campaign->id)->firstOrFail();
+        $this->assertSame('no_response', $contact->insight_group);
+        $this->assertNull($contact->conversation_id);
+        $this->assertSame('MSG1', $contact->metadata['outbound_id_message'] ?? null);
+
+        $echo = Request::create('/webhook', 'POST', [
+            'typeWebhook' => 'incomingMessageReceived',
+            'idMessage' => 'MSG1',
+            'senderData' => [
+                'chatId' => '972533046830@c.us',
+                'senderName' => 'Test',
+            ],
+            'messageData' => [
+                'typeMessage' => 'textMessage',
+                'textMessageData' => ['textMessage' => 'hello'],
+                'fromMe' => false,
+            ],
+        ]);
+        $echoResult = app(ChatbotGreenApiService::class)->handleWebhook($instance->fresh(), $echo);
+        $this->assertTrue($echoResult['ignored'] ?? false);
+        $this->assertSame(0, ChatbotConversation::query()->where('campaign_id', $campaign->id)->count());
     }
 
     public function test_main_webhook_routes_campaign_contact_to_leads_bot(): void
@@ -169,5 +193,9 @@ class MalanCampaignLoopGuardTest extends TestCase
         $this->assertTrue($result['ok'] ?? false);
         $this->assertSame('campaign_lead_bot', $result['routed'] ?? null);
         $this->assertSame($campaign->id, $result['campaign_id'] ?? null);
+        $this->assertSame(1, ChatbotConversation::query()->where('campaign_id', $campaign->id)->count());
+        $this->assertNotNull(
+            MalanCampaignContact::query()->where('campaign_id', $campaign->id)->value('conversation_id')
+        );
     }
 }

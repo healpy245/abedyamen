@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Posts a Kaman Agents CRM lead when a WhatsApp sales conversation ends.
+ * Posts a Kaman Agents CRM lead once a WhatsApp customer engages,
+ * then refreshes that lead as later replies add detail.
  */
 class KamanWhatsappLeadStoreService
 {
@@ -22,6 +23,8 @@ class KamanWhatsappLeadStoreService
     public const REASON_CLOSED = 'closed';
 
     public const REASON_IDLE = 'idle';
+
+    public const REASON_ENGAGED = 'engaged';
 
     public function __construct(
         protected KamanAgentsApiClient $apiClient,
@@ -53,6 +56,10 @@ class KamanWhatsappLeadStoreService
         }
 
         if ($this->alreadyStored($conversation)) {
+            if ($reason === self::REASON_ENGAGED) {
+                return $this->refreshStoredLead($conversation);
+            }
+
             return ['stored' => false, 'skipped' => 'already_stored'];
         }
 
@@ -73,6 +80,10 @@ class KamanWhatsappLeadStoreService
         try {
             $conversation->refresh();
             if ($this->alreadyStored($conversation)) {
+                if ($reason === self::REASON_ENGAGED) {
+                    return $this->refreshStoredLeadUnlocked($conversation);
+                }
+
                 return ['stored' => false, 'skipped' => 'already_stored'];
             }
 
@@ -109,6 +120,108 @@ class KamanWhatsappLeadStoreService
         $lead = is_array($meta['kaman_agents_lead'] ?? null) ? $meta['kaman_agents_lead'] : [];
 
         return ! empty($lead['posted_at']);
+    }
+
+    /**
+     * @return array{stored: bool, skipped?: string, updated?: bool, lead?: array<string, mixed>}
+     */
+    private function refreshStoredLead(ChatbotConversation $conversation): array
+    {
+        $lock = Cache::lock('kaman-whatsapp-lead-'.$conversation->id, 45);
+        if (! $lock->get()) {
+            return ['stored' => false, 'skipped' => 'locked'];
+        }
+
+        try {
+            $conversation->refresh();
+
+            return $this->refreshStoredLeadUnlocked($conversation);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
+    /**
+     * @return array{stored: bool, skipped?: string, updated?: bool, lead?: array<string, mixed>}
+     */
+    private function refreshStoredLeadUnlocked(ChatbotConversation $conversation): array
+    {
+        $meta = is_array($conversation->metadata) ? $conversation->metadata : [];
+        $saved = is_array($meta['kaman_agents_lead'] ?? null) ? $meta['kaman_agents_lead'] : [];
+        $leadId = trim((string) ($saved['lead_id'] ?? ''));
+        if ($leadId === '') {
+            return ['stored' => false, 'skipped' => 'missing_lead_id'];
+        }
+
+        try {
+            $extracted = $this->extractLeadFields($conversation);
+            $previous = [
+                'fullName' => $this->fieldOrUnknown($saved['fullName'] ?? null),
+                'restName' => $this->fieldOrUnknown($saved['restName'] ?? null),
+                'source' => $this->sourceValue(),
+                'city' => $this->fieldOrUnknown($saved['city'] ?? null),
+                'phoneNumber' => $this->fieldOrUnknown($saved['phoneNumber'] ?? null),
+                'notes' => $this->notesOrUnknown($saved['notes'] ?? null),
+            ];
+            $payload = $this->mergeLeadPayload($previous, $extracted);
+            if ($this->sameLeadPayload($previous, $payload)) {
+                return ['stored' => false, 'skipped' => 'unchanged'];
+            }
+
+            $lead = $this->apiClient->updateLead($leadId, $payload);
+            $this->markStored(
+                $conversation,
+                $payload,
+                array_merge($lead, ['id' => $lead['id'] ?? $leadId]),
+                self::REASON_ENGAGED,
+            );
+
+            return ['stored' => true, 'updated' => true, 'lead' => $lead];
+        } catch (Throwable $e) {
+            Log::warning('Kaman WhatsApp lead update failed', [
+                'conversation_id' => $conversation->id,
+                'lead_id' => $leadId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['stored' => false, 'skipped' => 'api_error'];
+        }
+    }
+
+    /**
+     * @param  array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}  $previous
+     * @param  array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}  $fresh
+     * @return array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}
+     */
+    private function mergeLeadPayload(array $previous, array $fresh): array
+    {
+        $merged = [];
+        foreach (['fullName', 'restName', 'city', 'phoneNumber'] as $key) {
+            $next = $this->fieldOrUnknown($fresh[$key] ?? null);
+            $prev = $this->fieldOrUnknown($previous[$key] ?? null);
+            $merged[$key] = ($next === self::UNKNOWN && $prev !== self::UNKNOWN) ? $prev : $next;
+        }
+        $merged['source'] = $this->sourceValue();
+        $nextNotes = $this->notesOrUnknown($fresh['notes'] ?? null);
+        $prevNotes = $this->notesOrUnknown($previous['notes'] ?? null);
+        $merged['notes'] = ($nextNotes === self::UNKNOWN && $prevNotes !== self::UNKNOWN) ? $prevNotes : $nextNotes;
+
+        return $merged;
+    }
+
+    /**
+     * @param  array<string, string>  $left
+     * @param  array<string, string>  $right
+     */
+    private function sameLeadPayload(array $left, array $right): bool
+    {
+        foreach (['fullName', 'restName', 'source', 'city', 'phoneNumber', 'notes'] as $key) {
+            if (($left[$key] ?? '') !== ($right[$key] ?? '')) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function isIdle(ChatbotConversation $conversation): bool
@@ -268,6 +381,7 @@ class KamanWhatsappLeadStoreService
             'restName' => $payload['restName'],
             'city' => $payload['city'],
             'phoneNumber' => $payload['phoneNumber'],
+            'notes' => $payload['notes'],
         ];
         $conversation->forceFill(['metadata' => $meta])->save();
     }

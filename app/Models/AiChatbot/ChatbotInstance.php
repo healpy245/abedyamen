@@ -74,6 +74,69 @@ class ChatbotInstance extends Model
         return $this->hasIntegration('kaman_whatsapp');
     }
 
+    public function hasMansourIntegration(): bool
+    {
+        return $this->hasIntegration('mansour');
+    }
+
+    /**
+     * The applications guide (أصواتكم / الموحدة). Same screens as فرز, different script.
+     */
+    public function isAppsBot(): bool
+    {
+        $settings = is_array($this->integration_settings) ? $this->integration_settings : [];
+
+        return $this->hasMansourIntegration() && ($settings['role'] ?? '') === 'apps';
+    }
+
+    /**
+     * ديما: فرز وإقناع بنفس المحادثة. نفس شاشات الفرز، سكربت مختلف.
+     */
+    public function isDimaBot(): bool
+    {
+        $settings = is_array($this->integration_settings) ? $this->integration_settings : [];
+
+        return $this->hasMansourIntegration() && ($settings['role'] ?? '') === 'dima';
+    }
+
+    /**
+     * بوت الدعوة: المؤتمر النسائي أو لقاء الشباب. تحية، ثم الدعوة مع الصورة.
+     */
+    public function isInviteBot(): bool
+    {
+        $settings = is_array($this->integration_settings) ? $this->integration_settings : [];
+        $role = (string) ($settings['role'] ?? '');
+
+        return $this->hasMansourIntegration() && in_array($role, ['invite', 'youth'], true);
+    }
+
+    public function isWomenInviteBot(): bool
+    {
+        $settings = is_array($this->integration_settings) ? $this->integration_settings : [];
+
+        return $this->hasMansourIntegration() && ($settings['role'] ?? '') === 'invite';
+    }
+
+    /**
+     * دعوة الشباب: نفس مسار الدعوة، بصيغة المذكر وصورة اللقاء الشبابي.
+     */
+    public function isYouthInviteBot(): bool
+    {
+        $settings = is_array($this->integration_settings) ? $this->integration_settings : [];
+
+        return $this->hasMansourIntegration() && ($settings['role'] ?? '') === 'youth';
+    }
+
+    /**
+     * WhatsApp sends and reply jobs stay off until this flag is cleared.
+     */
+    public function outboundHeld(): bool
+    {
+        $settings = is_array($this->integration_settings) ? $this->integration_settings : [];
+
+        return ! empty($settings['outbound_hold']);
+    }
+
     public function hasIntegration(string $integration): bool
     {
         return strtolower(trim((string) ($this->integration_type ?? ''))) === strtolower(trim($integration));
@@ -94,6 +157,26 @@ class ChatbotInstance extends Model
 
         if ($this->hasKamanWhatsappIntegration()) {
             return __('chatbot.choose.kaman_description');
+        }
+
+        if ($this->isAppsBot()) {
+            return 'تفعيل تطبيق أصواتكم والموحدة للكوادر';
+        }
+
+        if ($this->isDimaBot()) {
+            return 'ديما من مركز استطلاع بالمجتمع العربي';
+        }
+
+        if ($this->isYouthInviteBot()) {
+            return 'دعوة لقاء شباب الموحدة في طمرة';
+        }
+
+        if ($this->isInviteBot()) {
+            return 'دعوة المؤتمر النسائي في الجليل';
+        }
+
+        if ($this->hasMansourIntegration()) {
+            return __('chatbot.choose.mansour_description');
         }
 
         return __('chatbot.choose.generic_description');
@@ -306,6 +389,11 @@ class ChatbotInstance extends Model
     public function conversations(): HasMany
     {
         return $this->hasMany(ChatbotConversation::class, 'instance_id');
+    }
+
+    public function mansourContacts(): HasMany
+    {
+        return $this->hasMany(MansourContact::class, 'instance_id');
     }
 
     /**

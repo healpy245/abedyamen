@@ -281,6 +281,22 @@ class SupportDeviceSessionService
     }
 
     /**
+     * Devices this viewer is allowed to see, newest heartbeat first.
+     * A row is not online by itself — callers must use SupportDevice::isLive().
+     *
+     * @return Collection<int, SupportDevice>
+     */
+    public function visibleDevices(?string $restaurant = null, ?string $kind = null, int $limit = 400): Collection
+    {
+        $query = SupportDevice::query()->orderByDesc('last_seen_at');
+        $this->applyViewerVersion($query);
+        $this->applyRestaurant($query, $restaurant);
+        $this->applyDeviceKind($query, $kind);
+
+        return $query->limit(max(1, min(500, $limit)))->get();
+    }
+
+    /**
      * @return Collection<int, SupportDeviceLog>
      */
     public function recentGlobalLogs(
@@ -292,6 +308,7 @@ class SupportDeviceSessionService
         ?Carbon $from = null,
         ?Carbon $to = null,
         int $limit = 80,
+        ?array $restaurants = null,
     ): Collection {
         $query = SupportDeviceLog::query()
             ->with('device')
@@ -299,7 +316,15 @@ class SupportDeviceSessionService
 
         $this->constrainLogsToViewerVersion($query);
 
-        if ($restaurant !== null && $restaurant !== '') {
+        $keys = array_values(array_filter(array_map(
+            static fn ($value): string => trim((string) $value),
+            is_array($restaurants) ? $restaurants : [],
+        )));
+        if ($keys !== []) {
+            $query->whereHas('device', function ($inner) use ($keys): void {
+                $inner->whereIn('restaurant', $keys);
+            });
+        } elseif ($restaurant !== null && $restaurant !== '') {
             $query->whereHas('device', function ($inner) use ($restaurant): void {
                 $this->applyRestaurant($inner, $restaurant);
             });
@@ -318,30 +343,31 @@ class SupportDeviceSessionService
     }
 
     /**
+     * One chip picks the log filter. Level and source menus used to override
+     * the chip, so the form and the results disagreed.
+     *
      * @return array{level: ?string, source: ?string}
      */
-    public function filtersForView(string $view, ?string $level = null, ?string $source = null): array
+    public function filtersForView(string $view): array
     {
         $view = $this->normalizeView($view);
 
-        return [
-            'level' => ($level !== null && $level !== '')
-                ? $this->level($level)
-                : match ($view) {
-                    'bugs', 'api' => 'error',
-                    default => null,
-                },
-            'source' => ($source !== null && $source !== '')
-                ? $source
-                : ($view === 'api' ? 'api' : null),
-        ];
+        return match ($view) {
+            'bugs' => ['level' => 'error', 'source' => null],
+            'api' => ['level' => 'error', 'source' => 'api'],
+            'flutter' => ['level' => null, 'source' => 'flutter'],
+            default => ['level' => null, 'source' => null],
+        };
     }
 
     public function normalizeView(mixed $view, string $default = 'all'): string
     {
         $view = is_string($view) ? $view : '';
+        if ($view === 'debug') {
+            return 'all';
+        }
 
-        return in_array($view, ['devices', 'all', 'bugs', 'api', 'debug'], true) ? $view : $default;
+        return in_array($view, ['devices', 'all', 'bugs', 'api', 'flutter'], true) ? $view : $default;
     }
 
     /**
@@ -412,8 +438,8 @@ class SupportDeviceSessionService
 
         if ($from instanceof Carbon || $to instanceof Carbon) {
             $this->applyTimeRange($query, $from, $to);
-        } else {
-            $query->where('logged_at', '>=', now()->subMinutes(max(1, $minutes)));
+        } elseif ($minutes > 0) {
+            $query->where('logged_at', '>=', now()->subMinutes($minutes));
         }
 
         $this->applyLogFilters($query, $level, $source, $q);
@@ -619,6 +645,32 @@ class SupportDeviceSessionService
     }
 
     /**
+     * Connection facts only: who is online, on which app version.
+     * Logs, printer layouts, and LAN maps stay out.
+     *
+     * @return array<string, mixed>
+     */
+    public function connectionState(SupportDevice $device): array
+    {
+        return array_merge($this->deviceState($device), [
+            'cashierEmail' => null,
+            'logCount' => 0,
+            'watch' => false,
+            'printers' => [],
+            'discovered' => [],
+            'kitchenTypes' => [],
+            'scan' => ['running' => false, 'done' => 0, 'total' => 0],
+            'lan' => ['nodes' => [], 'links' => []],
+            'lanScan' => ['running' => false, 'done' => 0, 'total' => 0],
+            'pressure' => ['running' => false, 'logs' => []],
+            'failedCount' => 0,
+            'failedSource' => null,
+            'failedMessage' => null,
+            'failedAt' => null,
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      */
     private function storePrinterLayout(SupportDevice $device, array $payload): void
@@ -809,7 +861,7 @@ class SupportDeviceSessionService
         return $time->copy()->timezone($this->displayTimezone())->format($format);
     }
 
-    public function parseDisplayTime(mixed $value): ?Carbon
+    public function parseDisplayTime(mixed $value, bool $endOfDay = false): ?Carbon
     {
         $raw = trim((string) $value);
         if ($raw === '') {
@@ -817,7 +869,12 @@ class SupportDeviceSessionService
         }
 
         try {
-            return Carbon::parse($raw, $this->displayTimezone())->utc();
+            $parsed = Carbon::parse($raw, $this->displayTimezone());
+            if ($endOfDay && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1) {
+                $parsed = $parsed->endOfDay();
+            }
+
+            return $parsed->utc();
         } catch (\Throwable) {
             return null;
         }

@@ -8,7 +8,7 @@
         'human_takeover' => __('chatbot.workspace.mode_human_takeover'),
     ];
 @endphp
-@extends('layouts.kaman')
+@extends($instance->hasMansourIntegration() ? 'layouts.farz' : 'layouts.kaman')
 
 @section('title', $conversation->displayName().' — '.$instance->name)
 @section('tag', __('chatbot.workspace.tag'))
@@ -18,7 +18,10 @@
     /* Collapsible Live AI Instructor (desktop xl+) */
     @media (min-width: 1280px) {
         #workspace-chat[data-instructor-collapsed="1"] #workspace-chat-grid {
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: 420px minmax(0, 1fr);
+        }
+        #workspace-chat[data-kaman-analytics="1"][data-instructor-collapsed="1"] #workspace-chat-grid {
+            grid-template-columns: 440px minmax(0, 1fr) 250px;
         }
         #workspace-chat[data-instructor-collapsed="1"] #instructor-panel {
             display: none !important;
@@ -28,9 +31,25 @@
         }
     }
 </style>
+@php
+    $showKamanAnalytics = is_array($analytics ?? null) && ! $instance->hasMansourIntegration();
+    $showMansourAnalytics = is_array($analytics ?? null) && $instance->hasMansourIntegration();
+    $hideInstructor = auth()->user()?->isChatbotOnly() ?? false;
+    $chatGrid = match (true) {
+        $showMansourAnalytics => 'xl:grid-cols-[440px_minmax(0,1fr)_250px]',
+        $showKamanAnalytics && ! $hideInstructor => 'xl:grid-cols-[440px_minmax(0,1fr)_220px_260px]',
+        $showKamanAnalytics => 'xl:grid-cols-[440px_minmax(0,1fr)_250px]',
+        ! $hideInstructor => 'xl:grid-cols-[420px_minmax(0,1fr)_280px]',
+        default => 'xl:grid-cols-[420px_minmax(0,1fr)]',
+    };
+@endphp
 <div class="flex flex-col flex-1 min-h-0 w-full max-w-[1600px] mx-auto px-3 sm:px-4 pb-3"
      id="workspace-chat"
      data-instructor-collapsed="0"
+     @if($showKamanAnalytics || $showMansourAnalytics)
+         data-kaman-analytics="1"
+         data-analytics-url="{{ route('ai-chatbot.workspace.analytics', array_filter(['instance' => $instance, 'line' => is_array($line ?? null) ? $line['id'] : null])) }}"
+     @endif
      data-instance-id="{{ $instance->id }}"
      data-conversation-id="{{ $conversation->id }}"
      data-messages-url="{{ route('ai-chatbot.workspace.conversations.messages', [$instance, $conversation]) }}"
@@ -49,113 +68,52 @@
     @include('ai-chatbot.workspace.partials.nav')
 
     <div class="mb-2 md:hidden">
-        <a href="{{ route('ai-chatbot.workspace.conversations', $instance) }}" class="kaman-button-ghost kaman-button--sm">← {{ __('chatbot.workspace.back_to_list') }}</a>
+        <a href="{{ route('ai-chatbot.workspace.conversations', array_filter(['instance' => $instance, 'line' => is_array($line ?? null) ? $line['id'] : null, 'filter' => ($filter ?? 'all') !== 'all' ? $filter : null, 'q' => ($search ?? '') !== '' ? $search : null])) }}" class="kaman-button-ghost kaman-button--sm">
+            @if($instance->hasMansourIntegration())
+                {{ \App\Support\FarzUi::svg('back', 'h-4 w-4') }}
+            @else
+                ←
+            @endif
+            {{ __('chatbot.workspace.back_to_list') }}
+        </a>
     </div>
 
     <div class="kaman-card wa-chat-shell flex flex-col flex-1 min-h-0">
         {{-- list | chat | instructor (RTL: list on the right, like WhatsApp Web) --}}
         <div id="workspace-chat-grid"
-             class="grid grid-cols-1 md:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr_280px] flex-1 min-h-0 h-full overflow-hidden">
+             class="grid grid-cols-1 md:grid-cols-[420px_minmax(0,1fr)] {{ $chatGrid }} flex-1 min-h-0 h-full overflow-hidden">
             @include('ai-chatbot.workspace.partials.conversation-list-pane', [
                 'activeId' => $conversation->id,
                 'listPaneClass' => 'hidden md:flex',
+                'showInsight' => $showKamanAnalytics || $showMansourAnalytics,
+                'insightConversationIds' => $analytics['conversation_ids'] ?? [],
             ])
 
-            {{-- Chat column --}}
-            <section class="wa-chat-pane border-e border-[#eadfce]">
-                {{-- Header --}}
-                <header class="wa-chat-header px-4 py-3 border-b border-[#eadfce] flex flex-wrap items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2">
-                            <div class="w-10 h-10 rounded-full bg-[#f1dfc5] text-[#7c6a56] flex items-center justify-center text-sm font-bold shrink-0">{{ $conversation->initials() }}</div>
-                            <div class="min-w-0">
-                                <h2 class="text-base font-semibold text-[#2b1e11] truncate">{{ $conversation->displayName() }}</h2>
-                                <p class="text-xs text-[#a78a6c] truncate" dir="ltr">{{ $conversation->contact_phone ?: $conversation->external_chat_id }}</p>
-                            </div>
-                        </div>
-                        @if($contextSummary)
-                            <p class="mt-2 text-[11px] text-[#7c6a56] bg-white/70 border border-[#eadfce] rounded-lg px-2 py-1.5 max-w-xl">
-                                {{ __('chatbot.workspace.malan_context') }}:
-                                {{ $contextSummary['verified_customer_name'] ?? '—' }}
-                                @if(!empty($contextSummary['customer_status']))
-                                    · {{ $contextSummary['customer_status'] }}
-                                @endif
-                            </p>
-                        @endif
-                    </div>
-                    <div class="flex flex-wrap items-center gap-1.5">
-                        <span id="bot-mode-badge"
-                              class="kaman-chip text-xs {{ $conversation->bot_mode === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ($conversation->bot_mode === 'paused' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-sky-50 text-sky-700 border-sky-200') }}"
-                              data-mode="{{ $conversation->bot_mode }}">
-                            {{ __('chatbot.workspace.mode_'.$conversation->bot_mode) }}
-                        </span>
-                        <span id="live-sync-dot" class="inline-flex items-center gap-1 rounded-full border border-[#eadfce] bg-white px-2 py-0.5 text-[10px] text-[#a78a6c]" title="{{ __('chatbot.workspace.live_sync') }}">
-                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
-                            {{ __('chatbot.workspace.live') }}
-                        </span>
-                        <button type="button" id="btn-instructor-mobile" class="xl:hidden kaman-button-ghost kaman-button--sm">{{ __('chatbot.workspace.instructor') }}</button>
-                        <button type="button"
-                                id="btn-instructor-expand"
-                                class="hidden kaman-button-ghost kaman-button--sm"
-                                aria-controls="instructor-panel"
-                                aria-expanded="false"
-                                title="{{ __('chatbot.workspace.instructor_expand') }}">
-                            {{ __('chatbot.workspace.instructor') }}
-                        </button>
-                        @if($canControlBot)
-                            <button type="button"
-                                    id="chat-bot-toggle"
-                                    class="kaman-button-ghost kaman-button--sm"
-                                    data-mode-on="{{ ChatbotConversation::BOT_MODE_ACTIVE }}"
-                                    data-mode-off="{{ ChatbotConversation::BOT_MODE_PAUSED }}"
-                                    data-on-label="{{ __('chatbot.workspace.chat_bot_on') }}"
-                                    data-off-label="{{ __('chatbot.workspace.chat_bot_off') }}"
-                                    aria-pressed="{{ $conversation->bot_mode === ChatbotConversation::BOT_MODE_ACTIVE ? 'true' : 'false' }}">
-                                {{ $conversation->bot_mode === ChatbotConversation::BOT_MODE_ACTIVE
-                                    ? __('chatbot.workspace.chat_bot_on')
-                                    : __('chatbot.workspace.chat_bot_off') }}
-                            </button>
-                            <button type="button" class="bot-mode-btn kaman-button kaman-button--sm" data-mode="{{ ChatbotConversation::BOT_MODE_HUMAN_TAKEOVER }}">{{ __('chatbot.workspace.human_takeover') }}</button>
-                        @endif
-                    </div>
-                </header>
+            @include('ai-chatbot.workspace.partials.conversation-pane')
 
-                {{-- Messages --}}
-                <div id="message-thread" class="wa-chat-thread kaman-scroll p-4 space-y-3 bg-[linear-gradient(180deg,#f7efe3_0%,#fffaf3_40%,#f7efe3_100%)]" role="log" aria-live="polite">
-                    @forelse($messages as $message)
-                        @include('ai-chatbot.workspace.partials.message-bubble', ['message' => $message, 'instance' => $instance])
-                    @empty
-                        <p class="text-center text-sm text-[#a78a6c] py-12">{{ __('chatbot.workspace.no_messages') }}</p>
-                    @endforelse
-                    <div id="thread-bottom-anchor" class="h-px w-full shrink-0" aria-hidden="true"></div>
-                </div>
-
-                {{-- Composer: staff → customer (WhatsApp), never the AI bot --}}
-                <footer class="wa-chat-composer p-2.5 sm:p-3">
-                    @if($canReply)
-                        <form id="reply-form" class="flex gap-2 items-end">
-                            <label class="sr-only" for="reply-input">{{ __('chatbot.workspace.reply_placeholder') }}</label>
-                            <textarea id="reply-input" rows="1" required maxlength="4000"
-                                      placeholder="{{ $conversation->isWhatsApp()
-                                          ? __('chatbot.workspace.reply_placeholder_whatsapp')
-                                          : __('chatbot.workspace.reply_placeholder') }}"
-                                      class="kaman-input wa-reply-input flex-1 text-sm"></textarea>
-                            <button type="submit" id="reply-submit" class="kaman-button shrink-0">{{ __('chatbot.workspace.send') }}</button>
-                        </form>
-                        <p id="reply-error" class="hidden mt-1.5 text-xs text-red-600" role="alert"></p>
-                    @else
-                        <p class="text-sm text-[#a78a6c]">{{ __('chatbot.workspace.viewer_no_reply') }}</p>
-                    @endif
-                </footer>
-            </section>
+            @if($showMansourAnalytics)
+                @include('ai-chatbot.workspace.mansour.analytics', ['placement' => 'desktop'])
+            @elseif($showKamanAnalytics)
+                @include('ai-chatbot.workspace.partials.kaman-analytics', ['placement' => 'desktop'])
+            @endif
 
             {{-- Instructor panel (desktop xl+, collapsible) --}}
+            @if(! $showMansourAnalytics && ! $hideInstructor)
             <aside id="instructor-panel" class="hidden xl:flex flex-col min-h-0 bg-[#fffaf3]/50 border-s border-[#eadfce]">
                 @include('ai-chatbot.workspace.partials.instructor-panel', ['collapsible' => true])
             </aside>
+            @endif
         </div>
     </div>
 
+    @if($showMansourAnalytics)
+        @include('ai-chatbot.workspace.mansour.analytics', ['placement' => 'mobile'])
+        @include('ai-chatbot.workspace.mansour.trigger-modal')
+    @elseif($showKamanAnalytics)
+        @include('ai-chatbot.workspace.partials.kaman-analytics', ['placement' => 'mobile'])
+    @endif
+
+    @unless($showMansourAnalytics || $hideInstructor)
     {{-- Mobile / tablet instructor drawer --}}
     <div id="instructor-drawer" class="fixed inset-0 z-40 hidden" role="dialog" aria-modal="true" aria-label="{{ __('chatbot.workspace.instructor') }}">
         <div class="absolute inset-0 bg-black/40" data-close-drawer></div>
@@ -169,6 +127,7 @@
             </div>
         </div>
     </div>
+    @endunless
 
     <div id="toast" class="fixed bottom-4 inset-x-0 mx-auto w-fit max-w-sm hidden z-50 rounded-xl bg-[#2b1e11] text-white text-sm px-4 py-2 shadow-lg" role="status"></div>
 </div>
@@ -178,9 +137,14 @@
 <script src="{{ asset('js/workspace-chat.js') }}?v={{ @filemtime(public_path('js/workspace-chat.js')) ?: time() }}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.WorkspaceChat) {
-        window.WorkspaceChat.startConversation(document.getElementById('workspace-chat'));
-        window.WorkspaceChat.startListPolling(document.getElementById('workspace-list-pane'));
+    if (!window.WorkspaceChat) return;
+    const page = document.getElementById('workspace-chat');
+    const list = document.getElementById('workspace-list-pane');
+    window.WorkspaceChat.startConversation(page);
+    window.WorkspaceChat.startListPolling(list);
+    if (page?.dataset.analyticsUrl) {
+        window.WorkspaceChat.startAnalyticsPolling(page);
+        window.WorkspaceChat.bindInsightFilters(page, list);
     }
 });
 </script>

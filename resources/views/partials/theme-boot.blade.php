@@ -5,7 +5,7 @@
     try {
         var theme = localStorage.getItem('kaman-theme');
         if (theme !== 'dark' && theme !== 'light') {
-            theme = 'light';
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         root.classList.toggle('dark', theme === 'dark');
         root.setAttribute('data-theme', theme);
@@ -17,4 +17,4 @@
     } catch (e) {}
 })();
 </script>
-<style>html.dark { background: #14110e; }</style>
+<style>html{background:#f9eee1}html.dark,html[data-theme="dark"]{background:#120e0c;color-scheme:dark}</style>

@@ -58,6 +58,25 @@ class MalanChatModelTest extends TestCase
         $this->assertSame('create_malan_lead', $payload['tools'][0]['function']['name'] ?? null);
     }
 
+    public function test_speedcom_bot_uses_the_latest_tool_calling_model(): void
+    {
+        config(['openai.speedcom_chat_model' => 'gpt-6-sol']);
+
+        $instance = ChatbotInstance::factory()->create([
+            'user_id' => $this->user()->id,
+            'integration_type' => 'speedcom',
+            'integration_settings' => ['company_slug' => 'speedcom'],
+            'system_prompt' => 'أنت ممدوح من سبيدكوم.',
+        ]);
+
+        $payload = $this->captureChatPayload($instance, null);
+
+        $this->assertSame('gpt-6-sol', $payload['model'] ?? null);
+        $this->assertSame('none', $payload['reasoning_effort'] ?? null);
+        $this->assertArrayHasKey('max_completion_tokens', $payload);
+        $this->assertNotEmpty($payload['tools'] ?? []);
+    }
+
     public function test_non_malan_bot_keeps_the_settings_model(): void
     {
         $instance = ChatbotInstance::factory()->create([

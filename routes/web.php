@@ -7,25 +7,46 @@ use App\Http\Controllers\LocaleController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 
 Route::get('/login', function () {
+    $user = auth()->user();
+    if ($user !== null && $user->afterLoginUrl() !== route('login')) {
+        return redirect($user->afterLoginUrl());
+    }
+
     return view('auth.login');
 })->name('login');
 
-Route::post('/login', SignIn::class);
+Route::post('/login', function (Illuminate\Http\Request $request) {
+    return app(SignIn::class)->attempt($request, gate: 'kaman');
+});
+
+Route::get('/chatbots/login', function () {
+    $user = auth()->user();
+    if ($user !== null && $user->afterLoginUrl() !== route('login')) {
+        return redirect($user->afterLoginUrl());
+    }
+
+    return view('auth.chatbots-login');
+})->name('chatbots.login');
+
+Route::post('/chatbots/login', function (Illuminate\Http\Request $request) {
+    return app(SignIn::class)->attempt($request, gate: 'chatbots');
+});
 
 Route::get('/csrf-token', function () {
     return response()->json(['token' => csrf_token()]);
 })->name('csrf.token');
 
 Route::post('/logout', function (Illuminate\Http\Request $request) {
+    $chatbot = $request->user()?->isChatbotOnly() ?? false;
+
     Auth::logout();
 
     $request->session()->invalidate();
     $request->session()->regenerateToken();
 
-    return redirect()->route('login');
+    return redirect()->route($chatbot ? 'chatbots.login' : 'login');
 })->name('logout');
 
 Route::get('/privacy', function () {
@@ -69,15 +90,31 @@ HTML;
 })->where('code', '[a-z0-9]{6,32}')->name('kaman-cart.open');
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 })->name('home');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/today', \App\Http\Controllers\TodayController::class)->name('today');
+    Route::get('/design', [\App\Http\Controllers\DesignConceptController::class, 'index'])->name('design.index');
+    Route::get('/design/modern-light', [\App\Http\Controllers\DesignConceptController::class, 'modernLight'])->name('design.modern-light');
+    Route::get('/workspace/overview/{page?}', [\App\Http\Controllers\DesignConceptController::class, 'overview'])
+        ->where('page', 'dashboard|restaurants')
+        ->name('workspace.overview');
+    Route::get('/workspace/agents/{page?}', [\App\Http\Controllers\AgentsWorkspaceController::class, 'show'])
+        ->where('page', 'leads|calendar|clients')
+        ->name('workspace.agents');
+    Route::get('/workspace/{door}', [\App\Http\Controllers\DesignConceptController::class, 'placeholder'])
+        ->whereIn('door', ['finance'])
+        ->name('workspace.placeholder');
+    Route::get('/design/{concept}', [\App\Http\Controllers\DesignConceptController::class, 'show'])
+        ->whereIn('concept', \App\Http\Controllers\DesignConceptController::CONCEPTS)
+        ->name('design.show');
+
     Route::get('/downloads/kaman-support', function () {
         $path = (string) config('kaman-support.apk_path');
         abort_unless(is_file($path), 404);
 
-        return response()->download($path, 'KamanSupport-1.0.10.apk', [
+        return response()->download($path, 'KamanSupport-1.0.11.apk', [
             'Content-Type' => 'application/vnd.android.package-archive',
         ]);
     })->name('downloads.kaman-support');
@@ -147,6 +184,96 @@ Route::get('/ops/clear/483275634', function () {
     ])
     ->name('ops.clear');
 
+Route::get('/ops/apps-green-drain/483275634', function () {
+    $bots = \App\Models\AiChatbot\ChatbotInstance::query()
+        ->where('integration_type', 'mansour')
+        ->get()
+        ->filter(fn (\App\Models\AiChatbot\ChatbotInstance $bot): bool => $bot->isAppsBot() && ! $bot->outboundHeld())
+        ->values();
+
+    $green = app(\App\Services\AiChatbot\ChatbotGreenApiService::class);
+    $lines = app(\App\Services\AiChatbot\MansourLines::class);
+    $results = [];
+    foreach ($bots as $bot) {
+        $drained = $green->drainIncomingNotifications($bot, 80);
+        $imported = $green->importRecentIncoming($bot, 240);
+        $resumed = $green->resumeUnansweredApps($bot);
+        $hooks = [];
+        try {
+            $hooks = $lines->restoreWebhooks($bot);
+        } catch (\Throwable $e) {
+            $hooks = ['error' => $e->getMessage()];
+        }
+        $results[] = [
+            'instance_id' => $bot->id,
+            'name' => $bot->name,
+            'drain' => $drained,
+            'imported' => $imported,
+            'resumed' => $resumed,
+            'webhooks' => $hooks,
+        ];
+    }
+
+    return response()->json([
+        'success' => true,
+        'bots' => $results,
+        'timestamp' => now()->toIso8601String(),
+    ]);
+})
+    ->withoutMiddleware([
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+    ])
+    ->name('ops.apps-green-drain');
+
+Route::get('/ops/whapi-switch/483275634', function () {
+    $client = app(\App\Services\AiChatbot\WhapiCloudClient::class);
+    $provider = strtolower(trim((string) request()->query('provider', 'whapi')));
+    $token = trim((string) request()->query('token', ''));
+
+    if ($provider === 'greenapi') {
+        $client->saveProvider('greenapi', null);
+
+        return response()->json([
+            'success' => true,
+            'provider' => 'greenapi',
+            'channel_id' => $client->channelId(),
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
+
+    if ($token === '' && $client->token() === '') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Pass the channel token as ?token= from the Whapi channel page.',
+            'channel_id' => $client->channelId(),
+            'panel' => 'https://panel.whapi.cloud/channels/'.$client->channelId(),
+            'webhook_url' => $client->webhookUrl(),
+        ], 422);
+    }
+
+    $client->saveProvider('whapi', $token !== '' ? $token : null);
+    $apps = $client->bindAppsBot();
+    $hook = $client->configureWebhook();
+
+    return response()->json([
+        'success' => ($hook['ok'] ?? false) === true,
+        'provider' => $client->provider(),
+        'channel_id' => $client->channelId(),
+        'ready' => $client->isReady(),
+        'default_instance_id' => $apps?->id,
+        'default_instance' => $apps?->name,
+        'webhook_url' => $hook['webhook_url'] ?? $client->webhookUrl(),
+        'webhook_status' => $hook['status'] ?? null,
+        'timestamp' => now()->toIso8601String(),
+    ], ($hook['ok'] ?? false) ? 200 : 422);
+})
+    ->withoutMiddleware([
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
+    ])
+    ->name('ops.whapi-switch');
+
 Route::get('/ops/migrate/483275634', function () {
     try {
         $exitCode = Artisan::call('migrate', ['--force' => true]);
@@ -184,6 +311,7 @@ Route::get('/ops/seed/483275636', function () {
             \Database\Seeders\SpeedcomChatbotInstanceSeeder::class,
             \Database\Seeders\KamanWhatsappChatbotInstanceSeeder::class,
             \Database\Seeders\KamanCompanyMemberSeeder::class,
+            \Database\Seeders\SpeedcomCompanyMemberSeeder::class,
             \Database\Seeders\KamanSupportWorkerSeeder::class,
         ] as $seeder) {
             $exitCode = Artisan::call('db:seed', [
@@ -218,90 +346,6 @@ Route::get('/ops/seed/483275636', function () {
         VerifyCsrfToken::class,
     ])
     ->name('ops.seed');
-
-Route::get('/ops/migrate-fresh-seed/9274618053', function () {
-    @set_time_limit(0);
-    @ini_set('max_execution_time', '0');
-    @ini_set('memory_limit', '512M');
-
-    $results = [];
-
-    try {
-        $connection = Schema::getConnection();
-        $database = $connection->getDatabaseName();
-        $driver = $connection->getDriverName();
-
-        if ($driver === 'mysql') {
-            $connection->statement('SET FOREIGN_KEY_CHECKS=0');
-            $tables = $connection->select('SHOW FULL TABLES WHERE Table_type = ?', ['BASE TABLE']);
-            $key = 'Tables_in_'.$database;
-            foreach ($tables as $table) {
-                $name = $table->{$key} ?? null;
-                if (is_string($name) && $name !== '') {
-                    $connection->statement('DROP TABLE IF EXISTS `'.$name.'`');
-                }
-            }
-            $connection->statement('SET FOREIGN_KEY_CHECKS=1');
-            $results['wipe'] = [
-                'ok' => true,
-                'dropped' => count($tables),
-            ];
-        } else {
-            $wipeExit = Artisan::call('db:wipe', ['--force' => true]);
-            $results['wipe'] = [
-                'ok' => $wipeExit === 0,
-                'exit_code' => $wipeExit,
-            'output' => trim(Artisan::output()),
-        ];
-        }
-    } catch (\Throwable $e) {
-        $results['wipe'] = [
-            'ok' => false,
-            'error' => $e->getMessage(),
-        ];
-    }
-
-    if (($results['wipe']['ok'] ?? false) !== true) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Database wipe failed before migrate/seed.',
-            'results' => $results,
-            'timestamp' => now()->toIso8601String(),
-        ], 500);
-    }
-
-    try {
-        $migrateExit = Artisan::call('migrate', [
-            '--force' => true,
-            '--seed' => true,
-        ]);
-        $results['migrate --seed'] = [
-            'ok' => $migrateExit === 0,
-            'exit_code' => $migrateExit,
-            'output' => trim(Artisan::output()),
-        ];
-    } catch (\Throwable $e) {
-        $results['migrate --seed'] = [
-            'ok' => false,
-            'error' => $e->getMessage(),
-        ];
-    }
-
-    $allOk = collect($results)->every(fn (array $r) => ($r['ok'] ?? false) === true);
-
-    return response()->json([
-        'success' => $allOk,
-        'message' => $allOk
-            ? 'Database wiped and migrate --seed completed.'
-            : 'migrate/seed failed. See results.',
-        'results' => $results,
-        'timestamp' => now()->toIso8601String(),
-    ], $allOk ? 200 : 500);
-})
-    ->withoutMiddleware([
-        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
-    ])
-    ->name('ops.migrate-fresh-seed');
 
 Route::get('/ops/malan-greenapi/9274618053', function () {
     $instance = \App\Models\AiChatbot\ChatbotInstance::query()
@@ -905,10 +949,13 @@ Route::middleware(['auth', 'project:form'])->group(function () {
     Route::post('/form/runs/{run}/continue', [FormController::class, 'continueRun'])->name('form.runs.continue');
     Route::post('/form/full-ai/auth-status', [FormController::class, 'checkFullAiAuth'])->name('form.full-ai.auth-status');
     Route::post('/form/full-ai/login', [FormController::class, 'loginFullAi'])->name('form.full-ai.login');
+    Route::get('/form/full-ai/restaurants', [FormController::class, 'restaurantTokens'])->name('form.full-ai.restaurants');
+    Route::delete('/form/full-ai/restaurants', [FormController::class, 'forgetRestaurantToken'])->name('form.full-ai.restaurants.forget');
     Route::post('/form/full-ai/chat', [FormController::class, 'chatFullAutomation'])->name('form.full-ai.chat');
     Route::post('/form/full-ai/execute-step', [FormController::class, 'executeFullAiStep'])->name('form.full-ai.execute-step');
     Route::post('/form/full-ai/start', [FormController::class, 'startFullAutomation'])->name('form.full-ai.start');
     Route::post('/form/full-ai/{session}/approve', [FormController::class, 'approveFullAutomation'])->name('form.full-ai.approve');
     Route::post('/form/menu-agent/chat', [\App\Http\Controllers\FormMenuAgentController::class, 'chat'])->name('form.menu-agent.chat');
+    Route::post('/form/menu-agent/transcribe', [\App\Http\Controllers\FormMenuAgentController::class, 'transcribe'])->name('form.menu-agent.transcribe');
     Route::post('/api/upload-image', [FormController::class, 'uploadImage'])->name('api.upload-image');
 });

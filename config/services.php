@@ -64,6 +64,9 @@ return [
 
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
+        'mowahada_api_key' => env('OPENAI_MOWAHADA_API_KEY'),
+        'dima_api_key' => env('OPENAI_DIMA_API_KEY'),
+        'aswatkum_api_key' => env('OPENAI_ASWATKUM_API_KEY'),
         'verify_ssl' => filter_var(
             env('OPENAI_VERIFY_SSL', env('OPENAI_SSL_VERIFY', env('APP_ENV') === 'production' ? 'true' : 'false')),
             FILTER_VALIDATE_BOOLEAN

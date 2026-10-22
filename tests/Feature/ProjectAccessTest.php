@@ -28,8 +28,11 @@ class ProjectAccessTest extends TestCase
         'mohamed@kaman.rest' => ['form', 'ai-chatbot'],
         'malan@kaman.rest' => ['ai-chatbot'],
         'kaman@kaman.rest' => ['ai-chatbot'],
+        'speedcom@kaman.rest' => ['ai-chatbot'],
+        'ibrahim@kaman-workspace.com' => ['ai-chatbot'],
         'ahmadessa@kaman.rest' => ['form', 'app-development'],
         'moaz@kaman.rest' => ['kaman-support'],
+        'connections@kaman.rest' => ['kaman-support'],
     ];
 
     protected function setUp(): void
@@ -51,14 +54,20 @@ class ProjectAccessTest extends TestCase
             'mohamed@kaman.rest' => 'mohamed123@',
             'malan@kaman.rest' => 'Malan123@',
             'kaman@kaman.rest' => 'Kaman123@',
+            'speedcom@kaman.rest' => 'Speedcom123@',
+            'ibrahim@kaman-workspace.com' => 'Ibrahim123@',
             'moaz@kaman.rest' => 'Moaz123@',
+            'connections@kaman.rest' => 'Connections123@',
         ];
 
         foreach ($credentials as $email => $password) {
-            $this->post('/login', ['email' => $email, 'password' => $password])
-                ->assertRedirect(route('home'));
+            $user = User::where('email', $email)->firstOrFail();
+            $path = $user->isChatbotOnly() ? route('chatbots.login') : '/login';
 
-            $this->assertAuthenticatedAs(User::where('email', $email)->first());
+            $this->post($path, ['email' => $email, 'password' => $password])
+                ->assertRedirect($user->afterLoginUrl());
+
+            $this->assertAuthenticatedAs($user);
             $this->post('/logout');
         }
     }
@@ -87,8 +96,26 @@ class ProjectAccessTest extends TestCase
     public function test_guests_are_redirected_to_login_for_every_project(): void
     {
         foreach (Project::cases() as $project) {
-            $this->get($project->url())->assertRedirect('/login');
+            $expected = $project === Project::AiChatbot ? route('chatbots.login') : '/login';
+            $this->get($project->url())->assertRedirect($expected);
         }
+    }
+
+    public function test_a_chatbot_account_cannot_use_the_kaman_login(): void
+    {
+        $this->post('/login', [
+            'email' => 'malan@kaman.rest',
+            'password' => 'Malan123@',
+        ])->assertRedirect(route('chatbots.login'));
+
+        $this->assertGuest();
+
+        $this->post(route('chatbots.login'), [
+            'email' => 'yamen@kaman.rest',
+            'password' => 'yam1234@',
+        ])->assertRedirect(route('login'));
+
+        $this->assertGuest();
     }
 
     public function test_public_routes_stay_reachable_without_login(): void
@@ -96,54 +123,40 @@ class ProjectAccessTest extends TestCase
         $this->get(route('landing.show'))->assertOk();
     }
 
-    public function test_welcome_page_lists_only_the_projects_a_user_can_open(): void
+    public function test_workers_land_on_the_overview_and_chatbot_accounts_stay_in_chat(): void
     {
-        $cases = [
-            'ahmad@kaman.rest' => [
-                'visible' => [__('projects.form.label')],
-                'hidden' => [__('projects.ai-chatbot.label'), __('projects.app-development.label'), __('projects.kaman-support.label')],
-            ],
-            'mohamed@kaman.rest' => [
-                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label')],
-                'hidden' => [__('projects.app-development.label'), __('projects.kaman-support.label')],
-            ],
-            'yamen@kaman.rest' => [
-                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label'), __('projects.kaman-support.label')],
-                'hidden' => [],
-            ],
-            'burhan@kaman.rest' => [
-                'visible' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label')],
-                'hidden' => [__('projects.kaman-support.label')],
-            ],
-            'malan@kaman.rest' => [
-                'visible' => [__('projects.ai-chatbot.label')],
-                'hidden' => [__('projects.form.label'), __('projects.app-development.label'), __('projects.kaman-support.label')],
-            ],
-            'kaman@kaman.rest' => [
-                'visible' => [__('projects.ai-chatbot.label')],
-                'hidden' => [__('projects.form.label'), __('projects.app-development.label'), __('projects.kaman-support.label')],
-            ],
-            'ahmadessa@kaman.rest' => [
-                'visible' => [__('projects.form.label'), __('projects.app-development.label')],
-                'hidden' => [__('projects.ai-chatbot.label'), __('projects.kaman-support.label')],
-            ],
-            'moaz@kaman.rest' => [
-                'visible' => [__('projects.kaman-support.label')],
-                'hidden' => [__('projects.form.label'), __('projects.ai-chatbot.label'), __('projects.app-development.label')],
-            ],
+        $workers = [
+            'ahmad@kaman.rest',
+            'mohamed@kaman.rest',
+            'yamen@kaman.rest',
+            'burhan@kaman.rest',
+            'ahmadessa@kaman.rest',
+            'moaz@kaman.rest',
+            'connections@kaman.rest',
         ];
 
-        foreach ($cases as $email => $expected) {
+        foreach ($workers as $email) {
             $user = User::where('email', $email)->firstOrFail();
-            $response = $this->actingAs($user)->get(route('home'))->assertOk();
+            $this->actingAs($user)
+                ->get($user->afterLoginUrl())
+                ->assertOk()
+                ->assertSee(__('app.hub_title'));
+        }
 
-            foreach ($expected['visible'] as $label) {
-                $response->assertSee($label);
-            }
+        $chatbots = [
+            'malan@kaman.rest',
+            'kaman@kaman.rest',
+            'speedcom@kaman.rest',
+            'ibrahim@kaman-workspace.com',
+        ];
 
-            foreach ($expected['hidden'] as $label) {
-                $response->assertDontSee($label);
-            }
+        foreach ($chatbots as $email) {
+            $user = User::where('email', $email)->firstOrFail();
+            $this->actingAs($user)
+                ->followingRedirects()
+                ->get($user->afterLoginUrl())
+                ->assertOk()
+                ->assertSee(__('projects.ai-chatbot.label'));
         }
     }
 
@@ -152,8 +165,8 @@ class ProjectAccessTest extends TestCase
         $admin = User::where('email', 'yamen@kaman.rest')->firstOrFail();
         $member = User::where('email', 'mohamed@kaman.rest')->firstOrFail();
 
-        $this->actingAs($admin)->get(route('home'))->assertDontSee('Chatbot Settings');
-        $this->actingAs($member)->get(route('home'))->assertDontSee('Chatbot Settings');
+        $this->actingAs($admin)->get(route('form.index'))->assertDontSee('Chatbot Settings');
+        $this->actingAs($member)->get(route('form.index'))->assertDontSee('Chatbot Settings');
 
         $this->actingAs($admin)->get(route('ai-chatbot.admin.settings.edit'))->assertOk();
         $this->actingAs($member)->get(route('ai-chatbot.admin.settings.edit'))->assertForbidden();
@@ -164,8 +177,7 @@ class ProjectAccessTest extends TestCase
         $stranger = User::factory()->create(['is_admin' => false, 'projects' => []]);
 
         $this->actingAs($stranger)->get(route('home'))
-            ->assertOk()
-            ->assertSee(__('workspace.no_tools_title'));
+            ->assertRedirect(route('login'));
 
         foreach (Project::cases() as $project) {
             $this->actingAs($stranger)->get($project->url())->assertForbidden();

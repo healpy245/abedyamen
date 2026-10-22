@@ -15,7 +15,7 @@ use ZipArchive;
 class MalanCampaignExcelParser
 {
     /**
-     * @return list<array{name:?string,phone:string,city:?string}>
+     * @return list<array{name:?string,phone:string,city:?string,legacy_phone:?string}>
      */
     public function parse(UploadedFile $file): array
     {
@@ -33,7 +33,7 @@ class MalanCampaignExcelParser
     }
 
     /**
-     * @return list<array{name:?string,phone:string,city:?string}>
+     * @return list<array{name:?string,phone:string,city:?string,legacy_phone:?string}>
      */
     private function parseCsv(string $path): array
     {
@@ -78,7 +78,7 @@ class MalanCampaignExcelParser
     /**
      * Minimal XLSX reader (first sheet, shared strings).
      *
-     * @return list<array{name:?string,phone:string,city:?string}>
+     * @return list<array{name:?string,phone:string,city:?string,legacy_phone:?string}>
      */
     private function parseXlsx(string $path): array
     {
@@ -269,7 +269,7 @@ class MalanCampaignExcelParser
     /**
      * @param  list<string>  $cols
      * @param  array{name:?int,phone:?int,city:?int}  $headers
-     * @return array{name:?string,phone:string,city:?string}|null
+     * @return array{name:?string,phone:string,city:?string,legacy_phone:?string}|null
      */
     private function rowFromMapped(array $cols, array $headers): ?array
     {
@@ -277,12 +277,12 @@ class MalanCampaignExcelParser
         $nameIdx = $headers['name'] ?? 0;
         $cityIdx = $headers['city'] ?? null;
 
-        $phone = isset($cols[$phoneIdx]) ? trim((string) $cols[$phoneIdx]) : '';
-        if ($phone === '' || ! $this->looksLikePhone($phone)) {
+        $rawPhone = isset($cols[$phoneIdx]) ? trim((string) $cols[$phoneIdx]) : '';
+        if ($rawPhone === '' || ! $this->looksLikePhone($rawPhone)) {
             // Fallback: scan row for a phone-like cell.
             foreach ($cols as $idx => $val) {
-                if ($this->looksLikePhone($val)) {
-                    $phone = trim((string) $val);
+                if ($this->looksLikePhone((string) $val)) {
+                    $rawPhone = trim((string) $val);
                     if ($nameIdx === $idx) {
                         $nameIdx = $idx === 0 ? 1 : 0;
                     }
@@ -291,9 +291,13 @@ class MalanCampaignExcelParser
             }
         }
 
-        if ($phone === '' || ! $this->looksLikePhone($phone)) {
+        if ($rawPhone === '' || ! $this->looksLikePhone($rawPhone)) {
             return null;
         }
+
+        $expanded = $this->expandScientific($rawPhone);
+        $phone = $expanded ?? $rawPhone;
+        $legacy = $expanded !== null ? (preg_replace('/\D+/', '', $rawPhone) ?: null) : null;
 
         $name = isset($cols[$nameIdx]) ? trim((string) $cols[$nameIdx]) : null;
         if ($name === '' || $this->looksLikePhone($name)) {
@@ -310,12 +314,13 @@ class MalanCampaignExcelParser
             'name' => $name,
             'phone' => $phone,
             'city' => $city,
+            'legacy_phone' => $legacy,
         ];
     }
 
     /**
      * @param  list<string>  $cols
-     * @return array{name:?string,phone:string,city:?string}|null
+     * @return array{name:?string,phone:string,city:?string,legacy_phone:?string}|null
      */
     private function rowFromValues(array $cols): ?array
     {
@@ -324,14 +329,38 @@ class MalanCampaignExcelParser
 
     private function looksLikePhone(string $value): bool
     {
-        $digits = preg_replace('/\D+/', '', $value) ?? '';
+        $expanded = $this->expandScientific($value);
+        $digits = preg_replace('/\D+/', '', $expanded ?? $value) ?? '';
 
         return strlen($digits) >= 8 && strlen($digits) <= 15;
     }
 
     /**
-     * @param  list<array{name:?string,phone:string,city:?string}>  $rows
-     * @return list<array{name:?string,phone:string,city:?string}>
+     * Excel stores long phone numbers as numeric cells. The sheet XML then
+     * looks like 5.48978573E8, which is 548978573, not a trailing 8.
+     */
+    private function expandScientific(string $value): ?string
+    {
+        $value = trim($value);
+        if (! preg_match('/^[+-]?(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/', $value, $m)) {
+            return null;
+        }
+
+        $digits = $m[1].($m[2] ?? '');
+        $exp = (int) $m[3] - strlen($m[2] ?? '');
+        if ($exp < 0) {
+            return null;
+        }
+
+        $digits .= str_repeat('0', $exp);
+        $digits = ltrim($digits, '0');
+
+        return $digits === '' ? '0' : $digits;
+    }
+
+    /**
+     * @param  list<array{name:?string,phone:string,city:?string,legacy_phone:?string}>  $rows
+     * @return list<array{name:?string,phone:string,city:?string,legacy_phone:?string}>
      */
     private function uniqueByPhone(array $rows): array
     {

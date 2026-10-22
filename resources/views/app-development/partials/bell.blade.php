@@ -78,9 +78,20 @@
     if (!toggle || !panel) return;
 
     function setOpen(open) {
-        panel.classList.toggle('hidden', !open);
-        panel.hidden = !open;
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) {
+            panel.classList.remove('hidden', 'is-leaving');
+            panel.hidden = false;
+            toggle.setAttribute('aria-expanded', 'true');
+            return;
+        }
+        if (panel.hidden || panel.classList.contains('is-leaving')) return;
+        panel.classList.add('is-leaving');
+        toggle.setAttribute('aria-expanded', 'false');
+        window.setTimeout(function () {
+            panel.classList.add('hidden');
+            panel.classList.remove('is-leaving');
+            panel.hidden = true;
+        }, 170);
     }
 
     toggle.addEventListener('click', (event) => {

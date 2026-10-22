@@ -27,6 +27,7 @@ class StoreTicketRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'restaurant_name' => ['nullable', 'string', 'max:191'],
             'type' => ['nullable', Rule::enum(AppDevelopmentTicketType::class)],
             'priority' => ['required', Rule::enum(AppDevelopmentTicketPriority::class)],
             'app_types' => ['required', 'array', 'min:1'],
@@ -47,6 +48,8 @@ class StoreTicketRequest extends FormRequest
     {
         $this->merge([
             'type' => $this->input('type') ?: AppDevelopmentTicketType::Bug->value,
+            'priority' => $this->input('priority') ?: AppDevelopmentTicketPriority::Normal->value,
+            'app_types' => $this->input('app_types') ?: [AppDevelopmentAppType::Cashier->value],
             'description' => is_string($this->input('description'))
                 ? trim($this->input('description'))
                 : '',

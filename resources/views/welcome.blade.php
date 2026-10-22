@@ -62,6 +62,33 @@
 
             @include('partials.kaman-features', ['products' => $products])
 
+            <section class="more-apps feat-reveal">
+                <h2>{{ __('features.more_title') }}</h2>
+                @foreach(__('features.more_apps') as $id => $app)
+                    <section id="app-{{ $id }}" class="story">
+                        <div class="story__top">
+                            <div class="story__copy">
+                                <h2>{{ $app['name'] }}</h2>
+                                <p class="story__lead">{{ $app['lead'] }}</p>
+                            </div>
+                        </div>
+                        <ul class="story__list">
+                            @foreach($app['items'] as $item)
+                                <li class="story__row">
+                                    <span class="story__mark">
+                                        <x-features.icon :name="$item['icon']" />
+                                    </span>
+                                    <div>
+                                        <h3>{{ $item['title'] }}</h3>
+                                        <p>{{ $item['body'] }}</p>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endforeach
+            </section>
+
             <section class="feat-close feat-reveal">
                 <img class="feat-close__mascot" src="{{ asset('images/features/kaman-character-close.webp') }}?v={{ filemtime(public_path('images/features/kaman-character-close.webp')) }}" alt="" aria-hidden="true">
                 <div>
@@ -75,7 +102,7 @@
 
             @if($user)
                 <section id="your-tools" class="feat-tools">
-                    @unless($user->posLiveLogsOnly())
+                    @unless($user->limitedSupportConsole())
                         @if(strcasecmp((string) $user->email, (string) config('kaman-app.allowed_email')) === 0)
                             @include('partials.client-downloads')
                         @endif

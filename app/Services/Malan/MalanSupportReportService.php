@@ -33,6 +33,19 @@ class MalanSupportReportService
             ];
         }
 
+        if ($instance->companyProfile()->isSpeedcom()) {
+            return app(\App\Services\AiChatbot\SpeedcomDeskNotifier::class)->sendTask($instance, $conversation, [
+                'department' => 'technical',
+                'subject' => (string) ($input['summary'] ?? ''),
+                'customer_name' => (string) ($input['customer_name'] ?? ''),
+                'phone' => (string) ($input['phone'] ?? ''),
+                'router_power' => (string) ($input['router_power'] ?? ''),
+                'router_light' => (string) ($input['router_light'] ?? ''),
+                'internet' => (string) ($input['internet'] ?? ''),
+                'channel' => (string) ($input['channel'] ?? 'web'),
+            ]);
+        }
+
         $contextService = app(MalanConversationContextService::class);
         $context = $contextService->getActive($conversation);
 

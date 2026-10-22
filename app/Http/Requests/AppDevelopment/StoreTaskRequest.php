@@ -34,6 +34,7 @@ class StoreTaskRequest extends FormRequest
                 'integer',
                 Rule::in($developerIds === [] ? [0] : $developerIds),
             ],
+            'description' => ['nullable', 'string', 'max:20000'],
         ];
     }
 }

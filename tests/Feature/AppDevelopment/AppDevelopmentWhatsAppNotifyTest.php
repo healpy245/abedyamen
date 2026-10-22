@@ -27,12 +27,19 @@ class AppDevelopmentWhatsAppNotifyTest extends TestCase
         $admin = $this->makeAdmin();
 
         $this->actingAs($admin)
-            ->get(route('app-development.index'))
+            ->get(route('app-development.tickets.index'))
+            ->assertOk()
+            ->assertDontSee('kaman-filter-chip-bell', false)
+            ->assertDontSee(__('app-development.nav.upload_apk'));
+
+        $this->actingAs($admin)
+            ->get(route('app-development.tasks.index'))
             ->assertOk()
             ->assertSee('kaman-filter-chip-bell', false)
             ->assertSee(route('app-development.notify.open'), false)
             ->assertSee(route('app-development.notify.qa'), false)
-            ->assertSee(__('app-development.nav.team'));
+            ->assertDontSee(__('app-development.nav.team'))
+            ->assertSee(__('app-development.nav.reports'));
     }
 
     public function test_developer_does_not_see_ringbells(): void

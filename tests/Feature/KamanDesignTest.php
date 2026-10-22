@@ -69,7 +69,6 @@ class KamanDesignTest extends TestCase
     public static function projectPageProvider(): array
     {
         return [
-            'welcome' => ['home'],
             'form' => ['form.index'],
             'chatbot settings' => ['ai-chatbot.admin.settings.edit'],
             'app development' => ['app-development.index'],
@@ -149,16 +148,21 @@ class KamanDesignTest extends TestCase
         $this->actingAs($mohamed)->get(route('ai-chatbot.index'))
             ->assertOk()
             ->assertSee(__('chatbot.choose.title'));
-        $this->actingAs($mohamed)->get(route('home'))
+        $this->actingAs($mohamed)->get(route('form.index'))
             ->assertOk()
+            ->assertSee('kaman-sidebar', false)
             ->assertSee(__('projects.form.label'))
-            ->assertSee(__('projects.ai-chatbot.label'));
+            ->assertSee(__('projects.ai-chatbot.label'))
+            ->assertSee(__('app.download_pos_android'), false)
+            ->assertSee(__('app.download_pos_windows'), false)
+            ->assertSee(__('app.download_support_android'), false)
+            ->assertSee(asset('downloads/kaman-pos.apk'), false)
+            ->assertSee(route('downloads.kaman-support'), false);
     }
 
     public function test_every_page_offers_a_way_to_sign_out(): void
     {
         $pages = [
-            route('home'),
             route('form.index'),
             route('ai-chatbot.index'),
             route('ai-chatbot.instances.show', $this->chatbotInstance()),

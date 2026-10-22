@@ -4,7 +4,7 @@
         {{ __('app.client_downloads') }}
     </p>
     <div class="mt-3">
-        <a href="{{ route('downloads.kaman-app') }}?v=3.0.16"
+        <a href="{{ route('downloads.kaman-app') }}?v=3.0.20"
            class="kaman-button w-full"
            download="{{ config('kaman-app.download_name') }}">
             @include('app-development.partials.icon', ['name' => 'apk'])

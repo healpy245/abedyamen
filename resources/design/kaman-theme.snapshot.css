@@ -1,0 +1,45 @@
+/*
+ * Snapshot of the Kaman theme captured from public/css/kaman.css
+ * on 2026-10-14, before the design previews.
+ *
+ * This file is a record. The live theme stays in public/css/kaman.css.
+ * tools/check_kaman_brand.php fails if those brand lines change.
+ */
+
+:root {
+    --kaman-ink: #2b1e11;
+    --kaman-ink-soft: #7c6a56;
+    --kaman-ink-muted: #a78a6c;
+    --kaman-ink-faint: #c7b69d;
+
+    --kaman-accent: #f47a2e;
+    --kaman-accent-light: #f59f43;
+    --kaman-accent-strong: #f16229;
+
+    --kaman-line: #f1dfc5;
+    --kaman-line-soft: rgba(238, 206, 165, 0.6);
+    --kaman-surface: #ffffff;
+    --kaman-surface-sunk: #fffaf3;
+
+    --kaman-success: #10b981;
+    --kaman-danger: #ef4444;
+    --kaman-warning: #f59e0b;
+
+    --kaman-page-from: #fef8f0;
+    --kaman-page-mid: #ffffff;
+    --kaman-page-to: #fef2dd;
+}
+
+html.dark {
+    --kaman-ink: #f3e7d8;
+    --kaman-ink-soft: #cbb9a6;
+    --kaman-ink-muted: #a8947e;
+    --kaman-ink-faint: #7d6b58;
+    --kaman-line: #3d3228;
+    --kaman-line-soft: rgba(90, 70, 50, 0.55);
+    --kaman-surface: #241c16;
+    --kaman-surface-sunk: #1a1410;
+    --kaman-page-from: #14110e;
+    --kaman-page-mid: #1a1511;
+    --kaman-page-to: #120f0c;
+}

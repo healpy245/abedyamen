@@ -102,6 +102,7 @@
         }
 
         body.innerHTML = await response.text();
+        bindPicks(body);
         modal.classList.remove('is-fading');
         setLoading(false);
         syncTitle();
@@ -129,6 +130,136 @@
         setOpen(false);
         setLoading(false);
         modal.classList.remove('is-submitting');
+    }
+
+    function readJson(node) {
+        if (!node) return null;
+        try {
+            return JSON.parse(node.textContent || '');
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function bindPicks(root) {
+        root.querySelectorAll('[data-kpick]').forEach((pick) => {
+            if (pick.dataset.bound === '1') return;
+            pick.dataset.bound = '1';
+
+            const kind = pick.getAttribute('data-kpick-kind') || 'person';
+            const query = pick.querySelector('[data-kpick-query]');
+            const hidden = pick.querySelector('[data-kpick-value]');
+            const list = pick.querySelector('[data-kpick-list]');
+            const choices = readJson(pick.querySelector('[data-kpick-choices]')) || [];
+            const logos = readJson(pick.querySelector('[data-kpick-logos]')) || {};
+            const logosUrl = pick.querySelector('[data-kpick-logos-url]')?.getAttribute('data-kpick-logos-url') || '';
+            if (!query || !hidden || !list) return;
+
+            function paint(items) {
+                list.replaceChildren();
+                if (!items.length) {
+                    const note = document.createElement('p');
+                    note.className = 'kpick__empty';
+                    note.textContent = pick.getAttribute('data-kpick-empty') || '';
+                    list.append(note);
+                    list.hidden = false;
+                    return;
+                }
+                items.forEach((item, index) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'kpick__opt';
+                    button.style.animationDelay = (index * 28) + 'ms';
+                    const mark = document.createElement('span');
+                    mark.className = 'kpick__mark';
+                    if (item.slug) mark.dataset.slug = item.slug;
+                    mark.textContent = (item.label || '?').trim().charAt(0) || '?';
+                    const src = item.slug ? logos[item.slug] : '';
+                    if (src) {
+                        const img = document.createElement('img');
+                        img.alt = '';
+                        img.src = src;
+                        mark.append(img);
+                    }
+                    const name = document.createElement('span');
+                    name.textContent = item.label || '';
+                    button.append(mark, name);
+                    button.addEventListener('mousedown', (event) => {
+                        event.preventDefault();
+                        hidden.value = String(item.value ?? '');
+                        query.value = item.label || '';
+                        pick.classList.remove('is-invalid');
+                        list.hidden = true;
+                    });
+                    list.append(button);
+                });
+                list.hidden = false;
+                if (kind === 'restaurant' && logosUrl) {
+                    const missing = items.map((item) => item.slug).filter((slug) => slug && !logos[slug]);
+                    if (missing.length) {
+                        fetch(logosUrl + '?' + missing.map((slug) => 'restaurants[]=' + encodeURIComponent(slug)).join('&'), {
+                            headers: { Accept: 'application/json' },
+                            credentials: 'same-origin',
+                        }).then((response) => response.ok ? response.json() : null).then((payload) => {
+                            const found = payload && payload.logos;
+                            if (!found) return;
+                            Object.keys(found).forEach((slug) => {
+                                if (found[slug]) logos[slug] = found[slug];
+                            });
+                            list.querySelectorAll('[data-slug]').forEach((mark) => {
+                                const next = found[mark.getAttribute('data-slug')];
+                                if (!next || mark.querySelector('img')) return;
+                                const img = document.createElement('img');
+                                img.alt = '';
+                                img.src = next;
+                                mark.append(img);
+                            });
+                        }).catch(() => {});
+                    }
+                }
+            }
+
+            function filter() {
+                const typed = query.value.trim().toLocaleLowerCase();
+                const exact = choices.find((item) => (item.label || '').trim().toLocaleLowerCase() === typed);
+                hidden.value = exact ? String(exact.value ?? '') : '';
+                if (kind === 'restaurant' && typed.length < 1) {
+                    list.hidden = true;
+                    list.replaceChildren();
+                    return;
+                }
+                const items = (typed === '' ? choices : choices.filter((item) => {
+                    return ((item.label || '') + ' ' + (item.slug || '')).toLocaleLowerCase().includes(typed);
+                })).slice(0, 8);
+                paint(items);
+            }
+
+            query.addEventListener('input', filter);
+            query.addEventListener('focus', filter);
+            query.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !list.hidden) {
+                    event.stopPropagation();
+                    list.hidden = true;
+                }
+            });
+            query.addEventListener('blur', () => {
+                window.setTimeout(() => { list.hidden = true; }, 140);
+            });
+
+            const form = pick.closest('form');
+            if (form && pick.hasAttribute('data-kpick-required')) {
+                form.addEventListener('submit', (event) => {
+                    if (hidden.value) {
+                        pick.classList.remove('is-invalid');
+                        return;
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    pick.classList.add('is-invalid');
+                    query.focus();
+                }, true);
+            }
+        });
     }
 
     document.addEventListener('click', (event) => {
@@ -190,5 +321,6 @@
     if (modal.classList.contains('is-open')) {
         document.body.classList.add('app-dev-modal-lock');
         syncTitle();
+        bindPicks(body);
     }
 })();

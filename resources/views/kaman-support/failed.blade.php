@@ -1,4 +1,5 @@
 @php
+    $nav = 'logs';
     $activeProject = \App\Enums\Project::KamanSupport->value;
     $type = $filters['type'] ?? '';
     $queryBase = array_filter([
@@ -16,7 +17,7 @@
     ];
 @endphp
 
-@extends('layouts.kaman')
+@extends('layouts.support')
 
 @section('title', __('kaman-support.failed_title'))
 @section('tag', __('kaman-support.tag'))
@@ -38,7 +39,7 @@
                 </div>
             </section>
 
-            <form method="get" class="kaman-card kaman-card--compact flex flex-wrap items-end gap-2">
+            <form method="get" data-clean-get class="kaman-card kaman-card--compact flex flex-wrap items-end gap-2">
                 <label class="flex w-64 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
                     {{ __('kaman-support.filter_restaurant') }}
                     <select name="restaurant" data-failed-restaurant class="kaman-input">
@@ -48,28 +49,22 @@
                         @endforeach
                     </select>
                 </label>
-                <label class="flex w-44 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
-                    {{ __('kaman-support.filter_type') }}
-                    <select name="type" data-failed-type class="kaman-input">
-                        <option value="">{{ __('kaman-support.all_types') }}</option>
-                        <option value="api" @selected($type === 'api')>{{ __('kaman-support.type_api') }}</option>
-                        <option value="flutter" @selected($type === 'flutter')>{{ __('kaman-support.type_flutter') }}</option>
-                    </select>
-                </label>
-                <label class="flex w-52 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
+                @if($type !== '')
+                    <input type="hidden" name="type" value="{{ $type }}" data-failed-type>
+                @endif
+                <label class="flex w-40 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
                     {{ __('kaman-support.log_from') }}
-                    <input type="datetime-local" name="from" value="{{ $filters['from'] }}" data-log-from class="kaman-input" step="60">
+                    <input type="date" name="from" value="{{ substr((string) ($filters['from'] ?? ''), 0, 10) }}" data-log-from class="kaman-input">
                 </label>
-                <label class="flex w-52 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
+                <label class="flex w-40 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
                     {{ __('kaman-support.log_to') }}
-                    <input type="datetime-local" name="to" value="{{ $filters['to'] }}" data-log-to class="kaman-input" step="60">
+                    <input type="date" name="to" value="{{ substr((string) ($filters['to'] ?? ''), 0, 10) }}" data-log-to class="kaman-input">
                 </label>
                 <label class="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
                     {{ __('kaman-support.log_search') }}
                     <input type="search" name="q" value="{{ $filters['q'] }}" data-log-search class="kaman-input" placeholder="{{ __('kaman-support.log_search') }}">
                 </label>
                 <button type="submit" class="kaman-button">{{ __('kaman-support.filter') }}</button>
-                <p class="w-full text-[11px] text-[#a78a6c]">{{ __('kaman-support.jerusalem_time') }}</p>
                 <p class="ms-auto text-xs text-[#a78a6c]">
                     <span class="inline-block h-2 w-2 rounded-full bg-rose-500 align-middle"></span>
                     {{ __('kaman-support.live_channel') }} ·
@@ -92,20 +87,6 @@
                     {{ __('kaman-support.type_flutter') }}
                 </a>
             </nav>
-
-            <div data-log-hints class="flex flex-wrap items-center gap-2">
-                <span data-failed-chip class="kaman-badge border-rose-200 bg-rose-50 text-rose-800 {{ $logs->isEmpty() ? 'hidden' : '' }}">
-                    {{ __('kaman-support.failed_requests') }}
-                    <span data-failed-count>{{ $logs->count() }}</span>
-                </span>
-                @foreach($failedHints ?? [] as $hint)
-                    <a href="{{ route('kaman-support.failed', $queryBase + ['q' => $hint]) }}"
-                       data-hint-chip="{{ $hint }}"
-                       class="kaman-badge border-rose-200 bg-white text-rose-800 {{ ($filters['q'] ?? '') === $hint ? 'ring-1 ring-rose-300' : '' }}">
-                        {{ $hint }}
-                    </a>
-                @endforeach
-            </div>
 
             <section class="kaman-card">
                 <h2 class="mb-2 text-sm font-semibold text-[#2b1e11]">{{ __('kaman-support.failed_title') }}</h2>

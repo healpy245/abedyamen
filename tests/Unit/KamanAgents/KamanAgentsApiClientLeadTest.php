@@ -57,4 +57,33 @@ class KamanAgentsApiClientLeadTest extends TestCase
                 && $request['phoneNumber'] === '0533046830';
         });
     }
+
+    public function test_update_lead_patches_existing_record(): void
+    {
+        Http::fake([
+            'kamanagents-production.up.railway.app/api/auth/login' => Http::response([
+                'accessToken' => 'lead-token',
+            ], 200),
+            'kamanagents-production.up.railway.app/api/leads/*' => Http::response([
+                'id' => 'lead-aseed',
+            ], 200),
+        ]);
+
+        $lead = app(KamanAgentsApiClient::class)->updateLead('lead-aseed', [
+            'fullName' => 'أسيد',
+            'restName' => 'كانون',
+            'source' => 'whatsapp',
+            'city' => 'بيت حنينا',
+            'phoneNumber' => '0587816661',
+            'notes' => 'شغله قعدة جوا وتيك أواي وتوصيل.',
+        ]);
+
+        $this->assertSame('lead-aseed', $lead['id'] ?? null);
+        Http::assertSent(function ($request): bool {
+            return $request->method() === 'PATCH'
+                && str_ends_with($request->url(), '/api/leads/lead-aseed')
+                && $request['restName'] === 'كانون'
+                && $request['phoneNumber'] === '0587816661';
+        });
+    }
 }

@@ -8,6 +8,9 @@
  * where the two overlap.
  */
 
+/* Tailwind's display utilities override the hidden attribute. Keep it hidden. */
+[hidden] { display: none !important; }
+
 :root {
     /* Ink */
     --kaman-ink: #2b1e11;
@@ -1092,6 +1095,139 @@ html.dark .kaman-theme-toggle__moon {
     box-shadow: 0 10px 24px rgba(244, 123, 46, 0.28);
 }
 
+/* ------------------------------------------------------- signed-in sidebar */
+
+.kaman-shell {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    flex: 1;
+}
+
+.kaman-shell__main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 100vh;
+}
+
+.kaman-sidebar {
+    width: 15.5rem;
+    flex: none;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1rem 0.75rem 1.25rem;
+    background: var(--kaman-header-bg);
+    border-inline-end: 1px solid color-mix(in srgb, var(--kaman-line) 70%, transparent);
+    z-index: 40;
+}
+
+.kaman-sidebar__heading {
+    margin: 0 0.35rem 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--kaman-ink-muted);
+}
+
+.kaman-sidebar__nav,
+.kaman-sidebar__downloads {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.kaman-sidebar__link,
+.kaman-sidebar__download {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-height: 2.25rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--kaman-radius-btn);
+    border: 1px solid transparent;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--kaman-ink-soft);
+    text-align: start;
+}
+
+.kaman-sidebar__link:hover,
+.kaman-sidebar__download:hover {
+    background: rgba(244, 122, 46, 0.1);
+    color: var(--kaman-accent-strong);
+}
+
+.kaman-sidebar__link[aria-current="page"] {
+    background: linear-gradient(135deg, var(--kaman-accent-light) 0%, var(--kaman-accent) 100%);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(244, 123, 46, 0.28);
+}
+
+.kaman-sidebar__download {
+    border-color: var(--kaman-line);
+    background: color-mix(in srgb, var(--kaman-surface) 88%, transparent);
+    color: var(--kaman-ink);
+}
+
+.kaman-sidebar__download .kaman-icon {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+}
+
+.kaman-sidebar-open {
+    display: none;
+}
+
+.kaman-sidebar-backdrop {
+    display: none;
+}
+
+@media (max-width: 1023px) {
+    .kaman-sidebar-open {
+        display: inline-flex;
+    }
+
+    .kaman-sidebar {
+        position: fixed;
+        inset-block: 0;
+        inset-inline-start: 0;
+        transform: translateX(-105%);
+        transition: transform 180ms ease;
+        box-shadow: 12px 0 32px rgba(43, 30, 17, 0.12);
+    }
+
+    html[dir="rtl"] .kaman-sidebar {
+        transform: translateX(105%);
+        box-shadow: -12px 0 32px rgba(43, 30, 17, 0.12);
+    }
+
+    body.kaman-sidebar-open .kaman-sidebar {
+        transform: none;
+    }
+
+    .kaman-sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 35;
+        background: rgba(43, 30, 17, 0.35);
+    }
+
+    .kaman-sidebar-backdrop[hidden] {
+        display: none;
+    }
+}
+
 /* --------------------------------------------------------------- surfaces */
 
 /* Recessed well: log output, chat transcripts, empty states. */
@@ -2072,11 +2208,25 @@ html.dark .bg-\[\#fffaf3\]\/50 { background-color: color-mix(in srgb, var(--kama
 html.dark .bg-white { background-color: var(--kaman-surface); }
 html.dark .bg-white\/90 { background-color: color-mix(in srgb, var(--kaman-surface) 90%, transparent); }
 html.dark .bg-white\/80 { background-color: color-mix(in srgb, var(--kaman-surface) 80%, transparent); }
-html.dark .bg-white\/70 { background-color: color-mix(in srgb, var(--kaman-surface) 70%, transparent); }
+html.dark .bg-white\/70,
+html.dark .bg-white\/60,
+html.dark .bg-white\/50,
+html.dark .bg-white\/40 { background-color: color-mix(in srgb, var(--kaman-surface) 72%, transparent); }
+html.dark .hover\:bg-white\/70:hover { background-color: color-mix(in srgb, var(--kaman-surface-sunk) 88%, white); }
 html.dark .hover\:bg-\[\#fffaf3\]:hover,
 html.dark .hover\:bg-\[\#fff8f0\]:hover { background-color: var(--kaman-surface-sunk); }
 html.dark .bg-\[\#fff4ea\],
-html.dark .bg-\[\#f7efe3\] { background-color: var(--kaman-surface-sunk); }
+html.dark .bg-\[\#f7efe3\],
+html.dark .bg-\[\#f7efe3\]\/80,
+html.dark .bg-\[\#f7efe3\]\/50,
+html.dark .bg-\[\#f7efe3\]\/40,
+html.dark .bg-\[\#f7efe3\]\/30,
+html.dark .bg-\[\#f7efe3\]\/20 { background-color: var(--kaman-surface-sunk); }
+html.dark .bg-\[\#f1dfc5\],
+html.dark .bg-\[\#f1dfc5\]\/80 { background-color: #3d3228; }
+html.dark .text-\[\#b6987a\] { color: var(--kaman-ink-muted); }
+html.dark .border-\[\#eadfce\]\/80,
+html.dark .border-\[\#eadfce\]\/60 { border-color: var(--kaman-line); }
 html.dark .text-\[\#c2410c\],
 html.dark .text-\[\#9a3412\] { color: var(--kaman-accent-light); }
 html.dark .border-\[\#f3d2b5\] { border-color: var(--kaman-line); }
@@ -2102,8 +2252,11 @@ html.dark .bg-amber-50 { background-color: var(--kaman-amber-bg); }
 html.dark .bg-amber-100 { background-color: var(--kaman-amber-bg-strong); }
 html.dark .text-amber-700,
 html.dark .text-amber-800,
-html.dark .text-amber-900 { color: var(--kaman-amber-ink); }
+html.dark .text-amber-900,
+html.dark .text-amber-950 { color: var(--kaman-amber-ink); }
 html.dark .border-amber-200,
+html.dark .border-amber-200\/80,
+html.dark .border-amber-200\/70,
 html.dark .border-amber-300 { border-color: var(--kaman-amber-line); }
 
 html.dark .bg-emerald-50 { background-color: var(--kaman-emerald-bg); }
@@ -2141,9 +2294,23 @@ html.dark .border-green-200 { border-color: var(--kaman-green-line); }
 html.dark .bg-orange-50 { background-color: var(--kaman-orange-bg); }
 html.dark .bg-orange-100 { background-color: var(--kaman-orange-bg-strong); }
 html.dark .text-orange-700,
-html.dark .text-orange-900 { color: var(--kaman-orange-ink); }
+html.dark .text-orange-800,
+html.dark .text-orange-900,
+html.dark .text-orange-950 { color: var(--kaman-orange-ink); }
 html.dark .border-orange-200,
 html.dark .border-orange-200\/80 { border-color: var(--kaman-orange-line); }
+
+html.dark .analytics-card .analytics-download {
+    background-color: color-mix(in srgb, currentColor 16%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 32%, transparent);
+}
+
+html.dark .bg-stone-50 { background-color: #2a241e; }
+html.dark .bg-stone-100 { background-color: #3a322b; }
+html.dark .text-stone-600,
+html.dark .text-stone-800 { color: var(--kaman-ink-soft); }
+html.dark .border-stone-200,
+html.dark .border-stone-200\/80 { border-color: var(--kaman-line); }
 
 html.dark .kaman-chip {
     background: color-mix(in srgb, var(--kaman-surface) 82%, transparent);

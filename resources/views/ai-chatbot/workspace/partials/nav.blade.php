@@ -9,6 +9,7 @@
     $hideGlobalBotToggle = (bool) ($hideGlobalBotToggle ?? false);
     $campaign = $campaign ?? null;
 @endphp
+@unless($instance->hasMansourIntegration())
 <div class="mb-3 flex flex-wrap items-center justify-between gap-3 pt-3">
     <div class="flex flex-wrap items-center gap-2 min-w-0">
         <h1 class="text-lg font-semibold text-[#2b1e11] truncate">{{ $instance->name }}</h1>
@@ -64,3 +65,4 @@
         @endif
     </nav>
 </div>
+@endunless

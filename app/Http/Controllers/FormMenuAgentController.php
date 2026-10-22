@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Form\FormMenuAgentMemory;
 use App\Services\Form\FormMenuAgentService;
 use App\Services\Form\FormWorkflowRunService;
+use App\Services\Form\MenuVoiceTranscriber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -18,6 +19,31 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class FormMenuAgentController extends Controller
 {
+    public function transcribe(Request $request, MenuVoiceTranscriber $voices): JsonResponse
+    {
+        $request->validate([
+            'audio' => 'required|file|max:20480',
+        ]);
+
+        $file = $request->file('audio');
+        $path = $file?->getRealPath();
+        $binary = is_string($path) ? file_get_contents($path) : false;
+        $text = is_string($binary)
+            ? $voices->transcribe($binary, (string) ($file?->getClientOriginalName() ?: 'voice.m4a'))
+            : null;
+        if ($text === null || $text === '') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Could not transcribe that recording.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'text' => $text,
+        ]);
+    }
+
     public function chat(
         Request $request,
         FormMenuAgentService $agent,
