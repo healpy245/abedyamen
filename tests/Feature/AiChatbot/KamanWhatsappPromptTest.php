@@ -98,6 +98,9 @@ class KamanWhatsappPromptTest extends TestCase
         $this->assertStringContainsString('تسلمي', $prompt);
         $this->assertStringContainsString('تفاصيل إضافية', $prompt);
         $this->assertStringContainsString('أنا جاهزة', $prompt);
+        $this->assertStringContainsString('V2.11a قبل الإغلاق', $prompt);
+        $this->assertStringContainsString('الاسم الكامل', $prompt);
+        $this->assertStringContainsString('فاتح هسا، ولا لسه ما فتح ورح يفتح قريب', $prompt);
     }
 
     public function test_seeder_persists_sales_conversion_prompt_on_kaman_instance(): void

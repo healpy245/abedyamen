@@ -109,7 +109,10 @@ class ChatbotTestService
         $hasPriorAssistant = $conversation->messages()
             ->where('role', 'assistant')
             ->exists();
-        if ($instance->hasKamanWhatsappIntegration() && $hasPriorAssistant && $closer->isThanksClosing($message)) {
+        if ($instance->hasKamanWhatsappIntegration()
+            && $hasPriorAssistant
+            && $closer->isThanksClosing($message)
+            && ! $closer->shouldAskClosingDetails($conversation)) {
             return $this->recordThanksClosingTestReply($instance, $conversation, $message, $campaign, $closer);
         }
 

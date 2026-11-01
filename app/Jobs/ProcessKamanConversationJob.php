@@ -224,7 +224,9 @@ class ProcessKamanConversationJob implements ShouldQueue
             ->where('role', 'assistant')
             ->where('delivery_status', 'sent')
             ->exists();
-        if ($hasPriorAssistant && $closer->isThanksClosing($burstText)) {
+        if ($hasPriorAssistant
+            && $closer->isThanksClosing($burstText)
+            && ! $closer->shouldAskClosingDetails($conversation, (int) $burst[0]->id)) {
             $triggerUserMessageId = (int) $burst[array_key_last($burst)]->id;
             $assistant = $conversation->messages()->create([
                 'role' => 'assistant',
@@ -516,9 +518,10 @@ class ProcessKamanConversationJob implements ShouldQueue
 
     private function queueLeadStore(ChatbotConversation $conversation, bool $closed): void
     {
-        app(KamanWhatsappLeadStoreService::class)->storeFromConversation(
+        $leadStore = app(KamanWhatsappLeadStoreService::class);
+        $leadStore->storeFromConversation(
             $conversation,
-            $closed
+            $closed && ! $leadStore->alreadyStored($conversation)
                 ? KamanWhatsappLeadStoreService::REASON_CLOSED
                 : KamanWhatsappLeadStoreService::REASON_ENGAGED,
         );

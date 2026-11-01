@@ -20,6 +20,10 @@ class KamanWhatsappLeadStoreService
 {
     public const UNKNOWN = 'unknown';
 
+    public const REST_STATUS_OPEN = 'open';
+
+    public const REST_STATUS_OPENING_SOON = 'opening_soon';
+
     public const REASON_CLOSED = 'closed';
 
     public const REASON_IDLE = 'idle';
@@ -91,6 +95,7 @@ class KamanWhatsappLeadStoreService
             $payload = [
                 'fullName' => $extracted['fullName'],
                 'restName' => $extracted['restName'],
+                'restStatus' => $extracted['restStatus'],
                 'source' => $extracted['source'],
                 'city' => $extracted['city'],
                 'phoneNumber' => $extracted['phoneNumber'],
@@ -158,6 +163,7 @@ class KamanWhatsappLeadStoreService
             $previous = [
                 'fullName' => $this->fieldOrUnknown($saved['fullName'] ?? null),
                 'restName' => $this->fieldOrUnknown($saved['restName'] ?? null),
+                'restStatus' => $this->restStatusOrUnknown($saved['restStatus'] ?? null),
                 'source' => $this->sourceValue(),
                 'city' => $this->fieldOrUnknown($saved['city'] ?? null),
                 'phoneNumber' => $this->fieldOrUnknown($saved['phoneNumber'] ?? null),
@@ -189,14 +195,14 @@ class KamanWhatsappLeadStoreService
     }
 
     /**
-     * @param  array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}  $previous
-     * @param  array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}  $fresh
-     * @return array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}
+     * @param  array{fullName: string, restName: string, restStatus: string, source: string, city: string, phoneNumber: string, notes: string}  $previous
+     * @param  array{fullName: string, restName: string, restStatus: string, source: string, city: string, phoneNumber: string, notes: string}  $fresh
+     * @return array{fullName: string, restName: string, restStatus: string, source: string, city: string, phoneNumber: string, notes: string}
      */
     private function mergeLeadPayload(array $previous, array $fresh): array
     {
         $merged = [];
-        foreach (['fullName', 'restName', 'city', 'phoneNumber'] as $key) {
+        foreach (['fullName', 'restName', 'restStatus', 'city', 'phoneNumber'] as $key) {
             $next = $this->fieldOrUnknown($fresh[$key] ?? null);
             $prev = $this->fieldOrUnknown($previous[$key] ?? null);
             $merged[$key] = ($next === self::UNKNOWN && $prev !== self::UNKNOWN) ? $prev : $next;
@@ -215,7 +221,7 @@ class KamanWhatsappLeadStoreService
      */
     private function sameLeadPayload(array $left, array $right): bool
     {
-        foreach (['fullName', 'restName', 'source', 'city', 'phoneNumber', 'notes'] as $key) {
+        foreach (['fullName', 'restName', 'restStatus', 'source', 'city', 'phoneNumber', 'notes'] as $key) {
             if (($left[$key] ?? '') !== ($right[$key] ?? '')) {
                 return false;
             }
@@ -239,7 +245,7 @@ class KamanWhatsappLeadStoreService
     }
 
     /**
-     * @return array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}
+     * @return array{fullName: string, restName: string, restStatus: string, source: string, city: string, phoneNumber: string, notes: string}
      */
     public function extractLeadFields(ChatbotConversation $conversation): array
     {
@@ -249,6 +255,7 @@ class KamanWhatsappLeadStoreService
         return [
             'fullName' => $this->fieldOrUnknown($ai['fullName'] ?? $fallback['fullName']),
             'restName' => $this->fieldOrUnknown($ai['restName'] ?? $fallback['restName']),
+            'restStatus' => $this->restStatusOrUnknown($ai['restStatus'] ?? $fallback['restStatus']),
             'source' => $this->fieldOrUnknown($ai['source'] ?? $fallback['source']),
             'city' => $this->fieldOrUnknown($ai['city'] ?? $fallback['city']),
             'phoneNumber' => $this->fieldOrUnknown($ai['phoneNumber'] ?? $fallback['phoneNumber']),
@@ -257,7 +264,7 @@ class KamanWhatsappLeadStoreService
     }
 
     /**
-     * @return array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}
+     * @return array{fullName: string, restName: string, restStatus: string, source: string, city: string, phoneNumber: string, notes: string}
      */
     public function heuristicFields(ChatbotConversation $conversation): array
     {
@@ -266,6 +273,7 @@ class KamanWhatsappLeadStoreService
         return [
             'fullName' => $this->nameFromContact($conversation),
             'restName' => $this->guessRestaurantName($customerText),
+            'restStatus' => self::UNKNOWN,
             'source' => $this->sourceValue(),
             'city' => $this->guessCity($customerText),
             'phoneNumber' => $this->phoneOrUnknown($conversation->contact_phone),
@@ -274,7 +282,7 @@ class KamanWhatsappLeadStoreService
     }
 
     /**
-     * @param  array{fullName: string, restName: string, source: string, city: string, phoneNumber: string, notes: string}  $fallback
+     * @param  array{fullName: string, restName: string, restStatus: string, source: string, city: string, phoneNumber: string, notes: string}  $fallback
      * @return array<string, string>
      */
     private function extractWithOpenAi(ChatbotConversation $conversation, array $fallback): array
@@ -307,7 +315,9 @@ class KamanWhatsappLeadStoreService
                         'role' => 'system',
                         'content' => implode("\n", [
                             'استخرج بيانات ليد من محادثة واتساب لمبيعات نظام كمان للمطاعم.',
-                            'أرجع JSON فقط بالمفاتيح: fullName, restName, city, notes.',
+                            'أرجع JSON فقط بالمفاتيح: fullName, restName, restStatus, city, notes.',
+                            'fullName أكمل اسم ذكره الزبون بالمحادثة، والاسم الكامل أولى من اسم واتساب.',
+                            'restStatus: open إذا المطعم فاتح وشغال حالياً، opening_soon إذا لسه ما فتح وناوي يفتح، وإلا unknown.',
                             'إذا الحقل غير معروف استخدم بالضبط unknown.',
                             'لا تختلق اسم أو مدينة أو مطعم إذا الزبون ما ذكرهم.',
                             'notes فقرة عربية قصيرة: ماذا طلب الزبون بوضوح، وما الذي يهتم فيه.',
@@ -353,6 +363,7 @@ class KamanWhatsappLeadStoreService
                 ? $this->fieldOrUnknown($decoded['fullName'] ?? null)
                 : $fallback['fullName'],
             'restName' => $this->fieldOrUnknown($decoded['restName'] ?? null),
+            'restStatus' => $this->restStatusOrUnknown($decoded['restStatus'] ?? null),
             'source' => $fallback['source'],
             'city' => $this->fieldOrUnknown($decoded['city'] ?? null),
             'phoneNumber' => $fallback['phoneNumber'],
@@ -379,6 +390,7 @@ class KamanWhatsappLeadStoreService
             'lead_id' => $lead['id'] ?? $lead['leadId'] ?? $lead['lead_id'] ?? null,
             'fullName' => $payload['fullName'],
             'restName' => $payload['restName'],
+            'restStatus' => $payload['restStatus'],
             'city' => $payload['city'],
             'phoneNumber' => $payload['phoneNumber'],
             'notes' => $payload['notes'],
@@ -450,6 +462,15 @@ class KamanWhatsappLeadStoreService
         }
 
         return $value;
+    }
+
+    private function restStatusOrUnknown(mixed $value): string
+    {
+        $value = strtolower(trim((string) $value));
+
+        return in_array($value, [self::REST_STATUS_OPEN, self::REST_STATUS_OPENING_SOON], true)
+            ? $value
+            : self::UNKNOWN;
     }
 
     private function notesOrUnknown(mixed $value): string

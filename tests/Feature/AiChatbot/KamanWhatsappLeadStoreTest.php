@@ -374,6 +374,205 @@ class KamanWhatsappLeadStoreTest extends TestCase
         });
     }
 
+    public function test_restaurant_status_is_sent_when_creating_a_lead(): void
+    {
+        $conversation = $this->makeConversation($this->makeInstance(), [
+            'contact_phone' => '972533046830',
+            'contact_name' => 'يامن',
+        ]);
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message' => 'يامن خالد من كفر قاسم، مطعم الشاورما، لسه ما فتحت بس رح افتح قريب',
+        ]);
+
+        Http::fake([
+            'api.openai.com/*' => Http::response([
+                'choices' => [[
+                    'message' => [
+                        'content' => json_encode([
+                            'fullName' => 'يامن خالد',
+                            'restName' => 'مطعم الشاورما',
+                            'restStatus' => 'opening_soon',
+                            'city' => 'كفر قاسم',
+                            'notes' => 'مهتم بنظام كاشير قبل الافتتاح.',
+                        ], JSON_UNESCAPED_UNICODE),
+                    ],
+                ]],
+            ], 200),
+            'kamanagents-production.up.railway.app/api/auth/login' => Http::response(['accessToken' => 'lead-token'], 200),
+            'kamanagents-production.up.railway.app/api/leads*' => Http::response(['id' => 'lead-status'], 201),
+        ]);
+
+        $result = app(KamanWhatsappLeadStoreService::class)
+            ->storeFromConversation($conversation, KamanWhatsappLeadStoreService::REASON_ENGAGED);
+
+        $this->assertTrue($result['stored']);
+        $conversation->refresh();
+        $this->assertSame('opening_soon', $conversation->metadata['kaman_agents_lead']['restStatus'] ?? null);
+        Http::assertSent(function ($request): bool {
+            return $request->method() === 'POST'
+                && str_contains($request->url(), '/api/leads/')
+                && $request['fullName'] === 'يامن خالد'
+                && $request['city'] === 'كفر قاسم'
+                && $request['restName'] === 'مطعم الشاورما'
+                && $request['restStatus'] === 'opening_soon';
+        });
+    }
+
+    public function test_later_reply_patches_restaurant_status_and_keeps_it_when_unknown(): void
+    {
+        $conversation = $this->makeConversation($this->makeInstance(), [
+            'contact_phone' => '972587816661',
+            'contact_name' => 'أسيد',
+            'metadata' => [
+                'kaman_agents_lead' => [
+                    'posted_at' => now()->subHour()->toIso8601String(),
+                    'reason' => 'engaged',
+                    'lead_id' => 'lead-aseed',
+                    'fullName' => 'أسيد',
+                    'restName' => 'كانون',
+                    'city' => 'بيت حنينا',
+                    'phoneNumber' => '0587816661',
+                    'notes' => 'مهتم بنظام كاشير.',
+                ],
+            ],
+        ]);
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message' => 'فاتح من سنتين',
+        ]);
+
+        $extraction = fn (string $status): array => [
+            'choices' => [[
+                'message' => [
+                    'content' => json_encode([
+                        'fullName' => 'أسيد',
+                        'restName' => 'كانون',
+                        'restStatus' => $status,
+                        'city' => 'بيت حنينا',
+                        'notes' => 'مهتم بنظام كاشير.',
+                    ], JSON_UNESCAPED_UNICODE),
+                ],
+            ]],
+        ];
+        Http::fake([
+            'api.openai.com/*' => Http::sequence()
+                ->push($extraction('open'))
+                ->push($extraction('not-a-status')),
+            'kamanagents-production.up.railway.app/api/auth/login' => Http::response(['accessToken' => 'lead-token'], 200),
+            'kamanagents-production.up.railway.app/api/leads*' => Http::response(['id' => 'lead-aseed'], 200),
+        ]);
+
+        $store = app(KamanWhatsappLeadStoreService::class);
+        $first = $store->storeFromConversation($conversation, KamanWhatsappLeadStoreService::REASON_ENGAGED);
+        $second = $store->storeFromConversation($conversation->fresh(), KamanWhatsappLeadStoreService::REASON_ENGAGED);
+
+        $this->assertTrue($first['updated'] ?? false);
+        $this->assertSame('unchanged', $second['skipped'] ?? null);
+        $this->assertSame('open', $conversation->fresh()->metadata['kaman_agents_lead']['restStatus'] ?? null);
+        Http::assertSent(function ($request): bool {
+            return $request->method() === 'PATCH'
+                && str_contains($request->url(), '/api/leads/lead-aseed')
+                && $request['restStatus'] === 'open';
+        });
+    }
+
+    public function test_thanks_from_engaged_customer_goes_to_ai_for_closing_details(): void
+    {
+        Queue::fake();
+
+        $instance = $this->makeInstance();
+        $conversation = $this->makeConversation($instance, [
+            'contact_phone' => '972533046830',
+            'contact_name' => 'Yamen',
+        ]);
+        foreach (['مرحبا', 'يامن من كفر قاسم'] as $line) {
+            ChatbotMessage::query()->create([
+                'conversation_id' => $conversation->id,
+                'role' => 'user',
+                'sender_type' => 'customer',
+                'message' => $line,
+            ]);
+        }
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message' => 'احنا نظام كوباه وإدارة للمطعم',
+            'delivery_status' => 'sent',
+        ]);
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'user',
+            'sender_type' => 'customer',
+            'message' => 'تسلمي',
+        ]);
+        app(\App\Services\AiChatbot\KamanConversationBurstService::class)
+            ->registerInboundMessage($conversation->fresh() ?? $conversation);
+
+        $question = 'قبل ما نسكّر، شو اسمك الكامل؟ والمطعم فاتح هسا ولا لسه رح يفتح قريب؟';
+        Http::fake([
+            '7107.api.greenapi.com/*' => Http::response(['idMessage' => 'details-1'], 200),
+            'api.openai.com/*' => Http::response([
+                'choices' => [['message' => ['content' => $question]]],
+            ], 200),
+            'kamanagents-production.up.railway.app/api/auth/login' => Http::response(['accessToken' => 'lead-token'], 200),
+            'kamanagents-production.up.railway.app/api/leads*' => Http::response(['id' => 'lead-details'], 201),
+        ]);
+
+        (new ProcessKamanConversationJob(
+            (int) $instance->id,
+            (int) $conversation->id,
+            1,
+            '972533046830@c.us',
+        ))->handle(
+            app(\App\Services\AiChatbot\AiChatbotService::class),
+            app(\App\Services\AiChatbot\ChatbotGreenApiService::class),
+            app(\App\Services\AiChatbot\KamanConversationBurstService::class),
+        );
+
+        $this->assertDatabaseHas('ai_chatbot_messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'message' => $question,
+            'delivery_status' => 'sent',
+        ]);
+        $this->assertDatabaseMissing('ai_chatbot_messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'message' => \App\Services\AiChatbot\KamanConversationCloser::THANKS_REPLY_AR,
+        ]);
+    }
+
+    public function test_thanks_after_closing_details_were_asked_gets_the_canned_reply(): void
+    {
+        $conversation = $this->makeConversation($this->makeInstance());
+        foreach (['مرحبا', 'يامن من كفر قاسم'] as $line) {
+            ChatbotMessage::query()->create([
+                'conversation_id' => $conversation->id,
+                'role' => 'user',
+                'sender_type' => 'customer',
+                'message' => $line,
+            ]);
+        }
+        $closer = app(\App\Services\AiChatbot\KamanConversationCloser::class);
+        $this->assertTrue($closer->shouldAskClosingDetails($conversation));
+
+        ChatbotMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'sender_type' => 'ai',
+            'message' => 'قبل ما نسكّر، شو اسمك الكامل؟ والمطعم فاتح هسا ولا لسه رح يفتح قريب؟',
+            'delivery_status' => 'sent',
+        ]);
+
+        $this->assertFalse($closer->shouldAskClosingDetails($conversation));
+    }
+
     public function test_does_not_store_lead_twice(): void
     {
         $conversation = $this->makeConversation($this->makeInstance(), [

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AiChatbot;
 
+use App\Models\AiChatbot\ChatbotConversation;
+
 /**
  * Detects WhatsApp wrap-up (thanks / goodbye) so the sales bot can stop pitching.
  */
@@ -12,6 +14,10 @@ class KamanConversationCloser
     public const THANKS_REPLY_AR = 'العفو';
 
     public const THANKS_REPLY_HE = 'בכיף';
+
+    private const MIN_MESSAGES_BEFORE_CLOSING_DETAILS = 2;
+
+    private const CLOSING_DETAILS_ASKED = '/الاسم الكامل|اسمك الكامل|اسمك بالكامل|فاتح|رح يفتح|שם מלא|השם המלא|פתוחה|תיפתח|full name|already open|opening soon/iu';
 
     public function isThanksClosing(string $text): bool
     {
@@ -25,6 +31,26 @@ class KamanConversationCloser
         }
 
         return $this->looksLikeThanks($stripped);
+    }
+
+    /**
+     * An engaged customer who has not been asked the closing details yet goes to the AI
+     * (prompt section V2.11a) instead of getting the canned thanks reply.
+     */
+    public function shouldAskClosingDetails(ChatbotConversation $conversation, ?int $beforeMessageId = null): bool
+    {
+        $priorCustomerMessages = $conversation->messages()
+            ->where('role', 'user')
+            ->when($beforeMessageId !== null, fn ($query) => $query->where('id', '<', $beforeMessageId))
+            ->count();
+        if ($priorCustomerMessages < self::MIN_MESSAGES_BEFORE_CLOSING_DETAILS) {
+            return false;
+        }
+
+        return ! $conversation->messages()
+            ->where('role', 'assistant')
+            ->pluck('message')
+            ->contains(fn (?string $message): bool => preg_match(self::CLOSING_DETAILS_ASKED, (string) $message) === 1);
     }
 
     public function containsSticker(string $text): bool

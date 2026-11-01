@@ -170,6 +170,7 @@ final class KamanAgentsApiClient
      * @param  array{
      *     fullName: string,
      *     restName: string,
+     *     restStatus: string,
      *     source: string,
      *     city: string,
      *     phoneNumber: string,
@@ -207,6 +208,7 @@ final class KamanAgentsApiClient
      * @param  array{
      *     fullName: string,
      *     restName: string,
+     *     restStatus: string,
      *     source: string,
      *     city: string,
      *     phoneNumber: string,
