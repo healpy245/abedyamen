@@ -224,16 +224,17 @@ class ProcessKamanConversationJob implements ShouldQueue
             ->where('role', 'assistant')
             ->where('delivery_status', 'sent')
             ->exists();
-        if ($hasPriorAssistant
-            && $closer->isThanksClosing($burstText)
-            && ! $closer->shouldAskClosingDetails($conversation, (int) $burst[0]->id)) {
+        $cannedReply = $hasPriorAssistant
+            ? $closer->cannedReplyFor($conversation, $burstText, (int) $burst[0]->id)
+            : null;
+        if ($cannedReply !== null) {
             $triggerUserMessageId = (int) $burst[array_key_last($burst)]->id;
             $assistant = $conversation->messages()->create([
                 'role' => 'assistant',
                 'sender_type' => 'ai',
                 'message_type' => 'text',
                 'reply_source' => ChatbotMessage::REPLY_SOURCE_AI,
-                'message' => $closer->closingReplyFor($burstText),
+                'message' => $cannedReply,
                 'delivery_status' => 'pending',
                 'metadata' => [
                     'kaman_conversation_close' => true,

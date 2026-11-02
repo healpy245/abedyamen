@@ -109,11 +109,11 @@ class ChatbotTestService
         $hasPriorAssistant = $conversation->messages()
             ->where('role', 'assistant')
             ->exists();
-        if ($instance->hasKamanWhatsappIntegration()
-            && $hasPriorAssistant
-            && $closer->isThanksClosing($message)
-            && ! $closer->shouldAskClosingDetails($conversation)) {
-            return $this->recordThanksClosingTestReply($instance, $conversation, $message, $campaign, $closer);
+        $cannedReply = $instance->hasKamanWhatsappIntegration() && $hasPriorAssistant
+            ? $closer->cannedReplyFor($conversation, $message)
+            : null;
+        if ($cannedReply !== null) {
+            return $this->recordThanksClosingTestReply($instance, $conversation, $message, $campaign, $cannedReply);
         }
 
         try {
@@ -790,10 +790,8 @@ class ChatbotTestService
         ChatbotConversation $conversation,
         string $userMessage,
         ?\App\Models\Malan\MalanCampaign $campaign,
-        KamanConversationCloser $closer,
+        string $reply,
     ): array {
-        $reply = $closer->closingReplyFor($userMessage);
-
         $conversation->messages()->create([
             'role' => 'user',
             'sender_type' => 'customer',

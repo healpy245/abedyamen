@@ -98,7 +98,9 @@ class KamanWhatsappPromptTest extends TestCase
         $this->assertStringContainsString('تسلمي', $prompt);
         $this->assertStringContainsString('تفاصيل إضافية', $prompt);
         $this->assertStringContainsString('أنا جاهزة', $prompt);
-        $this->assertStringContainsString('V2.11a قبل الإغلاق', $prompt);
+        $this->assertStringContainsString('V2.11a بعد الموافقة على السوخن', $prompt);
+        $this->assertStringContainsString('ممنوع تعيدي السؤال، وممنوع تشرطي الشرح فيه', $prompt);
+        $this->assertStringNotContainsString('قبل ما نسكّر، شو اسمك الكامل', $prompt);
         $this->assertStringContainsString('الاسم الكامل', $prompt);
         $this->assertStringContainsString('فاتح هسا، ولا لسه ما فتح ورح يفتح قريب', $prompt);
     }

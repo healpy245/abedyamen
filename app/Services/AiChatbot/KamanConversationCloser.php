@@ -15,7 +15,15 @@ class KamanConversationCloser
 
     public const THANKS_REPLY_HE = 'בכיף';
 
+    public const GOLDEN_CLOSE_AR = 'خلص لكان رح اخزن رقمك عندي, بتواصل معك السوخن (סוכן) تبعنا بالمنطقة عندك وبشرحلك وجه لوجه.';
+
+    public const GOLDEN_CLOSE_HE = 'סגור, אני שומרת את המספר שלך. הסוכן שלנו באזור שלך יחזור אליך ויסביר לך פנים אל פנים.';
+
+    public const GOLDEN_CLOSE_EN = 'Great, I\'ll save your number. Our sales agent in your area will contact you and explain in person.';
+
     private const MIN_MESSAGES_BEFORE_CLOSING_DETAILS = 2;
+
+    private const SOCHEN_OFFERED = '/سوخن|סוכן|يتواصل|يحكي معك|לקבוע פגישה|sales rep/iu';
 
     private const CLOSING_DETAILS_ASKED = '/الاسم الكامل|اسمك الكامل|اسمك بالكامل|فاتح|رح يفتح|שם מלא|השם המלא|פתוחה|תיפתח|full name|already open|opening soon/iu';
 
@@ -34,10 +42,10 @@ class KamanConversationCloser
     }
 
     /**
-     * An engaged customer who has not been asked the closing details yet goes to the AI
-     * (prompt section V2.11a) instead of getting the canned thanks reply.
+     * Thanks goes to the AI (prompt section V2.11a) when the sochen was not offered yet, or when
+     * it answers the offer and may be an agreement. Otherwise it gets the canned thanks reply.
      */
-    public function shouldAskClosingDetails(ChatbotConversation $conversation, ?int $beforeMessageId = null): bool
+    public function shouldHandleThanksWithAi(ChatbotConversation $conversation, ?int $beforeMessageId = null): bool
     {
         $priorCustomerMessages = $conversation->messages()
             ->where('role', 'user')
@@ -47,10 +55,53 @@ class KamanConversationCloser
             return false;
         }
 
-        return ! $conversation->messages()
+        $replies = $conversation->messages()
             ->where('role', 'assistant')
+            ->orderBy('id')
             ->pluck('message')
-            ->contains(fn (?string $message): bool => preg_match(self::CLOSING_DETAILS_ASKED, (string) $message) === 1);
+            ->map(fn (?string $message): string => (string) $message);
+
+        if ($replies->contains(fn (string $message): bool => preg_match(self::CLOSING_DETAILS_ASKED, $message) === 1)) {
+            return false;
+        }
+
+        $offered = fn (string $message): bool => preg_match(self::SOCHEN_OFFERED, $message) === 1;
+
+        return ! $replies->contains($offered) || $offered((string) $replies->last());
+    }
+
+    /**
+     * A customer who just answered the closing details gets the golden close without the AI,
+     * so the model cannot resume selling or offer the sochen again.
+     */
+    public function answeredClosingDetails(ChatbotConversation $conversation, string $text): bool
+    {
+        $stripped = $this->stripStickerLabels($text);
+        if ($stripped === ''
+            || $this->isThanksClosing($text)
+            || $this->looksLikeQuestionOrNewAsk($stripped)
+            || preg_match('/^(?:لا|لأ|مش|بديش|לא|no)(?:\s|$)/iu', $stripped) === 1) {
+            return false;
+        }
+
+        $lastReply = (string) $conversation->messages()
+            ->where('role', 'assistant')
+            ->orderByDesc('id')
+            ->value('message');
+
+        return preg_match(self::CLOSING_DETAILS_ASKED, $lastReply) === 1;
+    }
+
+    /**
+     * The reply that skips the AI for this customer message, if any.
+     */
+    public function cannedReplyFor(ChatbotConversation $conversation, string $text, ?int $beforeMessageId = null): ?string
+    {
+        if ($this->isThanksClosing($text)) {
+            return $this->shouldHandleThanksWithAi($conversation, $beforeMessageId) ? null : $this->closingReplyFor($text);
+        }
+
+        return $this->answeredClosingDetails($conversation, $text) ? $this->goldenCloseFor($text) : null;
     }
 
     public function containsSticker(string $text): bool
@@ -70,6 +121,15 @@ class KamanConversationCloser
         }
 
         return self::THANKS_REPLY_AR;
+    }
+
+    public function goldenCloseFor(string $text): string
+    {
+        if (preg_match('/\p{Hebrew}/u', $text) === 1) {
+            return self::GOLDEN_CLOSE_HE;
+        }
+
+        return preg_match('/\p{Arabic}/u', $text) === 1 ? self::GOLDEN_CLOSE_AR : self::GOLDEN_CLOSE_EN;
     }
 
     private function stripStickerLabels(string $text): string
