@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Services\Finance\RestaurantFinance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -30,6 +31,8 @@ class AgentsWorkspaceController extends Controller
             'page' => $page,
             'companies' => $this->companies(),
             'cities' => $this->cities(),
+            'finance' => app(RestaurantFinance::class)->forUser($user),
+            'supportBoot' => app(\App\Services\KamanSupport\RestaurantSupport::class)->boot($user),
         ]);
     }
 

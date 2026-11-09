@@ -22,6 +22,7 @@ enum SupportCommandName: string
     case PressureTest = 'pressure_test';
     case PressureStop = 'pressure_stop';
     case PressureClear = 'pressure_clear';
+    case ApplySettings = 'apply_settings';
 
     /**
      * @return list<string>

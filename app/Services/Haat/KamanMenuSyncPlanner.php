@@ -24,6 +24,8 @@ final class KamanMenuSyncPlanner
             'ingredients' => count($snapshot['ingredients'] ?? []),
         ]);
 
+        // Import that must not touch rows already on the menu, apart from making them visible.
+        $keepExisting = ! empty($parsed['keep_existing']);
         $categoryById = $this->byId($snapshot['categories'] ?? []);
         $itemById = $this->byId($snapshot['items'] ?? []);
         $ingCatById = $this->byId($snapshot['ingredient_categories'] ?? []);
@@ -51,7 +53,7 @@ final class KamanMenuSyncPlanner
             );
         }
 
-        $mealMatches = $this->matchMeals($parsed['meals'] ?? [], $snapshot['items'] ?? [], $categoryMatches);
+        $mealMatches = $this->matchMeals($parsed['meals'] ?? [], $snapshot['items'] ?? [], $categoryMatches, $keepExisting);
 
         if ($unmatched !== null && $chat !== null) {
             $stillUnmatchedMeals = [];
@@ -74,7 +76,9 @@ final class KamanMenuSyncPlanner
             }
             $kamanId = $categoryMatches[$haatId] ?? null;
             $existing = $kamanId !== null ? ($categoryById[$kamanId] ?? null) : null;
-            $categories[$haatId] = $this->categoryAction($category, $kamanId, $existing);
+            $categories[$haatId] = $keepExisting && $kamanId !== null && $existing !== null
+                ? ['op' => 'skip', 'kaman_id' => $kamanId, 'changes' => []]
+                : $this->categoryAction($category, $kamanId, $existing);
         }
 
         $meals = [];
@@ -86,7 +90,9 @@ final class KamanMenuSyncPlanner
             $kamanId = $mealMatches[$haatId]['kaman_id'] ?? null;
             $existing = is_string($kamanId) ? ($itemById[$kamanId] ?? null) : null;
             $targetCategoryId = $categoryMatches[(string) ($meal['category_haat_id'] ?? '')] ?? null;
-            $meals[$haatId] = $this->mealAction($meal, $kamanId, $existing, $targetCategoryId);
+            $meals[$haatId] = $keepExisting && is_string($kamanId) && $existing !== null
+                ? $this->repairAction($meal, $kamanId, $existing)
+                : $this->mealAction($meal, $kamanId, $existing, $targetCategoryId);
         }
 
         $ingredientCategories = [];
@@ -259,7 +265,7 @@ final class KamanMenuSyncPlanner
      * @param  array<string, string>  $categoryMatches
      * @return array<string, array{kaman_id: ?string}>
      */
-    private function matchMeals(array $meals, array $items, array $categoryMatches): array
+    private function matchMeals(array $meals, array $items, array $categoryMatches, bool $anyCategory = false): array
     {
         $byName = [];
         foreach ($items as $row) {
@@ -273,6 +279,10 @@ final class KamanMenuSyncPlanner
                 if ($key !== '') {
                     $byName[$key][] = ['id' => $id, 'category_id' => $categoryId];
                 }
+                $loose = $anyCategory ? $this->looseArabicKey($key) : '';
+                if ($loose !== '' && $loose !== $key) {
+                    $byName[$loose][] = ['id' => $id, 'category_id' => $categoryId];
+                }
             }
         }
 
@@ -285,12 +295,16 @@ final class KamanMenuSyncPlanner
             }
             $wantedCategory = $categoryMatches[(string) ($meal['category_haat_id'] ?? '')] ?? null;
             $found = null;
-            foreach ([
+            $names = [
                 (string) ($meal['name_ar'] ?? ''),
                 (string) ($meal['name_en'] ?? ''),
                 (string) ($meal['name_he'] ?? ''),
                 (string) ($meal['source_name'] ?? ''),
-            ] as $name) {
+            ];
+            if ($anyCategory) {
+                $names[] = $this->looseArabicKey($this->nameKey((string) ($meal['name_ar'] ?? '')));
+            }
+            foreach ($names as $name) {
                 $key = $this->nameKey($name);
                 if ($key === '' || ! isset($byName[$key])) {
                     continue;
@@ -299,7 +313,7 @@ final class KamanMenuSyncPlanner
                     if (isset($used[$candidate['id']])) {
                         continue;
                     }
-                    if ($wantedCategory === null || $candidate['category_id'] === $wantedCategory || $candidate['category_id'] === '') {
+                    if ($anyCategory || $wantedCategory === null || $candidate['category_id'] === $wantedCategory || $candidate['category_id'] === '') {
                         $found = $candidate['id'];
                         break 2;
                     }
@@ -591,6 +605,32 @@ SYS, json_encode(['haat_meals' => $haat, 'kaman_items' => $kaman, 'category_matc
             'op' => $changes === [] ? 'skip' : 'update',
             'kaman_id' => $kamanId,
             'changes' => $changes,
+        ];
+    }
+
+    /**
+     * A meal that already exists stays as it is, unless it is hidden or has no photo.
+     *
+     * @param  array<string, mixed>  $meal
+     * @param  array<string, mixed>  $existing
+     * @return array<string, mixed>
+     */
+    private function repairAction(array $meal, string $kamanId, array $existing): array
+    {
+        $changes = [];
+        if ($this->isAvailable($existing) !== (bool) ($meal['is_available'] ?? true)) {
+            $changes[] = 'status';
+        }
+        $hasPhoto = trim((string) ($existing['image_url'] ?? $existing['image'] ?? '')) !== '';
+        if (! $hasPhoto && is_string($meal['image_url'] ?? null) && $meal['image_url'] !== '') {
+            $changes[] = 'image';
+        }
+
+        return [
+            'op' => $changes === [] ? 'skip' : 'update',
+            'kaman_id' => $kamanId,
+            'changes' => $changes,
+            'keep_existing' => true,
         ];
     }
 
@@ -945,5 +985,13 @@ SYS, json_encode(['haat_meals' => $haat, 'kaman_items' => $kaman, 'category_matc
     private function nameKey(string $name): string
     {
         return mb_strtolower(trim($name));
+    }
+
+    /**
+     * The same dish written "صغير" and "صغيرة", or "سلطة" and "سلطه", is not a new dish.
+     */
+    private function looseArabicKey(string $key): string
+    {
+        return (string) preg_replace('/[ةه](?=\s|$)/u', '', $key);
     }
 }

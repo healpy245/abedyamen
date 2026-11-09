@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\AppDevelopmentRole;
+use App\Enums\Door;
 use App\Enums\Project;
 use App\Models\AppDevelopment\AppDevelopmentMember;
+use App\Models\Concerns\HasDoorAccess;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -14,7 +16,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasDoorAccess, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -51,6 +53,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'projects' => 'array',
+            'door_access' => 'array',
+            'disabled_at' => 'datetime',
         ];
     }
 
@@ -58,7 +62,8 @@ class User extends Authenticatable
      * Whether this user may open the given project.
      *
      * Admins implicitly have access to the whole catalog, so they never need
-     * their `projects` column kept in sync as new tools are added.
+     * their `projects` column kept in sync as new tools are added. What yamen
+     * changes on the users page wins (see HasDoorAccess).
      */
     public function canAccessProject(Project|string $project): bool
     {
@@ -70,30 +75,15 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($project->requiresExplicitGrant()) {
-            if (in_array($project->value, $this->projectKeys(), true)) {
-                return true;
-            }
-
-            // Phase-1 hard lock: Yamen can open POS support even before the
-            // projects column is re-seeded on production.
-            return strcasecmp((string) $this->email, 'yamen@kaman.rest') === 0;
-        }
-
-        if ($this->is_admin) {
-            return true;
-        }
-
-        return in_array($project->value, $this->projectKeys(), true);
+        return $this->canOpenDoor(Door::forProject($project));
     }
 
     /**
-     * POS live logs only, limited to app versions 1.0.x. No tickets, commands,
-     * or other workspace projects.
+     * The one product this user sees in Customer Support. Null means every product.
      */
-    public function posLiveLogsOnly(): bool
+    public function supportProduct(): ?string
     {
-        return strcasecmp((string) $this->email, 'moaz@kaman.rest') === 0;
+        return strcasecmp((string) $this->email, 'moaz@kaman.rest') === 0 ? 'mall' : null;
     }
 
     /**
@@ -110,16 +100,7 @@ class User extends Authenticatable
      */
     public function limitedSupportConsole(): bool
     {
-        return $this->posLiveLogsOnly() || $this->supportConnectionsOnly();
-    }
-
-    /**
-     * App-version prefix this user may see on the live log board.
-     * Null means every version.
-     */
-    public function posAppVersionPrefix(): ?string
-    {
-        return $this->posLiveLogsOnly() ? '1.0.' : null;
+        return $this->supportConnectionsOnly();
     }
 
     public function projectEntryUrl(Project $project): string
@@ -188,15 +169,8 @@ class User extends Authenticatable
             || $this->appDevelopmentRole() === AppDevelopmentRole::Developer;
     }
 
-    public const MOWAHADA_EMAIL = 'mowahada@workspace.com';
-
-    public function isMowahada(): bool
-    {
-        return strcasecmp((string) $this->email, self::MOWAHADA_EMAIL) === 0;
-    }
-
     /**
-     * Chatbot project only. Kaman-world accounts, including admins, stay on the main login.
+     * An account whose only grants belonged to the chatbot studio, which now lives in its own project.
      */
     public function isChatbotOnly(): bool
     {
@@ -204,21 +178,25 @@ class User extends Authenticatable
             return false;
         }
 
-        return $this->projectKeys() === [Project::AiChatbot->value];
+        $keys = $this->projectKeys();
+
+        return $keys !== [] && array_intersect($keys, Project::keys()) === [];
     }
 
     public function afterLoginUrl(): string
     {
-        if ($this->isMowahada()) {
-            return route('ai-chatbot.farz.dashboard');
-        }
-
         if ($this->isChatbotOnly()) {
-            return route('ai-chatbot.index');
+            return route('login');
         }
 
-        if ($this->accessibleProjects() !== []) {
-            return route('design.modern-light');
+        if ($this->accessibleProjects() !== [] || filled($this->door_access)) {
+            if ($this->canOpenSubDoor(Door::Overview, 'dashboard')) {
+                return route('design.modern-light');
+            }
+
+            $door = $this->firstOpenDoor();
+
+            return $door !== null ? $this->doorEntryUrl($door) : route('design.modern-light');
         }
 
         return route('login');

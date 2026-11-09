@@ -17,11 +17,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             Route::middleware('web')
-                ->group(base_path('routes/ai-chatbot.php'));
-            Route::middleware('web')
                 ->group(base_path('routes/app-development.php'));
             Route::middleware('web')
                 ->group(base_path('routes/kaman-support.php'));
+            Route::middleware('web')
+                ->group(base_path('routes/finance.php'));
+            Route::middleware('web')
+                ->group(base_path('routes/sales.php'));
+            Route::middleware('web')
+                ->group(base_path('routes/mobile.php'));
             Route::middleware('web')
                 ->group(base_path('routes/officevision.php'));
             Route::middleware('api')
@@ -37,31 +41,24 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureAccountIsOn::class,
             \App\Http\Middleware\SetLocale::class,
-            \App\Http\Middleware\KeepMowahadaInFarz::class,
+            \App\Http\Middleware\EnsureDoorIsOpen::class,
         ]);
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'door' => \App\Http\Middleware\EnsureDoorIsOpen::class,
+            'user-manager' => \App\Http\Middleware\EnsureUserManagesUsers::class,
             'project' => \App\Http\Middleware\EnsureUserCanAccessProject::class,
             'kaman-support.key' => \App\Http\Middleware\KamanSupport\AuthenticateSupportKey::class,
             'pos-live-scope' => \App\Http\Middleware\KamanSupport\LimitPosLiveLogViewer::class,
             'officevision.token' => \App\Http\Middleware\OfficeVision\AuthenticateOfficeVision::class,
         ]);
 
-        $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->is('ai-chatbot', 'ai-chatbot/*')) {
-                return route('chatbots.login');
-            }
-
-            return route('login');
-        });
+        $middleware->redirectGuestsTo(fn () => route('login'));
 
         $middleware->validateCsrfTokens(except: [
-            'api/voice/telnyx/webhook',
-            'ai-chatbot/webhook/greenapi/*',
-            'ai-chatbot/webhook/greenapi/*/*',
-            'ai-chatbot/webhook/whapi/*',
             'api/kaman-support/*',
         ]);
     })

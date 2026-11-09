@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\AppDevelopmentTaskStatus;
+use App\Enums\Door;
 use App\Enums\KamanSupport\SupportTicketStatus;
 use App\Models\AppDevelopment\AppDevelopmentTask;
 use App\Models\KamanSupport\SupportTicket;
@@ -53,8 +54,36 @@ class DesignConceptController extends Controller
         $page = $page ?: 'dashboard';
         abort_unless(in_array($page, ['dashboard', 'restaurants'], true), 404);
 
+        $user = $request->user();
+        // The dashboard is the doors only; the restaurant list stays out of the page when Restaurants is locked.
+        $restaurants = $user?->canOpenSubDoor(Door::Overview, 'restaurants') ?? false;
         $catalog = app(AgentsWorkspaceController::class)->catalog();
-        $companies = $catalog['companies'];
+        $companies = $restaurants ? $catalog['companies'] : [];
+        $summary = $this->summary($user, $companies);
+
+        return view('workspace.overview.index', [
+            'page' => $page,
+            'companies' => $companies,
+            'cities' => $catalog['cities'],
+            'finance' => $restaurants ? app(\App\Services\Finance\RestaurantFinance::class)->forUser($user) : [],
+            'supportBoot' => app(\App\Services\KamanSupport\RestaurantSupport::class)->boot($restaurants ? $user : null),
+            'stats' => $summary['stats'],
+            'activity' => $summary['activity'],
+            'supportHref' => $user->doorEntryUrl(Door::Support),
+            'devHref' => $user->doorEntryUrl(Door::Development),
+            'agentsHref' => $user->doorEntryUrl(Door::Agents),
+            'financeHref' => $user->doorEntryUrl(Door::Finance),
+        ]);
+    }
+
+    /**
+     * The dashboard's numbers and latest activity, limited to what this user's doors show.
+     *
+     * @param  array<int, mixed>  $companies
+     * @return array{stats: array{restaurants: int, tickets: int, tasks: int}, activity: list<array{at: int, tone: string, title: string, meta: string, time: string}>}
+     */
+    public function summary(?\App\Models\User $user, array $companies): array
+    {
         $openTickets = SupportTicket::query()
             ->whereIn('status', [SupportTicketStatus::Open, SupportTicketStatus::InProgress])
             ->count();
@@ -63,7 +92,9 @@ class DesignConceptController extends Controller
             ->count();
 
         $activity = [];
-        SupportTicket::query()->latest('updated_at')->limit(3)->get(['summary', 'restaurant_name', 'restaurant', 'updated_at'])
+        $seesTickets = $user?->canOpenSubDoor(Door::Support, 'tickets') ?? false;
+        $seesTasks = $user?->canOpenSubDoor(Door::Development, 'tasks') ?? false;
+        SupportTicket::query()->latest('updated_at')->limit($seesTickets ? 3 : 0)->get(['summary', 'restaurant_name', 'restaurant', 'updated_at'])
             ->each(function (SupportTicket $ticket) use (&$activity): void {
                 $activity[] = [
                     'at' => optional($ticket->updated_at)->timestamp ?? 0,
@@ -73,7 +104,7 @@ class DesignConceptController extends Controller
                     'time' => optional($ticket->updated_at)->diffForHumans() ?? '',
                 ];
             });
-        AppDevelopmentTask::query()->latest('updated_at')->limit(3)->get(['title', 'status', 'updated_at'])
+        AppDevelopmentTask::query()->latest('updated_at')->limit($seesTasks ? 3 : 0)->get(['title', 'status', 'updated_at'])
             ->each(function (AppDevelopmentTask $task) use (&$activity): void {
                 $activity[] = [
                     'at' => optional($task->updated_at)->timestamp ?? 0,
@@ -84,38 +115,15 @@ class DesignConceptController extends Controller
                 ];
             });
         usort($activity, fn (array $a, array $b): int => $b['at'] <=> $a['at']);
-        $activity = array_slice($activity, 0, 4);
 
-        return view('workspace.overview.index', [
-            'page' => $page,
-            'companies' => $companies,
-            'cities' => $catalog['cities'],
+        return [
             'stats' => [
                 'restaurants' => count($companies),
-                'tickets' => $openTickets,
-                'tasks' => $openTasks,
+                'tickets' => $seesTickets ? $openTickets : 0,
+                'tasks' => $seesTasks ? $openTasks : 0,
             ],
-            'activity' => $activity,
-            'supportHref' => route('kaman-support.index'),
-            'devHref' => $request->user()?->is_admin
-                ? route('app-development.reports.index')
-                : route('app-development.tickets.index'),
-            'agentsHref' => route('workspace.agents'),
-            'financeHref' => route('workspace.placeholder', 'finance'),
-        ]);
-    }
-
-    public function placeholder(Request $request, string $door): View|RedirectResponse
-    {
-        abort_unless($door === 'finance', 404);
-
-        if ($redirect = $this->awayFromChatbots($request)) {
-            return $redirect;
-        }
-
-        return view('workspace.placeholder', [
-            'title' => __('app.hub_finance'),
-        ]);
+            'activity' => array_slice($activity, 0, 4),
+        ];
     }
 
     private function awayFromChatbots(Request $request): ?RedirectResponse

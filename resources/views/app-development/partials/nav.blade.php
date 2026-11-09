@@ -8,23 +8,24 @@
     $tasksActive = request()->routeIs('app-development.tasks.*');
     $releasesActive = request()->routeIs('app-development.releases.*');
     $reportsActive = request()->routeIs('app-development.reports.*');
-    $links = [];
-    if ($user?->is_admin) {
-        $links[] = ['app-development.reports.index', 'chart', __('app-development.nav.reports'), $reportsActive, null];
-    }
-    $links[] = ['app-development.tickets.index', 'ticket', __('app-development.nav.tickets'), $ticketsActive, $ticketBadge];
-    $links[] = ['app-development.tasks.index', 'tasks', __('app-development.nav.tasks'), $tasksActive, null];
-    $links[] = ['app-development.releases.index', 'apk', __('app-development.nav.releases'), $releasesActive, null];
+    $links = [
+        ['app-development.reports.index', 'chart', __('app-development.nav.reports'), $reportsActive, null, 'reports'],
+        ['app-development.tickets.index', 'ticket', __('app-development.nav.tickets'), $ticketsActive, $ticketBadge, 'tickets'],
+        ['app-development.tasks.index', 'tasks', __('app-development.nav.tasks'), $tasksActive, null, 'tasks'],
+        ['app-development.releases.index', 'apk', __('app-development.nav.releases'), $releasesActive, null, 'releases'],
+    ];
 @endphp
 
 <nav class="ws-float" data-ws-float aria-label="{{ __('app-development.tag') }}">
     <span class="ws-float__indicator" data-ws-indicator></span>
-    @foreach($links as [$routeName, $icon, $label, $active, $badge])
+    @foreach($links as [$routeName, $icon, $label, $active, $badge, $subDoor])
+        @php $tabOpen = (bool) $user?->canOpenSubDoor(\App\Enums\Door::Development, $subDoor); @endphp
         <a href="{{ route($routeName) }}"
-           @class(['is-selected' => $active])
+           @class(['is-selected' => $active, 'is-locked' => ! $tabOpen])
            @if($active) aria-current="page" @endif>
             @include('app-development.partials.icon', ['name' => $icon])
             <span>{{ $label }}</span>
+            @unless($tabOpen)<x-workspace.lock-mark />@endunless
             @if($badge)
                 <em class="dev-nav-badge">{{ $badge }}</em>
             @endif

@@ -24,18 +24,12 @@
     $hasTrend = collect($dash['trend'])->sum(fn (array $point): int => $point['created'] + $point['completed']) > 0;
 @endphp
 
-<div class="report-header">
+<div class="report-header ds-head">
     <div>
-        <div class="report-eyebrow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            {{ __('app-development.reports.eyebrow') }}
-        </div>
-        <h1>{{ __('app-development.reports.headline') }}</h1>
-        <p>{{ __('app-development.reports.lead') }}</p>
+        <h1 class="ds-h1">{{ __('app-development.reports.headline') }}</h1>
     </div>
     <form method="get" action="{{ route('app-development.reports.index') }}" class="report-actions">
-        <label class="report-period-label" for="reportPeriod">{{ __('app-development.reports.period') }}</label>
-        <select id="reportPeriod" name="preset" class="report-period" onchange="this.form.submit()">
+        <select id="reportPeriod" name="preset" class="report-period" aria-label="{{ __('app-development.reports.period') }}" onchange="this.form.submit()">
             @foreach (['last_7', 'last_30', 'last_90'] as $key)
                 <option value="{{ $key }}" @selected($preset === $key)>{{ __('app-development.reports.preset_'.$key) }}</option>
             @endforeach
@@ -50,62 +44,26 @@
 @if (! $dash['available'])
     <p class="report-empty">{{ __('app-development.reports.unavailable') }}</p>
 @else
-    <div class="report-metrics">
-        <article class="report-metric">
-            <div class="metric-top"><span>{{ __('app-development.reports.completed') }}</span></div>
-            <div class="metric-main">
-                <strong>{{ $dash['completed']['value'] }}</strong>
-                <span class="metric-delta {{ $completedChip['class'] }}">{{ $completedChip['text'] }}</span>
+    <section class="ds-stats ds-card dv-report-stats">
+        @foreach([
+            ['label' => __('app-development.reports.completed'), 'value' => $dash['completed']['value'], 'chip' => $completedChip],
+            ['label' => __('app-development.reports.open_tasks'), 'value' => $dash['open']['value'], 'chip' => $openChip],
+            ['label' => __('app-development.reports.cycle'), 'value' => $dash['cycle']['days'] === null ? '—' : number_format((float) $dash['cycle']['days'], 1).__('app-development.reports.day_short'), 'chip' => $cycleChip],
+            ['label' => __('app-development.reports.apk_releases'), 'value' => $dash['releases']['value'], 'chip' => $releaseChip],
+        ] as $metric)
+            <div class="ds-stat">
+                <span class="ds-label">{{ $metric['label'] }}</span>
+                <strong class="ds-num">{{ $metric['value'] }}</strong>
+                <small class="ds-delta {{ $metric['chip']['class'] === 'positive' ? 'is-up' : '' }}"><span dir="ltr">{{ $metric['chip']['text'] }}</span></small>
             </div>
-            <div class="metric-note">{{ __('app-development.reports.vs_previous') }}</div>
-            @if ($dash['completed']['spark'])
-                <div class="metric-spark"><svg viewBox="0 0 160 40" preserveAspectRatio="none"><path d="{{ $dash['completed']['spark'] }}" fill="none" stroke="#21b58d" stroke-width="2.8" stroke-linecap="round"/></svg></div>
-            @endif
-        </article>
-        <article class="report-metric">
-            <div class="metric-top"><span>{{ __('app-development.reports.open_tasks') }}</span></div>
-            <div class="metric-main">
-                <strong>{{ $dash['open']['value'] }}</strong>
-                <span class="metric-delta {{ $openChip['class'] }}">{{ $openChip['text'] }}</span>
-            </div>
-            <div class="metric-note">{{ __('app-development.reports.awaiting') }}</div>
-        </article>
-        <article class="report-metric">
-            <div class="metric-top"><span>{{ __('app-development.reports.cycle') }}</span></div>
-            <div class="metric-main">
-                <strong>
-                    @if ($dash['cycle']['days'] === null)
-                        —
-                    @else
-                        {{ number_format((float) $dash['cycle']['days'], 1) }}<span class="metric-unit">{{ __('app-development.reports.day_short') }}</span>
-                    @endif
-                </strong>
-                <span class="metric-delta {{ $cycleChip['class'] }}">{{ $cycleChip['text'] }}</span>
-            </div>
-            <div class="metric-note">{{ __('app-development.reports.cycle_note') }}</div>
-            @if ($dash['cycle']['spark'])
-                <div class="metric-spark"><svg viewBox="0 0 160 40" preserveAspectRatio="none"><path d="{{ $dash['cycle']['spark'] }}" fill="none" stroke="#7b89e9" stroke-width="2.8" stroke-linecap="round"/></svg></div>
-            @endif
-        </article>
-        <article class="report-metric">
-            <div class="metric-top"><span>{{ __('app-development.reports.apk_releases') }}</span></div>
-            <div class="metric-main">
-                <strong>{{ $dash['releases']['value'] }}</strong>
-                <span class="metric-delta {{ $releaseChip['class'] }}">{{ $releaseChip['text'] }}</span>
-            </div>
-            <div class="metric-note">{{ __('app-development.reports.builds') }}</div>
-            @if ($dash['releases']['spark'])
-                <div class="metric-spark"><svg viewBox="0 0 160 40" preserveAspectRatio="none"><path d="{{ $dash['releases']['spark'] }}" fill="none" stroke="#f0b642" stroke-width="2.8" stroke-linejoin="round"/></svg></div>
-            @endif
-        </article>
-    </div>
+        @endforeach
+    </section>
 
     <div class="report-two-col">
         <section class="report-panel">
             <div class="report-panel-head">
                 <div>
                     <h2>{{ __('app-development.reports.trend') }}</h2>
-                    <p>{{ __('app-development.reports.trend_sub') }}</p>
                 </div>
                 <div class="report-legend">
                     <span><i class="legend-dot completed"></i> {{ __('app-development.reports.legend_completed') }}</span>
@@ -132,7 +90,6 @@
             <div class="report-panel-head">
                 <div>
                     <h2>{{ __('app-development.reports.breakdown') }}</h2>
-                    <p>{{ __('app-development.reports.breakdown_sub') }}</p>
                 </div>
             </div>
             <div class="report-donut-area">
@@ -160,7 +117,6 @@
             <div class="report-panel-head">
                 <div>
                     <h2>{{ __('app-development.reports.workload') }}</h2>
-                    <p>{{ __('app-development.reports.workload_sub') }}</p>
                 </div>
             </div>
             @if ($dash['apps'] === [])
@@ -180,7 +136,6 @@
             <div class="report-panel-head">
                 <div>
                     <h2>{{ __('app-development.reports.activity') }}</h2>
-                    <p>{{ __('app-development.reports.activity_sub') }}</p>
                 </div>
             </div>
             @if ($dash['activity'] === [])

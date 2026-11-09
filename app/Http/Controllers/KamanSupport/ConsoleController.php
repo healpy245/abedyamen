@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers\KamanSupport;
 
 use App\Enums\KamanSupport\SupportCommandName;
-use App\Enums\KamanSupport\SupportTicketEventType;
 use App\Enums\KamanSupport\SupportTicketStatus;
+use App\Http\Controllers\AgentsWorkspaceController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\KamanSupport\StoreSupportTicketCommandRequest;
-use App\Http\Requests\KamanSupport\StoreSupportTicketEventRequest;
-use App\Http\Requests\KamanSupport\UpdateSupportTicketRequest;
 use App\Models\FormWorkflowRun;
+use App\Models\KamanSupport\MenuAgentChat;
 use App\Models\KamanSupport\SupportDevice;
 use App\Models\KamanSupport\SupportDeviceLog;
 use App\Models\KamanSupport\SupportTicket;
 use App\Services\KamanSupport\LogIssueGrouper;
 use App\Services\KamanSupport\RestaurantLogoResolver;
+use App\Services\KamanSupport\RestaurantSupport;
 use App\Services\KamanSupport\SupportDeviceCommandService;
 use App\Services\KamanSupport\SupportDeviceSessionService;
 use App\Services\KamanSupport\SupportTicketService;
@@ -24,6 +24,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ConsoleController extends Controller
 {
@@ -65,6 +67,85 @@ class ConsoleController extends Controller
         ]);
     }
 
+    /**
+     * The board for the phone app: the same cards the page draws, with the words it needs.
+     */
+    public function boardFeed(Request $request): JsonResponse
+    {
+        $devices = $this->sessions->visibleDevices();
+        $connectionsOnly = (bool) $request->user()?->supportConnectionsOnly();
+        $failures = $connectionsOnly ? [] : $this->sessions->failureSummaries($devices);
+
+        return $this->utf8Json([
+            'restaurants' => $this->restaurantCards($devices, $failures, $connectionsOnly),
+            'logs' => ! $connectionsOnly,
+            'labels' => [
+                'title' => __('kaman-support.board_title'),
+                'live' => __('kaman-support.ws_live'),
+                'online' => __('kaman-support.ws_online'),
+                'warning' => __('kaman-support.ws_warning'),
+                'offline' => __('kaman-support.ws_offline'),
+                'unknown' => __('kaman-support.ws_unknown'),
+                'healthy' => __('kaman-support.ws_healthy'),
+                'devices' => __('kaman-support.ws_devices'),
+                'search' => __('kaman-support.ws_search'),
+                'count' => __('kaman-support.ws_device_count', ['online' => ':online', 'total' => ':total']),
+                'never' => __('kaman-support.never_seen'),
+                'none' => __('kaman-support.ws_none'),
+                'mall' => __('kaman-support.ws_cashier_mall'),
+                'lite' => __('kaman-support.ws_lite'),
+                'recent' => __('kaman-support.ws_recent'),
+                'tickets' => __('kaman-support.nav_tickets'),
+                'emptyLogs' => __('kaman-support.ws_empty_logs'),
+                'empty' => __('kaman-support.empty'),
+                'last' => __('kaman-support.ws_last'),
+                'viewAllLogs' => __('kaman-support.view_all_logs'),
+            ],
+        ]);
+    }
+
+    /**
+     * One restaurant's board card (devices, their state and its latest tickets), for the Support section
+     * of the restaurant modal in the other doors. Same data the board's own modal shows.
+     */
+    public function restaurantCard(Request $request, string $restaurant): JsonResponse
+    {
+        $devices = $this->sessions->visibleDevices($restaurant);
+        $connectionsOnly = (bool) $request->user()?->supportConnectionsOnly();
+        $failures = $connectionsOnly ? [] : $this->sessions->failureSummaries($devices);
+        $card = collect($this->restaurantCards($devices, $failures, $connectionsOnly))
+            ->first(fn (array $card): bool => strcasecmp((string) $card['id'], $restaurant) === 0);
+
+        // A restaurant with no POS devices yet still has its tickets.
+        $card ??= [
+            'id' => $restaurant,
+            'name' => $restaurant,
+            'logo' => null,
+            'products' => [],
+            'online' => 0,
+            'total' => 0,
+            'status' => 'unknown',
+            'lastSeenAt' => null,
+            'lastSeen' => '',
+            'error' => null,
+            'devices' => [],
+            'tickets' => SupportTicket::query()->visibleTo(auth()->user())
+                ->where('restaurant', $restaurant)
+                ->latest('id')
+                ->limit($request->user()?->canOpenSubDoor(\App\Enums\Door::Support, 'tickets') ? 6 : 0)
+                ->get(['id', 'public_id', 'summary', 'status', 'created_at'])
+                ->map(fn (SupportTicket $ticket): array => [
+                    'id' => $ticket->public_id,
+                    'summary' => (string) $ticket->summary,
+                    'status' => $ticket->status?->value,
+                    'label' => $ticket->status?->label() ?? '',
+                    'at' => $ticket->created_at?->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('Y-m-d H:i'),
+                ])->all(),
+        ];
+
+        return response()->json(['card' => $card, 'logs' => ! $connectionsOnly]);
+    }
+
     public function logos(Request $request, RestaurantLogoResolver $logos): JsonResponse
     {
         $slugs = $request->query('restaurants', []);
@@ -77,6 +158,85 @@ class ConsoleController extends Controller
         ]);
     }
 
+    /**
+     * The inbox for the phone app: the same list and numbers, with the words it needs.
+     */
+    public function inboxFeed(Request $request, RestaurantLogoResolver $logos): JsonResponse
+    {
+        $state = (string) $request->query('state', '');
+        $q = $request->query('q');
+        $query = SupportTicket::query()->visibleTo(auth()->user())->with('closedBy:id,name')->orderByDesc('id');
+        if ($state === 'closed') {
+            $query->where('status', SupportTicketStatus::Closed);
+        } elseif ($state === 'open') {
+            $query->where('status', '!=', SupportTicketStatus::Closed->value);
+        }
+        if (is_string($q) && $q !== '') {
+            $query->search($q);
+        }
+        $paginator = $query->paginate(30);
+        $images = $logos->resolve($paginator->getCollection()->pluck('restaurant')->filter()->unique()->values()->all());
+        $user = $request->user();
+
+        $total = SupportTicket::query()->visibleTo(auth()->user())->count();
+        $closed = SupportTicket::query()->visibleTo(auth()->user())->where('status', SupportTicketStatus::Closed)->count();
+        $progress = SupportTicket::query()->visibleTo(auth()->user())->where('status', SupportTicketStatus::InProgress)->count();
+
+        return $this->utf8Json([
+            'page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'can_escalate' => (bool) $user?->can('create', \App\Models\AppDevelopment\AppDevelopmentTicket::class),
+            'stats' => [
+                'total' => $total,
+                'open' => max(0, $total - $closed - $progress),
+                'progress' => $progress,
+                'closed' => $closed,
+            ],
+            'tickets' => collect($paginator->items())->map(function (SupportTicket $ticket) use ($images): array {
+                $level = $ticket->reportLevel();
+
+                return [
+                    'id' => $ticket->public_id,
+                    'title' => (string) $ticket->summary,
+                    'details' => (string) $ticket->details,
+                    'restaurant' => (string) ($ticket->restaurant_name ?: $ticket->restaurant),
+                    'slug' => (string) $ticket->restaurant,
+                    'logo' => $images[(string) $ticket->restaurant] ?? null,
+                    'status' => $ticket->status?->value,
+                    'statusLabel' => $ticket->status?->label() ?? '',
+                    'closed' => $ticket->status === SupportTicketStatus::Closed,
+                    'escalated' => filled($ticket->escalated_ticket_id),
+                    'level' => $level,
+                    'levelLabel' => $level ? __('kaman-support.level.'.$level) : null,
+                    'closeNote' => (string) $ticket->close_note,
+                    'closedBy' => $ticket->closedBy === null ? null : __('kaman-support.closed_by', ['name' => $ticket->closedBy->name]),
+                    'closeTime' => $ticket->closeDurationLabel() ? __('kaman-support.time_to_close', ['time' => $ticket->closeDurationLabel()]) : null,
+                ];
+            })->values()->all(),
+            'labels' => [
+                'title' => __('kaman-support.nav_tickets'),
+                'lead' => __('kaman-support.ticket_lead'),
+                'all' => __('app-development.tabs.all'),
+                'open' => __('app-development.tickets.open_state'),
+                'closed' => __('app-development.tickets.closed_state'),
+                'total' => __('app-development.tickets.total'),
+                'progress' => __('kaman-support.status.in_progress'),
+                'empty' => __('kaman-support.empty'),
+                'escalate' => __('kaman-support.escalate'),
+                'escalated' => __('kaman-support.escalated'),
+                'close' => __('kaman-support.close_ticket'),
+                'closeTitle' => __('kaman-support.close_title'),
+                'closeNote' => __('kaman-support.close_note'),
+                'details' => __('kaman-support.details'),
+                'restaurant' => __('kaman-support.restaurant'),
+                'device' => __('kaman-support.device'),
+                'events' => __('kaman-support.events'),
+                'voice' => __('kaman-support.voice'),
+                'screen' => __('kaman-support.screen'),
+            ],
+        ]);
+    }
+
     public function inbox(Request $request): View
     {
         $state = (string) $request->query('state', '');
@@ -84,7 +244,7 @@ class ConsoleController extends Controller
             $state = '';
         }
         $q = $request->query('q');
-        $query = SupportTicket::query()->with('closedBy:id,name')->orderByDesc('id');
+        $query = SupportTicket::query()->visibleTo(auth()->user())->with('closedBy:id,name')->orderByDesc('id');
         if ($state === 'closed') {
             $query->where('status', SupportTicketStatus::Closed);
         } elseif ($state === 'open') {
@@ -94,15 +254,25 @@ class ConsoleController extends Controller
             $query->search($q);
         }
         $paginator = $query->paginate(30)->withQueryString();
+        $logos = app(RestaurantLogoResolver::class)->cached(
+            $paginator->getCollection()
+                ->pluck('restaurant')
+                ->filter(fn (mixed $slug): bool => is_string($slug) && $slug !== '')
+                ->map(fn (string $slug): string => $slug)
+                ->unique()
+                ->values()
+                ->all(),
+        );
 
-        $total = SupportTicket::query()->count();
-        $closed = SupportTicket::query()->where('status', SupportTicketStatus::Closed)->count();
-        $progress = SupportTicket::query()->where('status', SupportTicketStatus::InProgress)->count();
+        $total = SupportTicket::query()->visibleTo(auth()->user())->count();
+        $closed = SupportTicket::query()->visibleTo(auth()->user())->where('status', SupportTicketStatus::Closed)->count();
+        $progress = SupportTicket::query()->visibleTo(auth()->user())->where('status', SupportTicketStatus::InProgress)->count();
 
         return view('kaman-support.inbox', [
             'tickets' => $paginator,
             'state' => $state,
             'search' => is_string($q) ? $q : '',
+            'logos' => $logos,
             'stats' => [
                 'total' => $total,
                 'open' => max(0, $total - $closed - $progress),
@@ -170,11 +340,73 @@ class ConsoleController extends Controller
         }
 
         return redirect()
-            ->route('kaman-support.show', $ticket)
+            ->route('kaman-support.inbox', ['ticket' => $ticket->public_id])
             ->with('status', $dev->ticket_number);
     }
 
     public function logs(Request $request): View
+    {
+        return view('kaman-support.logs', $this->logsData($request));
+    }
+
+    /**
+     * The logs explorer for the phone app: the same grouped issues, with the words it needs.
+     */
+    public function logsFeed(Request $request): JsonResponse
+    {
+        return $this->utf8Json($this->logsData($request) + [
+            'labels' => [
+                'deviceLogs' => __('kaman-support.ws_device_logs'),
+                'serverLogs' => __('kaman-support.ws_server_logs'),
+                'search' => __('kaman-support.ws_search_logs'),
+                'searchList' => __('kaman-support.ws_search'),
+                'restaurants' => __('kaman-support.ws_restaurants'),
+                'time' => __('kaman-support.ws_time'),
+                'last15' => __('kaman-support.ws_last_15'),
+                'lastHour' => __('kaman-support.ws_last_hour'),
+                'today' => __('kaman-support.ws_today'),
+                'lastWeek' => __('kaman-support.ws_last_week'),
+                'apply' => __('kaman-support.filter'),
+                'severity' => __('kaman-support.ws_severity'),
+                'category' => __('kaman-support.ws_inv_category'),
+                'integration' => __('kaman-support.ws_inv_integration'),
+                'status' => __('kaman-support.ws_inv_status'),
+                'device' => __('kaman-support.device'),
+                'levelError' => __('kaman-support.ws_level_error'),
+                'levelWarn' => __('kaman-support.ws_warning'),
+                'levelInfo' => __('kaman-support.ws_level_info'),
+                'flutter' => __('kaman-support.ws_flutter_short'),
+                'print' => __('kaman-support.ws_print_short'),
+                'network' => __('kaman-support.ws_network'),
+                'reset' => __('kaman-support.ws_reset'),
+                'issues' => __('kaman-support.ws_inv_issues'),
+                'scope' => __('kaman-support.ws_inv_scope', ['count' => ':count']),
+                'empty' => __('kaman-support.ws_empty_logs'),
+                'noMatch' => __('kaman-support.ws_inv_no_match'),
+                'serverTitle' => __('kaman-support.ws_inv_server_title'),
+                'serverSub' => __('kaman-support.ws_inv_server_sub'),
+                'select' => __('kaman-support.ws_inv_select'),
+                'pending' => __('kaman-support.ws_inv_pending'),
+                'affected' => __('kaman-support.ws_inv_affected'),
+                'technical' => __('kaman-support.ws_inv_technical'),
+                'copy' => __('kaman-support.ws_inv_copy_json'),
+                'copied' => __('kaman-support.ws_inv_copied'),
+                'endpoint' => __('kaman-support.ws_inv_endpoint'),
+                'body' => __('kaman-support.ws_inv_body'),
+                'message' => __('kaman-support.ws_inv_message'),
+                'stack' => __('kaman-support.ws_inv_stack'),
+                'exchange' => __('kaman-support.ws_inv_request'),
+                'meta' => __('kaman-support.ws_inv_meta'),
+                'mall' => __('kaman-support.ws_cashier_mall'),
+                'lite' => __('kaman-support.ws_lite'),
+            ],
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function logsData(Request $request): array
     {
         $lane = $request->query('lane') === 'server' ? 'server' : 'device';
         $filters = $this->failedFilters($request);
@@ -203,12 +435,9 @@ class ConsoleController extends Controller
             'limit' => 200,
             'restaurants' => $picked,
         ];
-        // support_device_logs rows are captured by restaurant devices.
-        // An API failure reported by the cashier app stays in Device Logs.
-        // Server Logs stays empty until a real server integration writes its own records.
-        $logs = $lane === 'server'
-            ? collect()
-            : $this->sessions->recentGlobalLogs(...$shared, level: 'error');
+        // Card-terminal refusals are filed on the server lane. Every other
+        // error the tablet uploaded stays on the device lane.
+        $logs = $this->sessions->recentGlobalLogs(...$shared, level: 'error', lane: $lane);
 
         $rows = [];
         foreach ($logs as $log) {
@@ -255,6 +484,7 @@ class ConsoleController extends Controller
                 'deviceId' => $deviceId,
                 'kind' => $device?->deviceKind() ?? '',
                 'version' => (string) ($device?->app_version ?? ''),
+                'product' => (string) ($device?->productKey() ?? ''),
                 'platform' => (string) ($device?->platform ?? ''),
             ];
         }
@@ -281,8 +511,8 @@ class ConsoleController extends Controller
         natcasesort($deviceOptions);
         ksort($httpOptions, SORT_STRING);
 
-        $choices = $this->sessions->restaurantChoices();
-        $logos = app(RestaurantLogoResolver::class)->cached(array_merge(
+        $choices = $this->logRestaurantChoices($picked);
+        $logos = array_filter(array_column($choices, 'logo', 'value')) + app(RestaurantLogoResolver::class)->cached(array_merge(
             array_column($issues, 'restaurantId'),
             array_column($choices, 'value'),
         ));
@@ -292,7 +522,7 @@ class ConsoleController extends Controller
             $issues[$index]['products'] = $this->logProductKeys($issue);
         }
 
-        return view('kaman-support.logs', [
+        return [
             'issues' => $issues,
             'loaded' => count($rows),
             'visibleCount' => $visibleCount,
@@ -306,7 +536,7 @@ class ConsoleController extends Controller
             'client' => $client,
             'deviceOptions' => array_values($deviceOptions),
             'httpOptions' => array_values($httpOptions),
-        ]);
+        ];
     }
 
     public function menu(Request $request): View
@@ -331,27 +561,97 @@ class ConsoleController extends Controller
             'authUrl' => route('kaman-support.menu.auth'),
             'loginUrl' => route('kaman-support.menu.login'),
             'chatUrl' => route('kaman-support.menu.chat'),
+            'chats' => $user === null ? [] : MenuAgentChat::query()
+                ->where('user_id', $user->id)
+                ->latest('updated_at')
+                ->limit(50)
+                ->get(['id', 'subdomain', 'title', 'updated_at'])
+                ->map(fn (MenuAgentChat $chat): array => [
+                    'id' => $chat->id,
+                    'subdomain' => $chat->subdomain,
+                    'title' => $chat->title,
+                    'updated' => $chat->updated_at?->diffForHumans() ?? '',
+                ])->all(),
+            'chatsUrl' => route('kaman-support.menu.chats.store'),
+            // __ID__ is swapped for the chat id in the page script.
+            'chatUrlTemplate' => route('kaman-support.menu.chats.show', ['chat' => '__ID__']),
         ]);
     }
 
-    public function show(SupportTicket $ticket): View
+    /**
+     * One ticket for the ticket modal. There is no ticket page: an old link lands on the inbox with the modal open.
+     */
+    public function show(Request $request, SupportTicket $ticket, RestaurantSupport $support): JsonResponse|RedirectResponse
     {
-        $ticket->load('events');
-
-        $device = null;
-        if (filled($ticket->restaurant) && filled($ticket->device_id)) {
-            $device = SupportDevice::query()
-                ->where('restaurant', $ticket->restaurant)
-                ->where('device_id', $ticket->device_id)
-                ->first();
+        if (! $request->expectsJson()) {
+            return redirect()->route('kaman-support.inbox', ['ticket' => $ticket->public_id]);
         }
 
-        return view('kaman-support.show', [
-            'ticket' => $ticket,
-            'device' => $device,
-            'commands' => $device ? $this->commands->recent($device) : collect(),
-            'commandNames' => SupportCommandName::cases(),
-            'statuses' => SupportTicketStatus::cases(),
+        $ticket->load('events');
+        $timezone = config('kaman-support.display_timezone', 'Asia/Jerusalem');
+        $level = $ticket->reportLevel();
+
+        return response()->json([
+            'ticket' => [
+                'id' => $ticket->public_id,
+                'title' => (string) $ticket->summary,
+                'details' => (string) $ticket->details,
+                'status' => $ticket->status?->value,
+                'statusLabel' => $ticket->status?->label() ?? '',
+                'level' => $level,
+                'levelLabel' => $level ? __('kaman-support.level.'.$level) : null,
+                'restaurant' => (string) ($ticket->restaurant_name ?: $ticket->restaurant),
+                'restaurantKey' => $support->keyFor($request->user(), $ticket->restaurant),
+                'device' => $ticket->device_id,
+                'at' => $ticket->created_at?->timezone($timezone)->format('Y-m-d H:i'),
+                'voice' => $ticket->hasVoice() ? route('kaman-support.tickets.audio', $ticket) : null,
+                'screen' => $ticket->hasScreen() ? route('kaman-support.tickets.screen', $ticket) : null,
+                'events' => $ticket->events->map(fn ($event): array => [
+                    'type' => $event->type?->label() ?? '',
+                    'actor' => (string) $event->actor_name,
+                    'at' => $event->created_at?->timezone($timezone)->format('Y-m-d H:i'),
+                    'message' => (string) $event->message,
+                ])->values()->all(),
+            ],
+            'copy' => [
+                'details' => __('kaman-support.details'),
+                'restaurant' => __('kaman-support.restaurant'),
+                'device' => __('kaman-support.device'),
+                'voice' => __('kaman-support.voice'),
+                'screen' => __('kaman-support.screen'),
+                'events' => __('kaman-support.events'),
+                'close' => __('kaman-support.ws_close'),
+            ],
+        ]);
+    }
+
+    public function audio(SupportTicket $ticket): StreamedResponse
+    {
+        return $this->recording($ticket, 'audioPath');
+    }
+
+    public function screen(SupportTicket $ticket): StreamedResponse
+    {
+        return $this->recording($ticket, 'screenPath');
+    }
+
+    private function recording(SupportTicket $ticket, string $key): StreamedResponse
+    {
+        $path = $ticket->mediaPath($key);
+        abort_unless(is_string($path) && Storage::disk('local')->exists($path), 404);
+
+        $name = basename($path);
+        $mime = match (true) {
+            str_ends_with($name, '.wav') => 'audio/wav',
+            str_ends_with($name, '.m4a'), str_ends_with($name, '.aac') => 'audio/mp4',
+            str_ends_with($name, '.mp3') => 'audio/mpeg',
+            str_ends_with($name, '.ogg') => 'audio/ogg',
+            default => 'application/octet-stream',
+        };
+
+        return Storage::disk('local')->response($path, $name, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.$name.'"',
         ]);
     }
 
@@ -495,7 +795,6 @@ class ConsoleController extends Controller
 
     public function device(Request $request, SupportDevice $device): RedirectResponse
     {
-        $this->assertDeviceVisible($device);
         if ($request->user()?->limitedSupportConsole()) {
             return redirect()->route('kaman-support.live');
         }
@@ -505,7 +804,6 @@ class ConsoleController extends Controller
 
     public function deviceFeed(Request $request, SupportDevice $device): JsonResponse
     {
-        $this->assertDeviceVisible($device);
         if ($request->user()?->supportConnectionsOnly()) {
             return $this->utf8Json([
                 'ok' => true,
@@ -562,58 +860,6 @@ class ConsoleController extends Controller
                     ->all(),
             ],
         ]);
-    }
-
-    public function update(UpdateSupportTicketRequest $request, SupportTicket $ticket): RedirectResponse
-    {
-        $this->tickets->updateTicket($ticket, $request->validated(), $request->user());
-
-        return redirect()
-            ->route('kaman-support.show', $ticket)
-            ->with('status', __('kaman-support.flash.updated'));
-    }
-
-    public function storeEvent(StoreSupportTicketEventRequest $request, SupportTicket $ticket): RedirectResponse
-    {
-        $this->tickets->addEvent(
-            $ticket,
-            SupportTicketEventType::from($request->validated('type')),
-            $request->validated('message'),
-            $request->validated('data'),
-            $request->user(),
-        );
-
-        return redirect()
-            ->route('kaman-support.show', $ticket)
-            ->with('status', __('kaman-support.flash.note_added'));
-    }
-
-    public function storeTicketCommand(StoreSupportTicketCommandRequest $request, SupportTicket $ticket): RedirectResponse
-    {
-        $device = $this->commands->resolveTicketDevice($ticket);
-        if ($device === null) {
-            return redirect()
-                ->route('kaman-support.show', $ticket)
-                ->with('status', __('kaman-support.flash.command_offline'));
-        }
-
-        try {
-            $this->commands->queue(
-                $device,
-                SupportCommandName::from($request->validated('name')),
-                $request->validated('args') ?? [],
-                $ticket,
-                $request->user(),
-            );
-        } catch (\RuntimeException) {
-            return redirect()
-                ->route('kaman-support.show', $ticket)
-                ->with('status', __('kaman-support.flash.command_busy'));
-        }
-
-        return redirect()
-            ->route('kaman-support.show', $ticket)
-            ->with('status', __('kaman-support.flash.command_queued'));
     }
 
     public function storeDeviceCommand(StoreSupportTicketCommandRequest $request, SupportDevice $device): RedirectResponse|JsonResponse
@@ -699,8 +945,10 @@ class ConsoleController extends Controller
                 'kind' => $device->deviceKind(),
                 'platform' => (string) $device->platform,
                 'version' => (string) $device->app_version,
+                'product' => $device->productKey(),
                 'hostname' => (string) $device->hostname,
                 'online' => $online,
+                'old' => $device->isOld(),
                 'status' => $status,
                 'appState' => (string) $device->app_state,
                 'lastSeenAt' => $seen?->toIso8601String(),
@@ -711,9 +959,10 @@ class ConsoleController extends Controller
         }
 
         $keys = array_keys($grouped);
-        $tickets = $keys === []
+        // A board card lists its tickets only for people who can open Tickets.
+        $tickets = $keys === [] || ! auth()->user()?->canOpenSubDoor(\App\Enums\Door::Support, 'tickets')
             ? collect()
-            : SupportTicket::query()
+            : SupportTicket::query()->visibleTo(auth()->user())
                 ->whereIn('restaurant', $keys)
                 ->latest('id')
                 ->limit(240)
@@ -774,7 +1023,6 @@ class ConsoleController extends Controller
                     'summary' => (string) $ticket->summary,
                     'status' => $ticket->status?->value,
                     'label' => $ticket->status?->label() ?? '',
-                    'href' => route('kaman-support.show', $ticket),
                     'at' => $ticket->created_at?->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('Y-m-d H:i'),
                 ];
                 if (count($ticketRows) >= 6) {
@@ -821,8 +1069,7 @@ class ConsoleController extends Controller
     }
 
     /**
-     * 1.0.x is Kaman Cashier Mall. 1.3.x is Kaman Lite.
-     * Online devices win. If nobody is online, the last known versions still label the restaurant.
+     * Online devices win. If nobody is online, the last known devices still label the restaurant.
      *
      * @param  list<array<string, mixed>>  $rows
      * @return list<string>
@@ -833,10 +1080,7 @@ class ConsoleController extends Controller
         $source = $online !== [] ? $online : $rows;
         $keys = [];
         foreach ($source as $row) {
-            $key = $this->productKey((string) ($row['version'] ?? ''));
-            if ($key !== null) {
-                $keys[$key] = $key;
-            }
+            $keys[(string) ($row['product'] ?? '')] = true;
         }
 
         return array_values(array_filter(
@@ -852,16 +1096,9 @@ class ConsoleController extends Controller
     private function logProductKeys(array $issue): array
     {
         $keys = [];
-        $versions = [(string) ($issue['version'] ?? '')];
         foreach (is_array($issue['occurrences'] ?? null) ? $issue['occurrences'] : [] as $occurrence) {
             if (is_array($occurrence)) {
-                $versions[] = (string) ($occurrence['version'] ?? '');
-            }
-        }
-        foreach ($versions as $version) {
-            $key = $this->productKey($version);
-            if ($key !== null) {
-                $keys[$key] = $key;
+                $keys[(string) ($occurrence['product'] ?? '')] = true;
             }
         }
 
@@ -871,17 +1108,48 @@ class ConsoleController extends Controller
         ));
     }
 
-    private function productKey(string $version): ?string
+    /**
+     * The restaurant filter on the logs page: the real restaurants from kaman.rest, not every slug a POS
+     * app has reported. Values keep the devices' spelling, since that is what the logs are matched on.
+     * A restaurant already picked stays listed so it can be unticked. If kaman.rest is unreachable the
+     * filter falls back to the reported restaurants.
+     *
+     * @param  list<string>  $picked
+     * @return list<array{value: string, label: string, logo?: string}>
+     */
+    private function logRestaurantChoices(array $picked): array
     {
-        $version = ltrim(strtolower(trim($version)), 'v');
-        if (preg_match('/^1\.0(?:\.|$)/', $version) === 1) {
-            return 'mall';
+        $companies = app(AgentsWorkspaceController::class)->catalog()['companies'];
+        $reported = [];
+        foreach ($this->sessions->restaurantChoices() as $choice) {
+            $reported[mb_strtolower($choice['value'])] ??= $choice;
         }
-        if (preg_match('/^1\.3(?:\.|$)/', $version) === 1) {
-            return 'lite';
+        if ($companies === []) {
+            return array_values($reported);
         }
 
-        return null;
+        // Someone limited to one product only sees the restaurants that use it.
+        $limited = auth()->user()?->supportProduct() !== null;
+        $choices = [];
+        foreach ($companies as $company) {
+            $slug = trim((string) ($company['subdomain'] ?? ''));
+            $key = mb_strtolower($slug);
+            if ($slug === '' || ($limited && ! isset($reported[$key]))) {
+                continue;
+            }
+            $choices[$key] = [
+                'value' => $reported[$key]['value'] ?? $slug,
+                'label' => (string) $company['name'],
+                'logo' => (string) ($company['logo'] ?? ''),
+            ];
+        }
+        foreach ($picked as $slug) {
+            $key = mb_strtolower($slug);
+            $choices[$key] ??= ['value' => $slug, 'label' => $reported[$key]['label'] ?? $slug, 'logo' => ''];
+        }
+        uasort($choices, static fn (array $a, array $b): int => strnatcasecmp($a['label'], $b['label']));
+
+        return array_values($choices);
     }
 
     /**
@@ -1094,11 +1362,6 @@ class ConsoleController extends Controller
         return $this->sessions->deviceState($device, $failure);
     }
 
-    private function assertDeviceVisible(SupportDevice $device): void
-    {
-        abort_unless($this->sessions->viewerCanSeeDevice($device), 404);
-    }
-
     /**
      * @return array{restaurant: string, kind: string, view: string, q: string}
      */
@@ -1186,6 +1449,7 @@ class ConsoleController extends Controller
                     'kind' => $device->deviceKind(),
                     'cashier' => $device->cashier_name,
                     'version' => (string) ($device->app_version ?? ''),
+                    'product' => $device->productKey(),
                 ] : null,
             ];
         }

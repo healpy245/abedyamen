@@ -97,12 +97,7 @@ class AppDevelopmentNotificationService
         }
 
         $whatsapp = app(AppDevelopmentWhatsAppNotifyService::class);
-        $instance = $whatsapp->kamanWhatsappInstance();
-        if ($instance === null) {
-            return;
-        }
-
-        $sendUrl = trim((string) ($instance->greenapi_url ?? ''));
+        $sendUrl = app(\App\Services\WhatsApp\KamanWhatsApp::class)->sendUrl();
         if ($sendUrl === '') {
             return;
         }
@@ -119,8 +114,7 @@ class AppDevelopmentNotificationService
             'ticket' => $ticket?->ticket_number ?? '',
         ]);
 
-        $greenApi = app(\App\Services\AiChatbot\ChatbotGreenApiService::class);
-        $greenApi->sendMessage($sendUrl, $chatId, $message, 0);
+        app(\App\Services\WhatsApp\KamanWhatsApp::class)->sendMessage($sendUrl, $chatId, $message);
     }
 
     /**

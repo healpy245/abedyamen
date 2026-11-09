@@ -13,9 +13,9 @@ After finishing implementation, **SFTP the changed files to production** without
 - User/password: `.vscode/sftp.json`
 - Laravel app: `/home/tut8x1radmrp/webtimize`
 - Public CSS/JS: also `/home/tut8x1radmrp/public_html/kaman-workspace`
-- Then `GET https://kaman-workspace.com/ops/clear/483275634`
-- Migrate only when new migrations exist: `GET .../ops/migrate/483275634`
-- Never hit `/ops/migrate-fresh-seed/` (wipes the database)
+- Then `python tools/ops_call.py clear` (POST with the `X-Ops-Key` header; the key is `OPS_LIVE_KEY` in the local `.env`)
+- Migrate only when new migrations exist: `python tools/ops_call.py migrate`
+- Every new `/ops/*` route needs `->middleware(EnsureOpsAccess::class)`, and anything that changes state must be POST
 - Upload **only files this task changed**. Do not full-sync `tools/sftp_sync.py` (unrelated uncommitted work must stay off production)
 - Delete remote files that were removed locally
 - If Auto-review blocks the SFTP command, retry immediately with `request_smart_mode_approval: true`

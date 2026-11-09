@@ -1,7 +1,4 @@
 @php
-    if (auth()->user()?->isMowahada()) {
-        return;
-    }
     $currentLocale = app()->getLocale();
     $locales = [
         'ar' => __('form.arabic'),

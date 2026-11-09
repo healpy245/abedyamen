@@ -9,7 +9,7 @@ use App\Enums\AppDevelopmentTicketPriority;
 use App\Enums\AppDevelopmentTicketStatus;
 use App\Enums\AppDevelopmentTicketType;
 use App\Enums\Project;
-use App\Models\AiChatbot\ChatbotInstance;
+use App\Models\KamanWhatsappLine;
 use App\Models\AppDevelopment\AppDevelopmentMember;
 use App\Models\AppDevelopment\AppDevelopmentTicket;
 use App\Models\User;
@@ -22,34 +22,34 @@ class AppDevelopmentWhatsAppNotifyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_sees_ringbells_and_team_nav(): void
+    public function test_admin_sees_whatsapp_notify_and_team_nav(): void
     {
         $admin = $this->makeAdmin();
 
         $this->actingAs($admin)
             ->get(route('app-development.tickets.index'))
             ->assertOk()
-            ->assertDontSee('kaman-filter-chip-bell', false)
+            ->assertDontSee('data-wa-notify', false)
             ->assertDontSee(__('app-development.nav.upload_apk'));
 
         $this->actingAs($admin)
             ->get(route('app-development.tasks.index'))
             ->assertOk()
-            ->assertSee('kaman-filter-chip-bell', false)
+            ->assertSee('data-wa-notify', false)
             ->assertSee(route('app-development.notify.open'), false)
             ->assertSee(route('app-development.notify.qa'), false)
             ->assertDontSee(__('app-development.nav.team'))
             ->assertSee(__('app-development.nav.reports'));
     }
 
-    public function test_developer_does_not_see_ringbells(): void
+    public function test_developer_does_not_see_whatsapp_notify(): void
     {
         $dev = $this->makeMember(AppDevelopmentRole::Developer);
 
         $this->actingAs($dev)
             ->get(route('app-development.index'))
             ->assertOk()
-            ->assertDontSee('kaman-filter-chip-bell', false)
+            ->assertDontSee('data-wa-notify', false)
             ->assertDontSee(__('app-development.nav.team'));
     }
 
@@ -128,6 +128,33 @@ class AppDevelopmentWhatsAppNotifyTest extends TestCase
         Http::assertSentCount(1);
         Http::assertSent(fn ($request): bool => ($request->data()['chatId'] ?? null) === '972549133538@c.us'
             && str_contains((string) ($request->data()['message'] ?? ''), (string) $tester->name));
+    }
+
+    public function test_picked_team_member_gets_message_whatever_their_role(): void
+    {
+        Http::fake([
+            'https://green.test/*' => Http::response(['idMessage' => 'ok'], 200),
+        ]);
+
+        $admin = $this->makeAdmin();
+        $this->makeKamanInstance($admin);
+
+        $tester = $this->makeMember(AppDevelopmentRole::Qa, [
+            'name' => 'Ahmad Essa',
+            'email' => 'ahmad@test.rest',
+        ], '+972549133538', false);
+
+        $this->makeTicket($admin, AppDevelopmentTicketStatus::Open);
+
+        $this->actingAs($admin)
+            ->post(route('app-development.notify.open'), [
+                'user_ids' => [$tester->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request): bool => ($request->data()['chatId'] ?? null) === '972549133538@c.us');
     }
 
     public function test_admin_can_toggle_member_whatsapp_and_syncs_ignore_list(): void
@@ -218,9 +245,9 @@ class AppDevelopmentWhatsAppNotifyTest extends TestCase
         return $user->fresh(['appDevelopmentMembership']) ?? $user;
     }
 
-    private function makeKamanInstance(User $owner): ChatbotInstance
+    private function makeKamanInstance(User $owner): KamanWhatsappLine
     {
-        return ChatbotInstance::query()->create([
+        return KamanWhatsappLine::query()->create([
             'user_id' => $owner->id,
             'name' => 'Kaman POS — WhatsApp',
             'system_prompt' => 'test',

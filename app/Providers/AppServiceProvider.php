@@ -10,16 +10,6 @@ use App\Policies\AppDevelopmentReleasePolicy;
 use App\Policies\AppDevelopmentTaskPolicy;
 use App\Policies\AppDevelopmentTicketPolicy;
 use App\Policies\AppDevelopmentTimeEntryPolicy;
-use App\Services\Malan\Contracts\BankTransferProofVerifier;
-use App\Services\Malan\Contracts\ChargeSavedPaymentMethod;
-use App\Services\Malan\Contracts\CheckPaymentStatus;
-use App\Services\Malan\Contracts\CreateOneTimePaymentLink;
-use App\Services\Malan\Contracts\RequestServiceReactivation;
-use App\Services\Malan\Payment\PendingChargeSavedPaymentMethod;
-use App\Services\Malan\Payment\PendingCheckPaymentStatus;
-use App\Services\Malan\Payment\PendingCreateOneTimePaymentLink;
-use App\Services\Malan\Payment\PendingRequestServiceReactivation;
-use App\Services\Malan\Proof\OpenAiVisionBankTransferProofVerifier;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -32,11 +22,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(ChargeSavedPaymentMethod::class, PendingChargeSavedPaymentMethod::class);
-        $this->app->bind(CreateOneTimePaymentLink::class, PendingCreateOneTimePaymentLink::class);
-        $this->app->bind(CheckPaymentStatus::class, PendingCheckPaymentStatus::class);
-        $this->app->bind(RequestServiceReactivation::class, PendingRequestServiceReactivation::class);
-        $this->app->bind(BankTransferProofVerifier::class, OpenAiVisionBankTransferProofVerifier::class);
+        // One read of the Support tables per request, however many pages parts ask for it.
+        $this->app->scoped(\App\Services\KamanSupport\RestaurantSupport::class);
     }
 
     public function boot(): void

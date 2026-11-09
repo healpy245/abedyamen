@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Services\Form\FormMenuAgentMemory;
 use App\Services\Form\FormMenuAgentService;
 use App\Services\Form\FormWorkflowRunService;
+use App\Services\Form\KamanChatCredentials;
+use App\Services\Haat\KamanMenuWriter;
 use App\Services\Form\MenuVoiceTranscriber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,6 +51,8 @@ final class FormMenuAgentController extends Controller
         FormMenuAgentService $agent,
         FormMenuAgentMemory $memory,
         FormWorkflowRunService $runService,
+        KamanChatCredentials $credentials,
+        KamanMenuWriter $writer,
     ): JsonResponse|StreamedResponse {
         $validated = $request->validate([
             'conversation_id' => 'nullable|uuid',
@@ -61,16 +65,6 @@ final class FormMenuAgentController extends Controller
             'attachment_roles.*' => 'nullable|string|in:menu,meal_photo',
         ]);
 
-        $token = trim((string) $request->session()->get('full_ai_kaman_token', ''));
-        $baseUrl = rtrim((string) $request->session()->get('full_ai_kaman_base_url', ''), '/');
-
-        if ($token === '' || $baseUrl === '') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Sign in to the restaurant first (subdomain + Login).',
-            ], 401);
-        }
-
         $user = $request->user();
         $userId = (int) ($user?->id ?? 0);
         $conversationId = (string) ($validated['conversation_id'] ?? Str::uuid());
@@ -82,6 +76,44 @@ final class FormMenuAgentController extends Controller
                 'role' => $row['role'],
                 'content' => (string) ($row['content'] ?? ''),
             ];
+        }
+
+        // The password leaves here. Nothing below, stored or sent to the model, sees it.
+        $scrubbed = $credentials->scrubHistory($history);
+        $history = $scrubbed['history'];
+        $found = $scrubbed['credentials'];
+        $redactedUserText = $found !== null && $scrubbed['in_latest'] ? $found['text'] : null;
+        unset($scrubbed);
+
+        $token = trim((string) $request->session()->get('full_ai_kaman_token', ''));
+        $baseUrl = rtrim((string) $request->session()->get('full_ai_kaman_base_url', ''), '/');
+        $remembered = is_array($stored['kaman'] ?? null) ? $stored['kaman'] : null;
+
+        if ($found !== null && ($redactedUserText !== null || ($remembered['base_url'] ?? null) !== $found['base_url'])) {
+            try {
+                $token = $writer->login($found['base_url'], $found['email'], $found['password']);
+            } catch (FormWorkflowPausedException $e) {
+                throw $e;
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Could not sign in to '.$found['subdomain'].': '.$credentials->hide($e->getMessage(), $found['password']),
+                    'redacted_message' => $redactedUserText,
+                ], 401);
+            }
+            $baseUrl = $found['base_url'];
+            $memory->rememberRestaurant($userId, $conversationId, ['token' => $token, 'base_url' => $baseUrl]);
+        } elseif ($remembered !== null) {
+            $token = (string) ($remembered['token'] ?? '');
+            $baseUrl = (string) ($remembered['base_url'] ?? '');
+        }
+        unset($found);
+
+        if ($token === '' || $baseUrl === '') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Sign in to the restaurant first (subdomain + Login).',
+            ], 401);
         }
 
         $attachments = $this->storeAttachments($request, $userId, $conversationId);
@@ -104,6 +136,7 @@ final class FormMenuAgentController extends Controller
             $conversationId,
             $subdomain,
             $environment,
+            $redactedUserText,
         ) {
             @ignore_user_abort(true);
             @set_time_limit(1800);
@@ -167,6 +200,12 @@ final class FormMenuAgentController extends Controller
             };
 
             try {
+                if ($redactedUserText !== null) {
+                    $emit([
+                        'event' => 'user_message_redacted',
+                        'content' => $redactedUserText,
+                    ]);
+                }
                 if ($run !== null) {
                     $emit([
                         'event' => 'run',
@@ -180,6 +219,7 @@ final class FormMenuAgentController extends Controller
                     'title' => $title,
                     'run_id' => $run?->id,
                     'worker_generation' => $run !== null ? $runService->workerGeneration($run) : null,
+                    'has_new_menu_files' => array_filter($attachments, static fn (array $file): bool => ($file['kind'] ?? '') !== 'meal_photo') !== [],
                 ]);
                 if ($run !== null && $agent->shouldCopyLinkedMenu($history, $agentMemory) && $runService->startDetached($run)) {
                     $reply = 'Translating the menu into Arabic, English, and Hebrew and uploading the meal photos. Watch the debugger — Continue resumes it if this chat disconnects.';
@@ -214,18 +254,19 @@ final class FormMenuAgentController extends Controller
                     'source_url' => $sourceUrl,
                     'messages' => $messages,
                 ]);
+                $succeeded = empty($result['failed']);
                 if ($run !== null) {
-                    $run = $runService->markFinished($run, true, [
+                    $run = $runService->markFinished($run, $succeeded, [
                         'reply' => $result['reply'],
                         'tool_calls' => $result['tool_calls'],
                         'conversation_id' => $conversationId,
                         'title' => $this->conversationTitle($history, $attachments),
                         'messages' => $messages,
-                    ]);
+                    ], $succeeded ? null : $result['reply']);
                 }
                 $emit([
                     'event' => 'done',
-                    'success' => true,
+                    'success' => $succeeded,
                     'reply' => $result['reply'],
                     'tool_calls' => $result['tool_calls'],
                     'conversation_id' => $conversationId,

@@ -15,7 +15,6 @@ namespace App\Enums;
 enum Project: string
 {
     case Form = 'form';
-    case AiChatbot = 'ai-chatbot';
     case AppDevelopment = 'app-development';
     case KamanSupport = 'kaman-support';
 
@@ -39,7 +38,6 @@ enum Project: string
     {
         return match ($this) {
             self::Form => 'form.index',
-            self::AiChatbot => 'ai-chatbot.index',
             self::AppDevelopment => 'app-development.index',
             self::KamanSupport => 'kaman-support.index',
         };
@@ -57,7 +55,6 @@ enum Project: string
     {
         return match ($this) {
             self::Form => 'clipboard-document-list',
-            self::AiChatbot => 'sparkles',
             self::AppDevelopment => 'beaker',
             self::KamanSupport => 'lifebuoy',
         };
@@ -82,14 +79,6 @@ enum Project: string
                 'icon_bg' => 'bg-orange-50',
                 'icon_text' => 'text-orange-600',
                 'border_hover' => 'hover:border-orange-200',
-                'status_bg' => 'bg-emerald-50',
-                'status_text' => 'text-emerald-700',
-                'status_border' => 'border-emerald-200',
-            ],
-            self::AiChatbot => [
-                'icon_bg' => 'bg-violet-50',
-                'icon_text' => 'text-violet-600',
-                'border_hover' => 'hover:border-violet-200',
                 'status_bg' => 'bg-emerald-50',
                 'status_text' => 'text-emerald-700',
                 'status_border' => 'border-emerald-200',

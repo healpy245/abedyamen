@@ -324,3 +324,32 @@
         bindPicks(body);
     }
 })();
+
+// Task modal: title/description/assignee/priority/due edit in place; Save appears once something changes.
+(function () {
+    function editFormOf(target) {
+        const form = target && target.form;
+        return form && form.matches('[data-ti-edit]') ? form : null;
+    }
+    function markEdited(event) {
+        const form = editFormOf(event.target);
+        const bar = form && form.querySelector('[data-ti-edit-bar]');
+        if (bar) {
+            bar.hidden = false;
+        }
+    }
+    document.addEventListener('input', markEdited);
+    document.addEventListener('change', markEdited);
+    document.addEventListener('click', function (event) {
+        const reset = event.target.closest('[data-ti-edit-reset]');
+        if (!reset) {
+            return;
+        }
+        const form = reset.closest('[data-ti-edit]');
+        form.reset();
+        if (window.ds && window.ds.sync) {
+            window.ds.sync(form.closest('.ti') || form);
+        }
+        form.querySelector('[data-ti-edit-bar]').hidden = true;
+    });
+})();

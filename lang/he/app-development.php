@@ -4,7 +4,7 @@ return [
     'tag' => 'פיתוח אפליקציה ו-QA',
     'nav' => [
         'dashboard' => 'לוח בקרה',
-        'tickets' => 'תמיכה ← פיתוח',
+        'tickets' => 'כרטיסי פיתוח',
         'qa_queue' => 'תור QA',
         'my_tickets' => 'הכרטיסים שלי',
         'releases' => 'בניות',
@@ -47,7 +47,8 @@ return [
     'task_status' => [
         'todo' => 'לביצוע',
         'in_progress' => 'בביצוע',
-        'paused' => 'מושהה',
+        'qa_testing' => 'בדיקות QA',
+        'pushed_to_git' => 'נדחף ל-Git',
         'completed' => 'הושלם',
     ],
     'tasks' => [
@@ -318,6 +319,11 @@ return [
         'enabled' => 'מופעל',
     ],
     'whatsapp' => [
+        'button' => 'התראה בוואטסאפ',
+        'pick_team' => 'בחר מי יקבל את ההודעה',
+        'about' => 'נושא ההודעה',
+        'kind_open' => 'כרטיסים פתוחים',
+        'kind_qa' => 'בבדיקת QA',
         'notify_open' => 'שלח וואטסאפ למפתחים על כרטיסים פתוחים',
         'notify_qa' => 'שלח וואטסאפ לבודקים על כרטיסי QA',
         'confirm_open' => 'לשלוח וואטסאפ למפתחים על כרטיסים פתוחים?',

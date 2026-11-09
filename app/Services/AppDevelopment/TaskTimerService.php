@@ -52,12 +52,9 @@ class TaskTimerService
     public function pause(AppDevelopmentTask $task, User $user): AppDevelopmentTimeEntry
     {
         return DB::transaction(function () use ($task, $user): AppDevelopmentTimeEntry {
+            // Pausing only stops the clock; the task keeps its status.
             $entry = $this->openEntryFor($task, $user);
             $this->closeEntry($entry);
-
-            $task->forceFill([
-                'status' => AppDevelopmentTaskStatus::Paused,
-            ])->save();
 
             return $entry->fresh() ?? $entry;
         });

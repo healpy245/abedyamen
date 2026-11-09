@@ -67,7 +67,7 @@ class TaskTimerTest extends TestCase
             ->post(route('app-development.tasks.timer.pause', $task))
             ->assertRedirect();
 
-        $this->assertSame(AppDevelopmentTaskStatus::Paused, $task->fresh()->status);
+        $this->assertSame(AppDevelopmentTaskStatus::InProgress, $task->fresh()->status);
         $this->assertNull(AppDevelopmentTimeEntry::query()->whereNull('ended_at')->first());
 
         $this->actingAs($dev)

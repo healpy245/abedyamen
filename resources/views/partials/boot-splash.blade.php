@@ -16,7 +16,7 @@
         var wait = Math.max(0, minMs - (Date.now() - started));
         window.setTimeout(function () {
             root.classList.remove('kaman-booting');
-            try { sessionStorage.setItem('kaman-boot', '1'); } catch (e) {}
+            try { sessionStorage.setItem('kaman-boot:' + (root.getAttribute('data-door') || ''), '1'); } catch (e) {}
         }, wait);
     };
     if (document.readyState === 'complete') {

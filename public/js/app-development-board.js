@@ -68,6 +68,7 @@
     const drawerBody = root.querySelector('[data-kb-drawer-body]');
     const drawerTitle = root.querySelector('[data-kb-drawer-title]');
     let drawerToken = 0;
+    let drawerUrl = '';
     let lastFocus = null;
     let closingDrawer = false;
 
@@ -115,6 +116,7 @@
             return;
         }
         lastFocus = opener || document.activeElement;
+        drawerUrl = url;
         const token = ++drawerToken;
         if (drawerTitle) {
             drawerTitle.textContent = i18n.loading;
@@ -145,11 +147,73 @@
             if (window.AppDevVoice && typeof window.AppDevVoice.boot === 'function') {
                 window.AppDevVoice.boot(drawerBody);
             }
+            document.dispatchEvent(new CustomEvent('app-dev-modal:loaded'));
         } catch (error) {
             if (token === drawerToken) {
                 window.location.href = url;
             }
         }
+    }
+
+    // Redraws the open task in place (after the timer starts or pauses), without the loading skeleton.
+    async function refreshDrawer() {
+        if (!drawerBody || !drawerUrl || !drawerIsOpen()) {
+            return;
+        }
+        const token = drawerToken;
+        const response = await fetch(drawerUrl, {
+            headers: { 'X-App-Dev-Modal': '1', 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
+            credentials: 'same-origin',
+        });
+        if (!response.ok || token !== drawerToken) {
+            return;
+        }
+        const scroller = drawerBody.scrollTop;
+        drawerBody.innerHTML = await response.text();
+        drawerBody.scrollTop = scroller;
+        if (window.AppDevVoice && typeof window.AppDevVoice.boot === 'function') {
+            window.AppDevVoice.boot(drawerBody);
+        }
+        // The live clock starts on this event.
+        document.dispatchEvent(new CustomEvent('app-dev-modal:loaded'));
+    }
+
+    // Start / pause timer: sent in the background so the task stays open.
+    if (drawerBody) {
+        drawerBody.addEventListener('submit', async function (event) {
+            const form = event.target.closest('form');
+            if (!form || !/\/timer\/(start|pause)$/.test(new URL(form.action, window.location.href).pathname)) {
+                return;
+            }
+            event.preventDefault();
+            const button = form.querySelector('button[type="submit"]');
+            if (button) {
+                button.disabled = true;
+            }
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form),
+                });
+                const body = await response.json().catch(function () { return {}; });
+                if (!response.ok || body.ok === false) {
+                    throw new Error(body.message || i18n.failed || 'Error');
+                }
+                const card = root.querySelector('[data-kb-card][data-show-url="' + drawerUrl + '"]');
+                if (card && body.status) {
+                    moveCard(card.getAttribute('data-status-url'), body.status);
+                }
+                toast(body.message || '', false);
+                await refreshDrawer();
+            } catch (error) {
+                toast(error.message || i18n.failed, true);
+                if (button) {
+                    button.disabled = false;
+                }
+            }
+        });
     }
 
     function closeDrawer() {

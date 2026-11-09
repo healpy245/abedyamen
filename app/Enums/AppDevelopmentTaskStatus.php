@@ -8,7 +8,8 @@ enum AppDevelopmentTaskStatus: string
 {
     case Todo = 'todo';
     case InProgress = 'in_progress';
-    case Paused = 'paused';
+    case QaTesting = 'qa_testing';
+    case PushedToGit = 'pushed_to_git';
     case Completed = 'completed';
 
     public function label(): string
@@ -21,7 +22,8 @@ enum AppDevelopmentTaskStatus: string
         return match ($this) {
             self::Todo => 'inbox',
             self::InProgress => 'wrench',
-            self::Paused => 'minus',
+            self::QaTesting => 'search',
+            self::PushedToGit => 'upload',
             self::Completed => 'check-circle',
         };
     }
@@ -42,10 +44,15 @@ enum AppDevelopmentTaskStatus: string
                 'text' => 'text-amber-800',
                 'border' => 'border-amber-200',
             ],
-            self::Paused => [
+            self::QaTesting => [
                 'bg' => 'bg-sky-50',
                 'text' => 'text-sky-800',
                 'border' => 'border-sky-200',
+            ],
+            self::PushedToGit => [
+                'bg' => 'bg-violet-50',
+                'text' => 'text-violet-800',
+                'border' => 'border-violet-200',
             ],
             self::Completed => [
                 'bg' => 'bg-emerald-50',

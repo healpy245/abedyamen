@@ -1,4 +1,4 @@
-{{-- Apply stored theme before CSS paints. Also skip the boot splash on repeat visits in this tab. --}}
+{{-- Apply stored theme before CSS paints. Also skip the boot splash on repeat visits to the same door in this tab. --}}
 <script>
 (function () {
     var root = document.documentElement;
@@ -11,7 +11,7 @@
         root.setAttribute('data-theme', theme);
     } catch (e) {}
     try {
-        if (sessionStorage.getItem('kaman-boot') === '1') {
+        if (sessionStorage.getItem('kaman-boot:' + (root.getAttribute('data-door') || '')) === '1') {
             root.classList.remove('kaman-booting');
         }
     } catch (e) {}

@@ -14,6 +14,8 @@ use App\Models\KamanSupport\SupportTicket;
 use App\Models\User;
 use Database\Seeders\WorkspaceUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class KamanSupportApiTest extends TestCase
@@ -125,6 +127,65 @@ class KamanSupportApiTest extends TestCase
         $this->assertMatchesRegularExpression('/^KAM-[A-Z0-9]{6}$/', $id);
     }
 
+    public function test_pos_report_level_is_stored_with_the_restaurant(): void
+    {
+        $this->postTicket($this->sampleTicket([
+            'level' => 'danger_now',
+            'summary' => 'Danger now: the oven is off',
+        ]))
+            ->assertCreated()
+            ->assertJsonPath('restaurant', 'kaman')
+            ->assertJsonPath('extra.level', 'danger_now');
+
+        $this->assertSame('danger_now', SupportTicket::query()->first()?->reportLevel());
+
+        $this->postTicket($this->sampleTicket([
+            'clientTicketId' => 'KAM-BADLVL',
+            'level' => 'panic',
+        ]))->assertUnprocessable();
+    }
+
+    public function test_pos_uploads_voice_and_screen_without_exposing_paths(): void
+    {
+        Storage::fake('local');
+
+        $this->postTicket($this->sampleTicket([
+            'clientTicketId' => 'KAM-MEDIA1',
+            'level' => 'issue',
+        ]))->assertCreated();
+
+        $response = $this->post(
+            '/api/kaman-support/v1/tickets/KAM-MEDIA1/media',
+            [
+                'audio' => UploadedFile::fake()->create('voice.m4a', 20, 'audio/mp4'),
+                'screen' => UploadedFile::fake()->create('screen.kscr', 30, 'application/octet-stream'),
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-Kaman-Support-Key' => self::KEY,
+            ],
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('hasVoice', true)
+            ->assertJsonPath('hasScreen', true)
+            ->assertJsonPath('extra.level', 'issue');
+
+        $this->assertArrayNotHasKey('audioPath', $response->json('extra'));
+        $this->assertArrayNotHasKey('screenPath', $response->json('extra'));
+
+        $ticket = SupportTicket::query()->where('public_id', 'KAM-MEDIA1')->firstOrFail();
+        $this->assertTrue(Storage::disk('local')->exists($ticket->mediaPath('audioPath')));
+        $this->assertTrue(Storage::disk('local')->exists($ticket->mediaPath('screenPath')));
+        $this->assertSame('issue', $ticket->reportLevel());
+
+        $this->post(
+            '/api/kaman-support/v1/tickets/KAM-MEDIA1/media',
+            ['audio' => UploadedFile::fake()->create('notes.exe', 10, 'application/octet-stream')],
+            ['Accept' => 'application/json', 'X-Kaman-Support-Key' => self::KEY],
+        )->assertUnprocessable();
+    }
+
     public function test_unknown_fields_are_kept_in_extra(): void
     {
         $this->postTicket($this->sampleTicket([
@@ -228,7 +289,7 @@ class KamanSupportApiTest extends TestCase
                 'level' => 'info',
                 'source' => 'auth',
                 'message' => 'signed in',
-                'at' => '2026-09-20T12:00:00.000Z',
+                'at' => now()->toIso8601String(),
             ]],
             'printers' => [[
                 'ip' => '10.0.0.3',
@@ -406,6 +467,53 @@ class KamanSupportApiTest extends TestCase
         $this->assertFalse($state['lanScan']['running'] ?? true);
     }
 
+    public function test_heartbeat_stores_the_pos_settings_page_for_the_device_modal(): void
+    {
+        $this->postJson('/api/kaman-support/v1/devices/session', [
+            'deviceId' => 'pos-settings-1',
+            'restaurant' => 'kaman',
+            'appState' => 'open',
+            'settings' => [
+                'printKitchenCancel' => true,
+                'localZReport' => false,
+                'printReceiptOnReceive' => true,
+                'allowKitchenReprint' => true,
+                'kitchenReprintPassword' => '2468',
+                'autoPrintOnThisTablet' => true,
+                'builtInKeyboard' => false,
+                'pizzaInterface' => true,
+                'pizzaMealIds' => ['12', '12', ' 9 '],
+                'locale' => 'en',
+                'openaiApiKey' => 'sk-secret',
+            ],
+            'pizzaMeals' => [
+                ['id' => '12', 'name' => 'XL Classic'],
+                ['id' => '', 'name' => 'skip'],
+                ['id' => '9', 'name' => 'Margherita'],
+            ],
+        ], [
+            'X-Kaman-Support-Key' => self::KEY,
+        ])->assertOk();
+
+        $device = SupportDevice::query()->where('device_id', 'pos-settings-1')->first();
+        $this->assertNotNull($device);
+        $this->assertTrue($device->extra['settings']['printKitchenCancel'] ?? false);
+        $this->assertFalse($device->extra['settings']['builtInKeyboard'] ?? true);
+        $this->assertSame('2468', $device->extra['settings']['kitchenReprintPassword'] ?? null);
+        $this->assertSame(['12', '9'], $device->extra['settings']['pizzaMealIds'] ?? null);
+        $this->assertArrayNotHasKey('locale', $device->extra['settings']);
+        $this->assertArrayNotHasKey('openaiApiKey', $device->extra['settings']);
+        $this->assertSame('XL Classic', $device->extra['pizzaMeals'][0]['name'] ?? null);
+
+        $sessions = app(\App\Services\KamanSupport\SupportDeviceSessionService::class);
+        $state = $sessions->deviceState($device);
+        $this->assertTrue($state['settings']['pizzaInterface'] ?? false);
+        $this->assertCount(2, $state['pizzaMeals'] ?? []);
+        $connection = $sessions->connectionState($device);
+        $this->assertNull($connection['settings']);
+        $this->assertSame([], $connection['pizzaMeals']);
+    }
+
     public function test_worker_can_queue_a_printer_job_for_the_next_heartbeat(): void
     {
         $this->seed(WorkspaceUserSeeder::class);
@@ -543,5 +651,41 @@ class KamanSupportApiTest extends TestCase
 
         $this->assertSame(['signed in', 'printer timeout', 'link down'], $messages);
         $this->assertSame(3, $device->fresh()->log_count);
+    }
+
+    public function test_heartbeat_without_logs_leaves_expired_rows_for_the_daily_prune(): void
+    {
+        $headers = ['X-Kaman-Support-Key' => self::KEY];
+        $this->postJson('/api/kaman-support/v1/devices/session', [
+            'deviceId' => 'pos-prune-2',
+            'restaurant' => 'kaman',
+            'logs' => [[
+                'id' => 'fresh-info',
+                'level' => 'info',
+                'source' => 'auth',
+                'message' => 'signed in',
+                'at' => now()->toIso8601String(),
+            ]],
+        ], $headers)->assertOk();
+
+        $device = SupportDevice::query()->where('device_id', 'pos-prune-2')->firstOrFail();
+        SupportDeviceLog::query()->create([
+            'support_device_id' => $device->id,
+            'client_id' => 'info-old',
+            'level' => 'info',
+            'source' => 'app',
+            'message' => 'tapped pay',
+            'logged_at' => now()->subDays(2),
+        ]);
+
+        $this->postJson('/api/kaman-support/v1/devices/session', [
+            'deviceId' => 'pos-prune-2',
+            'restaurant' => 'kaman',
+            'appState' => 'open',
+        ], $headers)->assertOk();
+
+        $this->assertNotNull(
+            SupportDeviceLog::query()->where('support_device_id', $device->id)->where('client_id', 'info-old')->first()
+        );
     }
 }

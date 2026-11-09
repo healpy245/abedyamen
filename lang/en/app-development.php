@@ -4,7 +4,7 @@ return [
     'tag' => 'App Development & QA',
     'nav' => [
         'dashboard' => 'Dashboard',
-        'tickets' => 'Support → development',
+        'tickets' => 'Development tickets',
         'qa_queue' => 'QA',
         'my_tickets' => 'Mine',
         'releases' => 'Builds',
@@ -48,7 +48,8 @@ return [
     'task_status' => [
         'todo' => 'To do',
         'in_progress' => 'In progress',
-        'paused' => 'Paused',
+        'qa_testing' => 'QA testing',
+        'pushed_to_git' => 'Pushed to git',
         'completed' => 'Completed',
     ],
     'tasks' => [
@@ -411,6 +412,11 @@ return [
         'enabled' => 'Enabled',
     ],
     'whatsapp' => [
+        'button' => 'Notify on WhatsApp',
+        'pick_team' => 'Pick who gets the message',
+        'about' => 'Message about',
+        'kind_open' => 'Open tickets',
+        'kind_qa' => 'In QA',
         'notify_open' => 'WhatsApp developers about open tickets',
         'notify_qa' => 'WhatsApp testers about QA tickets',
         'confirm_open' => 'Send WhatsApp to developers about open tickets?',
@@ -494,5 +500,6 @@ return [
         'apk_linked' => 'APK linked to :ticket',
         'apk_uploaded' => ':actor uploaded v:version',
         'task_assigned' => ':actor assigned you task :title',
+        'sales_deal_requested' => ':actor sent a close-deal request to Finance',
     ],
 ];

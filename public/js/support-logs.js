@@ -290,62 +290,21 @@
     function paintHeader(issue) {
         ensureShell();
         headEl.replaceChildren();
-        var titleRow = el('div', 'sup-inv__title-row');
-        var tone = issue.tone || 'info';
-        titleRow.appendChild(icon(tone === 'warn' || tone === 'ok' || tone === 'info' ? tone : 'error', 'is-' + tone));
-        var heading = el('h2');
-        var headingText = el('span', 'sup-inv__iso', issue.title || '');
-        headingText.dir = 'auto';
-        heading.appendChild(headingText);
-        titleRow.appendChild(heading);
-        headEl.appendChild(titleRow);
-
-        var sub = el('p', 'sup-inv__sub');
-        var badge = httpBadge(issue.code);
-        if (badge) sub.appendChild(badge);
-        var meta = el('span', 'sup-inv__sub-meta');
-        var place = issue.restaurant || issue.device || labels.pending || '';
-        if (issue.restaurant) {
-            var mark = logoNode(issue);
-            if (mark) meta.appendChild(mark);
+        // The title, restaurant, product, status and count are on the selected row in the list.
+        if (issue.sourceLabel) {
+            var sub = el('p', 'sup-inv__sub');
+            var source = el('span', 'sup-inv__iso', issue.sourceLabel);
+            source.dir = 'ltr';
+            sub.appendChild(source);
+            headEl.appendChild(sub);
         }
-        addMeta(meta, place, 'auto');
-        addMeta(meta, productLabel(issue), 'ltr');
-        addMeta(meta, issue.sourceLabel || '', 'ltr');
-        var countWord = String(labels.occurrencesCount || ':count').replace(':count', '').trim();
-        addMeta(meta, String(issue.count || 0), 'ltr');
-        if (countWord) meta.appendChild(el('span', 'sup-inv__sub-word', countWord));
-        sub.appendChild(meta);
-        headEl.appendChild(sub);
 
-        var stats = el('div', 'sup-inv__stats');
-        if ((issue.devices || []).length) stats.appendChild(stat(labels.affected, affected(issue), false, 'device'));
-        if (issue.code) stats.appendChild(stat(labels.http, issue.code, true, 'http'));
-        if (stats.childNodes.length) headEl.appendChild(stats);
-    }
-
-    function logoNode(issue) {
-        var slug = String(issue.restaurantId || '');
-        var name = String(issue.restaurant || slug);
-        var letter = name.trim().charAt(0).toUpperCase();
-        if (!letter) return null;
-        var mark = el('span', 'sup-inv__logo');
-        if (slug) mark.setAttribute('data-logo', slug);
-        if (issue.logo) {
-            var img = document.createElement('img');
-            img.alt = '';
-            img.src = issue.logo;
-            mark.appendChild(img);
+        // One device is already named on its occurrence row.
+        if ((issue.devices || []).length > 1) {
+            var stats = el('div', 'sup-inv__stats');
+            stats.appendChild(stat(labels.affected, affected(issue), false, 'device'));
+            headEl.appendChild(stats);
         }
-        var fallback = el('b', '', letter);
-        fallback.setAttribute('aria-hidden', 'true');
-        mark.appendChild(fallback);
-        return mark;
-    }
-
-    function productLabel(issue) {
-        var names = { mall: labels.mall || 'Kaman Cashier Mall', lite: labels.lite || 'Kaman Lite' };
-        return (issue.products || []).map(function (key) { return names[key] || ''; }).filter(Boolean).join(' · ');
     }
 
     function paintLogo(slot, url) {
@@ -379,17 +338,6 @@
                 });
             })
             .catch(function () {});
-    }
-
-    function addMeta(parent, text, dir) {
-        if (!text) return;
-        var hasText = Array.prototype.some.call(parent.childNodes, function (node) {
-            return node.nodeType === 1 && !node.classList.contains('sup-inv__logo');
-        });
-        if (hasText) parent.appendChild(el('i', 'sup-inv__sep', '·'));
-        var node = el('span', 'sup-inv__iso', text);
-        node.dir = dir || 'auto';
-        parent.appendChild(node);
     }
 
     function stat(label, value, ltr, iconName) {
@@ -494,7 +442,8 @@
             deviceText.dir = 'auto';
             device.appendChild(deviceText);
             button.appendChild(device);
-            var status = httpBadge(occ.code);
+            // The issue's status is on its row in the list; only a different one is news here.
+            var status = String(occ.code || '') !== String(issue.code || '') ? httpBadge(occ.code) : null;
             if (status) button.appendChild(status);
             else button.appendChild(el('span', 'sup-inv__http is-empty', ''));
             button.addEventListener('click', function () {

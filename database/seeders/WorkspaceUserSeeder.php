@@ -17,30 +17,8 @@ use Illuminate\Support\Facades\Hash;
  */
 class WorkspaceUserSeeder extends Seeder
 {
-    /**
-     * Users who must not own chatbot instances — they receive instance access
-     * grants only (see MalanCompanyMemberSeeder, KamanCompanyMemberSeeder, SpeedcomCompanyMemberSeeder).
-     *
-     * @var list<string>
-     */
-    public const CHATBOT_MEMBER_ONLY_EMAILS = [
-        'malan@kaman.rest',
-        'kaman@kaman.rest',
-        'speedcom@kaman.rest',
-        'ibrahim@kaman-workspace.com',
-        User::MOWAHADA_EMAIL,
-        MowahadaViewerSeeder::EMAIL,
-        InvitationViewerSeeder::EMAIL,
-    ];
-
     public function run(): void
     {
-        $legacy = User::query()->where('email', 'chatbot@kaman.rest')->first();
-        $renamed = User::query()->where('email', User::MOWAHADA_EMAIL)->first();
-        if ($legacy !== null && $renamed === null) {
-            $legacy->forceFill(['email' => User::MOWAHADA_EMAIL])->save();
-        }
-
         $users = [
             [
                 'name' => 'Yamen',
@@ -65,58 +43,7 @@ class WorkspaceUserSeeder extends Seeder
                 'password' => 'mohamed123@',
                 'is_admin' => false,
                 'projects' => [
-                    Project::AiChatbot->value,
                     Project::Form->value,
-                ],
-            ],
-            [
-                // Malan company staff: chatbot project only; MALAN bot via grant (not ownership).
-                'name' => 'Malan Team',
-                'email' => 'malan@kaman.rest',
-                'password' => 'Malan123@',
-                'is_admin' => false,
-                'projects' => [
-                    Project::AiChatbot->value,
-                ],
-            ],
-            [
-                // Kaman company staff: chatbot project only; Kaman POS bot via grant (not ownership).
-                'name' => 'Kaman Team',
-                'email' => 'kaman@kaman.rest',
-                'password' => 'Kaman123@',
-                'is_admin' => false,
-                'projects' => [
-                    Project::AiChatbot->value,
-                ],
-            ],
-            [
-                // Speedcom staff: Mamdouh bot only. No Form, POS support, or other bots.
-                'name' => 'Speedcom',
-                'email' => 'speedcom@kaman.rest',
-                'password' => 'Speedcom123@',
-                'is_admin' => false,
-                'projects' => [
-                    Project::AiChatbot->value,
-                ],
-            ],
-            [
-                // Ibrahim: Mamdouh bot only.
-                'name' => 'Ibrahim',
-                'email' => 'ibrahim@kaman-workspace.com',
-                'password' => 'Ibrahim123@',
-                'is_admin' => false,
-                'projects' => [
-                    Project::AiChatbot->value,
-                ],
-            ],
-            [
-                // Voting bot only. Owns منصور and any copies.
-                'name' => 'منصور',
-                'email' => User::MOWAHADA_EMAIL,
-                'password' => 'Chatbot123@',
-                'is_admin' => false,
-                'projects' => [
-                    Project::AiChatbot->value,
                 ],
             ],
             [
@@ -156,11 +83,6 @@ class WorkspaceUserSeeder extends Seeder
             $this->upsertWorkspaceUser($user, mergeProjects: false);
         }
 
-        $chatbot = User::query()->where('email', User::MOWAHADA_EMAIL)->first();
-        if ($chatbot !== null) {
-            app(\App\Services\AiChatbot\MansourBotService::class)->ensureDefaultBot($chatbot);
-        }
-
         foreach ($this->appDevelopmentTeam() as $user) {
             $this->upsertWorkspaceUser($user, mergeProjects: true);
         }
@@ -173,7 +95,7 @@ class WorkspaceUserSeeder extends Seeder
 
     /**
      * App Development / QA team. Grants are merged so existing project
-     * access (Form, AI Chatbot, admin catalog) is never stripped.
+     * access (Form, admin catalog) is never stripped.
      *
      * @return list<array{name: string, email: string, password: string, is_admin: bool, projects: list<string>}>
      */

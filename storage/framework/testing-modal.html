@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>المحادثات — The Last Day Group Bot</title>
+    <link rel="icon" type="image/png" href="http://abedyamen.local/kaman.png">
+    <meta name="csrf-token" content="xpOwRM15h6Dw90Sx2JSdiEruXsmG5btq7AS5Ubju">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+
+    <link rel="stylesheet" href="http://abedyamen.local/css/kaman.css?v=1791981224">
+    <link rel="stylesheet" href="http://abedyamen.local/css/farz-theme.css?v=1792850225">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="http://abedyamen.local/css/mowahada.css?v=1793091149">
+
+    </head>
+<body class="farz-app mw-ws antialiased min-h-screen flex flex-col">
+
+<header class="mw-nav" data-mw-nav>
+    <div class="mw-nav__row">
+        <a href="http://abedyamen.local/ai-chatbot/farz" class="mw-brand" aria-label="لوحة الموحدة">
+            <span class="mw-brand__mark"><img src="http://abedyamen.local/images/farz/muwahada-app.jpg" alt="" width="34" height="34"></span>
+            <span><b>الموحدة</b><small>منصة المحادثات</small></span>
+        </a>
+
+        <nav class="mw-tabs" aria-label="الأقسام">
+            <span class="mw-tabs__glide" aria-hidden="true"></span>
+            <a href="http://abedyamen.local/ai-chatbot/farz" class="mw-tab" ><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>اللوحة</span></a>
+            <a href="http://abedyamen.local/ai-chatbot/farz/insights" class="mw-tab" ><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H16a3.5 3.5 0 0 0 0-7H8a3.5 3.5 0 0 1 0-7h7.5"/></svg><span>رؤى المحادثات</span></a>
+                            <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations" class="mw-tab is-active"  aria-current="page" ><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M8 10h8M8 13h5"/></svg><span>المحادثات</span></a>
+                            <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/test" class="mw-tab" ><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/></svg><span>تجربة</span></a>
+                            <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/settings" class="mw-tab" ><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>الإعدادات</span></a>
+                            <a href="http://abedyamen.local/ai-chatbot/farz/numbers?bot=2" class="mw-tab" ><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg><span>الأرقام</span></a>
+                    </nav>
+
+        <span class="mw-nav__spacer"></span>
+
+        <div class="mw-nav__tools">
+                            <details class="mw-switch" data-mw-switch>
+                    <summary class="mw-switch__btn" aria-label="تبديل البوت">
+                        <span class="mw-avatar mw-avatar--sm"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4"/><circle cx="12" cy="3.5" r="1"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/></svg></span>
+                        <b>بوت مسؤولي الصناديق</b>
+                        <svg class="farz-i mw-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                    </summary>
+                    <div class="mw-switch__menu" role="menu">
+                        <p class="mw-switch__label">افتح محادثات بوت</p>
+                                                    <a role="menuitem" href="http://abedyamen.local/ai-chatbot/instances/4/workspace/conversations" class="mw-switch__item">
+                                <span class="mw-avatar"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg></span>
+                                <span><b>بوت باصات الاردن</b><small>رسالة واحدة</small></span>
+                                <span class="mw-status is-on">شغّال</span>
+                            </a>
+                                                    <a role="menuitem" href="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations" class="mw-switch__item is-active">
+                                <span class="mw-avatar"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg></span>
+                                <span><b>بوت مسؤولي الصناديق</b><small>رسالة واحدة</small></span>
+                                <span class="mw-status is-on">شغّال</span>
+                            </a>
+                                                    <a role="menuitem" href="http://abedyamen.local/ai-chatbot/instances/3/workspace/conversations" class="mw-switch__item">
+                                <span class="mw-avatar"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg></span>
+                                <span><b>دعوات مؤتمر 24.10</b><small>دعوات</small></span>
+                                <span class="mw-status is-on">شغّال</span>
+                            </a>
+                                                    <a role="menuitem" href="http://abedyamen.local/ai-chatbot/instances/1/workspace/conversations" class="mw-switch__item">
+                                <span class="mw-avatar"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M3 12h18v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M7 12V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8"/><path d="M9.5 7.5l2 2 3.5-3.5"/><path d="M8 16.5h8"/></svg></span>
+                                <span><b>بوت الفرز</b><small>فرز</small></span>
+                                <span class="mw-status is-on">شغّال</span>
+                            </a>
+                                            </div>
+                </details>
+                                    <form method="POST" action="http://abedyamen.local/logout">
+                <input type="hidden" name="_token" value="xpOwRM15h6Dw90Sx2JSdiEruXsmG5btq7AS5Ubju" autocomplete="off">                <button type="submit" class="mw-icon-btn" title="تسجيل الخروج" aria-label="تسجيل الخروج"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg></button>
+            </form>
+        </div>
+    </div>
+</header>
+
+<div class="mw-subbar">
+    <div class="bot-power bot-power--compact is-on" data-bot-power>
+                    <form method="post" action="http://abedyamen.local/ai-chatbot/instances/2/workspace/bot-active" class="bot-power__form">
+                <input type="hidden" name="_token" value="xpOwRM15h6Dw90Sx2JSdiEruXsmG5btq7AS5Ubju" autocomplete="off">                <input type="hidden" name="is_active" value="0">
+                <button type="submit"
+                        class="bot-power__pill"
+                        aria-pressed="true"
+                        title="إيقاف">
+                    <span class="bot-power__dot" aria-hidden="true"></span>
+                    <span class="bot-power__pill-label">
+                        البوت نشط
+                    </span>
+                </button>
+            </form>
+            </div>
+    <span class="mw-subbar__spacer"></span>
+            <button type="button" id="farz-sync-open" class="farz-bar__history" title="مزامنة رسائل Green API الناقصة" data-url="http://abedyamen.local/ai-chatbot/instances/2/workspace/green-sync" data-apply="http://abedyamen.local/ai-chatbot/instances/2/workspace/green-sync/apply">
+            <svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.6 4.5L20 16"/><path d="M20 20v-4h-4"/></svg><span>مزامنة</span>
+        </button>
+        <button type="button" id="mansour-history-open" class="farz-bar__history" title="نتائج الإرسال">
+        <svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>نتائج الإرسال</span>
+    </button>
+                        <button type="button" id="apps-followup-open" class="farz-bar__send farz-bar__send--later" title="الرسالة الثانية: قناة الواتساب">
+                <svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg><span>الرسالة الثانية</span>
+            </button>
+                <button type="button" id="mansour-trigger-open" class="farz-bar__send" title="إرسال">
+            <svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg><span>إرسال</span>
+        </button>
+    </div>
+
+
+<main class="farz-app__main relative flex min-h-0 flex-1 flex-col">
+    <div class="flex flex-col flex-1 min-h-0 w-full max-w-[1600px] mx-auto px-3 sm:px-4 pb-3"
+     id="workspace-list"
+     data-csrf="xpOwRM15h6Dw90Sx2JSdiEruXsmG5btq7AS5Ubju"
+      data-analytics-url="http://abedyamen.local/ai-chatbot/instances/2/workspace/analytics" >
+
+    
+    <div class="kaman-card overflow-hidden flex flex-col flex-1 min-h-[70vh] md:min-h-[75vh]">
+        <div class="grid grid-cols-1 md:grid-cols-[420px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)_250px] flex-1 min-h-0">
+            <aside class="border-e border-[#eadfce] flex flex-col min-h-0 min-w-0 overflow-hidden bg-[#fffaf3]/60 "
+       id="workspace-list-pane"
+       data-poll-url="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations/poll"
+       data-filter="all"
+       data-q=""
+              data-list-labels="{&amp;quot;mode_human&amp;quot;:&amp;quot;بشري&amp;quot;,&amp;quot;mode_paused&amp;quot;:&amp;quot;متوقف مؤقتًا&amp;quot;,&amp;quot;needs_attention&amp;quot;:&amp;quot;تحتاج متابعة&amp;quot;,&amp;quot;mark_user_created&amp;quot;:&amp;quot;تم إنشاء المستخدم&amp;quot;,&amp;quot;mark_user_created_confirm&amp;quot;:&amp;quot;نبعتله إنه تسجّل بالنظام، ومنرجّع المحادثة من تسجيل الدخول؟&amp;quot;}"
+                  data-insight="all"
+           data-insight-conversation-ids="{&amp;quot;answered&amp;quot;:[],&amp;quot;no_reply&amp;quot;:[]}"
+           data-empty-label="لا توجد محادثات بعد."
+           data-filter-empty-label="ما في محادثات بهالمجموعة حالياً."
+       >
+    <div class="p-3 border-b border-[#eadfce] space-y-2">
+                                        <div id="farz-pace" class="farz-pace" data-pace-title="حد اليوم" data-pace-note="نسبة اليوم. بتنزل بعد نص الليل."  hidden >
+                            </div>
+                <form method="get" action="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations" class="flex min-w-0 gap-2">
+            <label class="sr-only" for="workspace-search">بحث</label>
+            <input id="workspace-search" name="q" value="" type="search"
+                   placeholder="الاسم أو رقم الهاتف…"
+                   class="kaman-input !h-9 min-w-0 flex-1 text-sm">
+            <input type="hidden" name="filter" value="all">
+                        <button type="submit" class="kaman-button kaman-button--sm">بحث</button>
+        </form>
+        <div class="flex flex-wrap gap-1" role="tablist" aria-label="تصفية">
+                            <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations?filter=all"
+                   class="rounded-full px-2.5 py-1 text-[11px] font-semibold border transition
+                   border-[#f47a2e]/40 bg-[#f47a2e]/12 text-[#f16229]">
+                    الكل
+                </a>
+                            <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations?filter=unread"
+                   class="rounded-full px-2.5 py-1 text-[11px] font-semibold border transition
+                   border-[#eadfce] text-[#7c6a56] hover:border-[#f47a2e]/30">
+                    غير مقروء
+                </a>
+                            <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations?filter=needs_attention"
+                   class="rounded-full px-2.5 py-1 text-[11px] font-semibold border transition
+                   border-[#eadfce] text-[#7c6a56] hover:border-[#f47a2e]/30">
+                    تحتاج متابعة
+                </a>
+                            <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations?filter=human_takeover"
+                   class="rounded-full px-2.5 py-1 text-[11px] font-semibold border transition
+                   border-[#eadfce] text-[#7c6a56] hover:border-[#f47a2e]/30">
+                    استلام بشري
+                </a>
+                            <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/conversations?filter=bot_active"
+                   class="rounded-full px-2.5 py-1 text-[11px] font-semibold border transition
+                   border-[#eadfce] text-[#7c6a56] hover:border-[#f47a2e]/30">
+                    البوت نشط
+                </a>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                <button type="button" id="insight-filter-clear"
+                        class="hidden text-[10px] font-semibold text-[#f47a2e] hover:underline">
+                    عرض الكل
+                </button>
+            </div>
+            <p id="insight-filter-label" class="hidden text-[10px] text-[#a78a6c]"></p>
+            </div>
+
+    <div id="conversation-list" class="flex-1 overflow-y-auto kaman-scroll" aria-live="polite">
+                            <div class="p-6 text-center text-sm text-[#a78a6c]" id="list-empty">
+                لا توجد محادثات بعد.
+            </div>
+            </div>
+
+    </aside>
+
+            
+            <section id="workspace-chat-slot" class="hidden md:flex flex-col items-center justify-center p-8 text-center bg-[#f7efe3]/40">
+                                    <div class="farz-empty-chat" aria-hidden="true"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M8 10h8M8 13h5"/></svg></div>
+                                <p class="text-sm font-medium text-[#2b1e11]">اختر محادثة</p>
+                            </section>
+
+                            <aside class="farz-live hidden xl:flex" id="mansour-analytics-desktop">
+        <h3 class="farz-live__title"><i class="farz-live__pulse"></i> النتيجة</h3>
+        <div class="farz-live__quota" title="أرقام انبعتلها / أرقام لسا ما انبعت">
+            <b>
+                <span data-analytics="numbers_sent">0</span>
+                <span>/</span>
+                <span data-analytics="numbers_available">0</span>
+            </b>
+            <small>انبعت / متاح للإرسال</small>
+        </div>
+                    <div class="analytics-card farz-live__card" style="--c: #22c55e"
+                 role="button" tabindex="0"
+                 data-insight-filter="answered"
+                 data-insight-label="رد"
+                 title="رد على الرسالة."
+                 aria-pressed="false">
+                <span class="farz-live__ico"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9"/></svg></span>
+                <div class="farz-live__body">
+                    <div class="farz-live__top">
+                        <b>رد</b>
+                                                    <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/analytics/export/answered"
+                               class="analytics-download farz-live__dl" title="تنزيل" aria-label="تنزيل"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></a>
+                                            </div>
+                    <p class="farz-live__num">
+                        <span data-analytics="answered">0</span>
+                        <small><span data-analytics="answered_pct">0</span>%</small>
+                    </p>
+                    <div class="farz-live__bar"><span data-analytics-bar="answered" style="width: 0%"></span></div>
+                </div>
+            </div>
+                    <div class="analytics-card farz-live__card" style="--c: #eab308"
+                 role="button" tabindex="0"
+                 data-insight-filter="no_reply"
+                 data-insight-label="ما رد"
+                 title="انبعتت الرسالة وما في رد."
+                 aria-pressed="false">
+                <span class="farz-live__ico"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 22h14M5 2h14"/><path d="M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22"/><path d="M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/></svg></span>
+                <div class="farz-live__body">
+                    <div class="farz-live__top">
+                        <b>ما رد</b>
+                                                    <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/analytics/export/no_reply"
+                               class="analytics-download farz-live__dl" title="تنزيل" aria-label="تنزيل"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></a>
+                                            </div>
+                    <p class="farz-live__num">
+                        <span data-analytics="no_reply">0</span>
+                        <small><span data-analytics="no_reply_pct">0</span>%</small>
+                    </p>
+                    <div class="farz-live__bar"><span data-analytics-bar="no_reply" style="width: 0%"></span></div>
+                </div>
+            </div>
+            </aside>
+
+<div id="analytics-downloads-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="analytics-downloads-title" hidden>
+    <div class="absolute inset-0 bg-black/40" data-downloads-close></div>
+    <div class="relative z-10 flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <header class="flex items-start gap-3 border-b border-[#eadfce] px-4 py-3">
+            <div class="min-w-0 flex-1">
+                <h3 id="analytics-downloads-title" class="text-sm font-semibold text-[#2b1e11]">التنزيلات</h3>
+                <p id="analytics-downloads-group" class="mt-0.5 text-xs text-[#a78a6c]"></p>
+            </div>
+            <button type="button" class="rounded-lg px-2 py-1 text-sm text-[#a78a6c] hover:bg-[#f7efe3]" data-downloads-close aria-label="إغلاق">×</button>
+        </header>
+        <div id="analytics-downloads-list" class="min-h-0 flex-1 overflow-y-auto px-4 py-3"></div>
+        <div class="border-t border-[#eadfce] px-4 py-3">
+            <p id="analytics-downloads-note" class="mb-2 text-xs text-[#a78a6c]"></p>
+            <button type="button" id="analytics-downloads-go" class="inline-flex w-full items-center justify-center rounded-xl bg-[#1f7a3a] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50"></button>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('analytics-downloads-modal');
+    const list = document.getElementById('analytics-downloads-list');
+    const note = document.getElementById('analytics-downloads-note');
+    const go = document.getElementById('analytics-downloads-go');
+    const groupLabel = document.getElementById('analytics-downloads-group');
+    if (!modal || !list || !go) return;
+
+    const labels = {
+        empty: "\u0645\u0627 \u0641\u064a \u062a\u0646\u0632\u064a\u0644\u0627\u062a \u0633\u0627\u0628\u0642\u0629. \u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0623\u0648\u0644 \u0641\u064a\u0647 \u0643\u0644 \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0628\u0647\u0627\u0644\u0646\u062a\u064a\u062c\u0629.",
+        file: "\u0625\u0643\u0633\u0644 :n",
+        count: ":count \u0631\u0642\u0645",
+        download: "\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u0623\u0631\u0642\u0627\u0645",
+        fresh: "\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0627\u0644\u062c\u062f\u064a\u062f\u0629 \u063a\u064a\u0631 \u0627\u0644\u0645\u0646\u0632\u0651\u0644\u0629",
+        freshFile: "\u0647\u0630\u0627 \u0627\u0644\u0645\u0644\u0641 \u0625\u0643\u0633\u0644 :n.",
+        noneNew: "\u0645\u0627 \u0641\u064a \u0623\u0631\u0642\u0627\u0645 \u062c\u062f\u064a\u062f\u0629 \u0645\u0646 \u0622\u062e\u0631 \u0645\u0644\u0641.",
+    };
+    const fill = (template, map) => template.replace(/:(\w+)/g, (_, key) => map[key] ?? '');
+
+    let exportHref = '';
+
+    const withParams = (href, extra) => {
+        const url = new URL(href, window.location.origin);
+        Object.entries(extra).forEach(([key, value]) => url.searchParams.set(key, value));
+        return url.toString();
+    };
+
+    const historyUrl = (href) => href.replace('/analytics/export/', '/analytics/downloads/');
+
+    const filenameOf = (header) => {
+        const star = header.match(/filename\*=UTF-8''([^;]+)/i);
+        if (star) return decodeURIComponent(star[1]);
+        const plain = header.match(/filename="([^"]+)"/i);
+        return plain ? plain[1] : 'download';
+    };
+
+    const pull = async (url) => {
+        go.disabled = true;
+        try {
+            const res = await fetch(url, { headers: { Accept: '*/*' } });
+            if (!res.ok) return;
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filenameOf(res.headers.get('Content-Disposition') || '');
+            document.body.append(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+        } finally {
+            go.disabled = false;
+        }
+    };
+
+    const paint = (data) => {
+        const downloads = data.downloads || [];
+        list.innerHTML = '';
+        if (!downloads.length) {
+            const empty = document.createElement('p');
+            empty.className = 'text-sm text-[#a78a6c]';
+            empty.textContent = labels.empty;
+            list.append(empty);
+            note.textContent = fill(labels.freshFile, { n: data.next || 1 });
+            go.textContent = labels.download;
+            go.disabled = false;
+            go.dataset.mode = 'save';
+            return;
+        }
+        downloads.forEach((row) => {
+            const item = document.createElement('div');
+            item.className = 'mb-2 flex items-center justify-between gap-2 rounded-xl bg-[#f7efe3] px-3 py-2';
+            const text = document.createElement('div');
+            text.className = 'min-w-0';
+            const title = document.createElement('p');
+            title.className = 'text-sm font-semibold text-[#2b1e11]';
+            title.textContent = fill(labels.file, { n: row.sequence });
+            const meta = document.createElement('p');
+            meta.className = 'text-[11px] text-[#a78a6c]';
+            meta.textContent = fill(labels.count, { count: row.count }) + (row.at ? ' · ' + row.at : '');
+            text.append(title, meta);
+            const again = document.createElement('button');
+            again.type = 'button';
+            again.className = 'shrink-0 rounded-lg bg-white px-2 py-1 text-[11px] font-medium text-[#2b1e11] ring-1 ring-black/10';
+            again.textContent = labels.download;
+            again.addEventListener('click', async () => {
+                await pull(withParams(exportHref, { download: String(row.id) }));
+            });
+            item.append(text, again);
+            list.append(item);
+        });
+        note.textContent = (data.fresh_count || 0) > 0
+            ? fill(labels.freshFile, { n: data.next })
+            : labels.noneNew;
+        go.textContent = labels.fresh;
+        go.dataset.mode = 'fresh';
+        go.disabled = (data.fresh_count || 0) < 1;
+    };
+
+    const open = async (link) => {
+        exportHref = link.href;
+        if (groupLabel) groupLabel.textContent = link.closest('[data-insight-label]')?.dataset.insightLabel || '';
+        list.innerHTML = '';
+        note.textContent = '';
+        go.disabled = true;
+        modal.hidden = false;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        try {
+            const res = await fetch(historyUrl(exportHref), { headers: { Accept: 'application/json' } });
+            paint(res.ok ? await res.json() : { downloads: [], next: 1, fresh_count: 0 });
+        } catch (err) {
+            paint({ downloads: [], next: 1, fresh_count: 0 });
+        }
+    };
+
+    const close = () => {
+        modal.hidden = true;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    };
+
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('a.analytics-download');
+        if (!link) return;
+        event.preventDefault();
+        event.stopPropagation();
+        open(link);
+    }, true);
+
+    modal.querySelectorAll('[data-downloads-close]').forEach((node) => node.addEventListener('click', close));
+    go.addEventListener('click', async () => {
+        const mode = go.dataset.mode || 'save';
+        await pull(withParams(exportHref, { [mode]: '1' }));
+        try {
+            const res = await fetch(historyUrl(exportHref), { headers: { Accept: 'application/json' } });
+            if (res.ok) paint(await res.json());
+        } catch (err) {
+            /* the file already downloaded */
+        }
+    });
+});
+</script>
+                    </div>
+    </div>
+
+            <div class="farz-live-mobile xl:hidden" id="mansour-analytics-mobile">
+        <div class="farz-live__quota farz-live__quota--mobile" title="أرقام انبعتلها / أرقام لسا ما انبعت">
+            <b>
+                <span data-analytics="numbers_sent">0</span>
+                <span>/</span>
+                <span data-analytics="numbers_available">0</span>
+            </b>
+            <small>انبعت / متاح</small>
+        </div>
+                    <div class="analytics-card farz-live-mobile__card" style="--c: #22c55e"
+                 role="button" tabindex="0"
+                 data-insight-filter="answered"
+                 data-insight-label="رد"
+                 title="رد"
+                 aria-pressed="false">
+                <span class="farz-live__ico"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9"/></svg></span>
+                <span class="farz-live-mobile__text">
+                    <b data-analytics="answered">0</b>
+                    <small>رد</small>
+                </span>
+                                    <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/analytics/export/answered"
+                       class="analytics-download farz-live__dl" title="تنزيل" aria-label="تنزيل"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></a>
+                                <div class="farz-live__bar"><span data-analytics-bar="answered" style="width: 0%"></span></div>
+            </div>
+                    <div class="analytics-card farz-live-mobile__card" style="--c: #eab308"
+                 role="button" tabindex="0"
+                 data-insight-filter="no_reply"
+                 data-insight-label="ما رد"
+                 title="ما رد"
+                 aria-pressed="false">
+                <span class="farz-live__ico"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 22h14M5 2h14"/><path d="M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22"/><path d="M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/></svg></span>
+                <span class="farz-live-mobile__text">
+                    <b data-analytics="no_reply">0</b>
+                    <small>ما رد</small>
+                </span>
+                                    <a href="http://abedyamen.local/ai-chatbot/instances/2/workspace/analytics/export/no_reply"
+                       class="analytics-download farz-live__dl" title="تنزيل" aria-label="تنزيل"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></a>
+                                <div class="farz-live__bar"><span data-analytics-bar="no_reply" style="width: 0%"></span></div>
+            </div>
+            </div>
+
+                
+        <div id="mansour-trigger-modal" class="farz-send fixed inset-0 z-50 hidden items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="mansour-trigger-title" hidden>
+    <div class="farz-send__backdrop absolute inset-0" data-mansour-close></div>
+    <div id="mansour-send-card" class="farz-send__card relative z-10 flex w-full flex-col overflow-hidden">
+        <header class="farz-send__head">
+            <span class="farz-send__badge"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg></span>
+            <h3 id="mansour-trigger-title">مين نبعتله؟</h3>
+            <p id="mansour-send-line" class="farz-send__via" hidden></p>
+            <div id="mansour-run-controls" class="farz-send__runbtns hidden" hidden>
+                <button type="button" id="mansour-live-stop" class="farz-send__pill is-danger">إيقاف</button>
+                <button type="button" id="mansour-live-resume" class="farz-send__pill is-go hidden" hidden>متابعة</button>
+            </div>
+            <button type="button" class="farz-send__x" data-mansour-close aria-label="إغلاق" title="إغلاق"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </header>
+
+        <div id="mansour-pick" class="flex min-h-0 flex-1 flex-col">
+        <div class="farz-send__tools">
+                        <div class="farz-send__uploads">
+                        <form method="post" action="http://abedyamen.local/ai-chatbot/instances/2/workspace/mansour/contacts" enctype="multipart/form-data" class="farz-send__upload">
+                <input type="hidden" name="_token" value="xpOwRM15h6Dw90Sx2JSdiEruXsmG5btq7AS5Ubju" autocomplete="off">                                <label for="mansour-excel-all" class="farz-send__file" title="ملف أرقام">
+                    <svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+                    <span data-file-label>ملف أرقام</span>
+                </label>
+                <input id="mansour-excel-all" name="excel" type="file" accept=".xlsx,.csv,.txt" required class="sr-only"
+                       onchange="this.form.querySelector('[data-file-label]').textContent = this.files[0]?.name || this.form.querySelector('[data-file-label]').textContent">
+                <button type="submit" class="farz-send__iconbtn is-solid" title="حفظ" aria-label="حفظ"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 4h11l4 4v12H5z"/><path d="M8 4v5h7V4"/><path d="M8 20v-6h8v6"/></svg></button>
+            </form>
+                        </div>
+            
+            <form id="mansour-custom-form" class="farz-send__add">
+                                <span class="farz-send__field">
+                    <svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                    <input name="name" type="text" maxlength="120" placeholder="الاسم (اختياري)" autocomplete="off">
+                </span>
+                <span class="farz-send__field farz-send__field--grow">
+                    <svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
+                    <input name="phone" type="text" required maxlength="32" placeholder="الرقم" dir="ltr" autocomplete="off">
+                </span>
+                <button type="submit" class="farz-send__iconbtn is-solid" title="إضافة" aria-label="إضافة"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+                <p id="mansour-custom-error" class="farz-send__error hidden"></p>
+            </form>
+        </div>
+
+        <div class="farz-send__bar" id="mansour-channel" role="group" aria-label="طريقة الإرسال">
+            <span>إرسال عبر</span>
+            <button type="button" class="farz-send__pill is-safe" data-mansour-channel="whatsapp"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg><span>واتساب</span></button>
+            <button type="button" class="farz-send__pill" data-mansour-channel="sms"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg><span>SMS</span></button>
+            <small id="mansour-channel-note" class="farz-send__hint" hidden></small>
+        </div>
+
+        <div class="farz-send__assignbar" id="mansour-assignbar">
+            <div class="farz-send__assignhead">
+                <span><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg> أرقام الإرسال <b id="mansour-lines-count"></b></span>
+                <button type="button" class="farz-send__toggle" id="mansour-lines-toggle" aria-expanded="false">عرض الكل</button>
+            </div>
+            <div id="mansour-line-chips" class="farz-send__chips"></div>
+        </div>
+
+        <div class="farz-send__bar">
+            <button type="button" id="mansour-safe-sort" class="farz-send__pill is-safe" title="ترتيب آمن"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M3 12l4 4 8-9"/><path d="M11 16l1 1 9-10"/></svg><span>ترتيب آمن</span></button>
+            <label class="farz-send__pill" title="كم رقم يرسل في نفس اللحظة. كل رقم يبقى على مهلته بين الرسائل.">
+                <svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg>
+                <span>أرقام معًا</span>
+                <select id="mansour-parallel" aria-label="أرقام ترسل معًا">
+                                            <option value="1" >1</option>
+                                            <option value="2" >2</option>
+                                            <option value="3" selected>3</option>
+                                            <option value="4" >4</option>
+                                            <option value="6" >6</option>
+                                            <option value="8" >8</option>
+                                    </select>
+            </label>
+            <button type="button" id="mansour-select-unsent" class="farz-send__pill" title="تحديد اللي ما انبعت"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M3 12l4 4 8-9"/><path d="M11 16l1 1 9-10"/></svg><span>تحديد اللي ما انبعت</span></button>
+            <button type="button" id="mansour-select-sent" class="farz-send__pill" title="تحديد اللي انبعت"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M3 12l4 4 8-9"/><path d="M11 16l1 1 9-10"/></svg><span>تحديد اللي انبعت</span></button>
+            <span class="farz-send__pill" title="يختار أرقام عشوائية من اللي ما انبعتلهم، بدل الاختيار الحالي">
+                🎲 <span>عشوائي</span>
+                                    <button type="button" class="font-semibold hover:underline" data-mansour-random="20">20</button>
+                                    <button type="button" class="font-semibold hover:underline" data-mansour-random="50">50</button>
+                                    <button type="button" class="font-semibold hover:underline" data-mansour-random="80">80</button>
+                                    <button type="button" class="font-semibold hover:underline" data-mansour-random="100">100</button>
+                            </span>
+            <button type="button" id="mansour-clear-all" class="farz-send__pill" title="إلغاء الكل"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg><span>إلغاء الكل</span></button>
+            <button type="button" id="mansour-show-history" class="farz-send__pill" title="نتائج الإرسال"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>نتائج الإرسال</span></button>
+            <button type="button" id="mansour-delete-selected" class="farz-send__pill is-danger" title="حذف المحددين"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg><span>حذف المحددين</span></button>
+        </div>
+
+        <div id="mansour-trigger-list" class="farz-send__list min-h-0 flex-1 overflow-y-auto"></div>
+
+        <form method="post" action="http://abedyamen.local/ai-chatbot/instances/2/workspace/mansour/trigger" class="farz-send__foot">
+            <input type="hidden" name="_token" value="xpOwRM15h6Dw90Sx2JSdiEruXsmG5btq7AS5Ubju" autocomplete="off">            <div id="mansour-trigger-ids"></div>
+            <p id="mansour-send-error" class="farz-send__error hidden"></p>
+            <button type="button" id="mansour-send" class="farz-send__go"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg> إرسال للمحددين</button>
+        </form>
+        </div>
+
+        <div id="mansour-live" class="farz-send__live" hidden>
+            <div class="farz-send__livebar">
+                <button type="button" id="mansour-live-back" class="farz-send__pill"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg><span>الأرقام</span></button>
+                <p id="mansour-live-summary"></p>
+            </div>
+            <div id="mansour-run-chips" class="farz-send__chips"></div>
+            <div class="farz-send__stage">
+                <div id="mansour-live-list" class="farz-send__log"></div>
+                <aside class="farz-send__inspect">
+                    <p class="farz-send__kicker">شو صار</p>
+                    <p id="mansour-live-human"></p>
+                    <div id="mansour-takeover" class="farz-send__takeover" hidden>
+                        <button type="button" id="mansour-takeover-go" class="farz-send__go"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg> <span></span></button>
+                        <p id="mansour-takeover-note" class="farz-send__takeover-note"></p>
+                    </div>
+                    <p class="farz-send__kicker">الطلب</p>
+                    <p id="mansour-live-meta" dir="ltr"></p>
+                    <pre id="mansour-live-raw" dir="ltr"></pre>
+                </aside>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('mansour-trigger-modal');
+    const list = document.getElementById('mansour-trigger-list');
+    const sendError = document.getElementById('mansour-send-error');
+    const customForm = document.getElementById('mansour-custom-form');
+    const customError = document.getElementById('mansour-custom-error');
+    const url = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/contacts";
+    const triggerUrl = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/trigger";
+    const sendsUrl = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/sends";
+    const pickTitle = "\u0645\u064a\u0646 \u0646\u0628\u0639\u062a\u0644\u0647\u061f";
+    const historyTitle = "\u0646\u062a\u0627\u0626\u062c \u0627\u0644\u0625\u0631\u0633\u0627\u0644";
+    const waitingLabel = "\u0645\u0646\u0633\u062a\u0646\u0649 \u0631\u062f \u0648\u0627\u062a\u0633\u0627\u0628\u2026";
+    const requestFailedLabel = "\u0627\u0644\u0637\u0644\u0628 \u0645\u0627 \u0648\u0635\u0644 \u0644\u0648\u0627\u062a\u0633\u0627\u0628.";
+    const progressLabel = "\u0639\u0645 \u0646\u0628\u0639\u062a :done \u0645\u0646 :total";
+    const pausedLabel = "\u0627\u0644\u0625\u0631\u0633\u0627\u0644 \u0645\u0648\u0642\u0641 \u0639\u0646\u062f :done \u0645\u0646 :total";
+    const continuesLabel = "\u0627\u0644\u0625\u0631\u0633\u0627\u0644 \u0645\u0633\u062a\u0645\u0631\u060c :done \u0645\u0646 :total";
+    const doneLabel = "\u0627\u0646\u0628\u0639\u062a :sent. \u0645\u0627 \u0648\u0635\u0644 :failed.";
+    const historyEmpty = "\u0645\u0627 \u0641\u064a \u0625\u0631\u0633\u0627\u0644 \u0633\u0627\u0628\u0642.";
+    const stoppedLabel = "\u0647\u0630\u0627 \u0627\u0644\u0625\u0631\u0633\u0627\u0644 \u0648\u0642\u0641 \u0642\u0628\u0644 \u0645\u0627 \u064a\u062e\u0644\u0651\u0635.";
+    const customUrl = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/contacts\/custom";
+    const deleteUrl = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/contacts";
+    const emptyLabel = "\u0627\u0631\u0641\u0639 \u0645\u0644\u0641 \u0623\u0631\u0642\u0627\u0645 \u0623\u0648\u0644\u0627\u064b";
+    const sentLabel = "\u0627\u0646\u0628\u0639\u062a";
+    const sentGroupLabel = "\u0627\u0646\u0628\u0639\u062a\u0644\u0647\u0645";
+    const resendConfirm = "\u062a\u0639\u064a\u062f \u0627\u0644\u0625\u0631\u0633\u0627\u0644 \u0644\u0644\u064a \u0627\u0646\u0628\u0639\u062a\u0644\u0647\u0645\u061f \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629 \u0628\u062a\u0628\u0644\u0651\u0634 \u0645\u0646 \u062c\u062f\u064a\u062f \u0628\u0627\u0644\u0633\u0644\u0627\u0645.";
+    const deleteConfirm = "\u062d\u0630\u0641 \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0627\u0644\u0645\u062d\u062f\u062f\u0629\u061f";
+    const noneSelected = "\u0645\u0627 \u0641\u064a \u0631\u0642\u0645 \u0645\u062d\u062f\u062f";
+    const lineOffLabel = "\u0647\u0630\u0627 \u0627\u0644\u0631\u0642\u0645 \u0645\u0648\u0642\u0641. \u0634\u063a\u0651\u0644\u0647 \u062b\u0645 \u0623\u0639\u062f \u0627\u0644\u0625\u0631\u0633\u0627\u0644.";
+    const linePausedLabel = "\u0645\u062a\u0648\u0642\u0641";
+    const assignNeed = "\u0639\u0644\u0651\u0645 \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0623\u0648\u0644\u0627\u064b\u060c \u0628\u0639\u062f\u064a\u0646 \u0627\u0636\u063a\u0637 \u0627\u0644\u062e\u0637 \u0627\u0644\u0644\u064a \u0628\u064a\u0628\u0639\u062a\u0644\u0647\u0645.";
+    const assignMissing = "\u0627\u0631\u0628\u0637 \u0643\u0644 \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0627\u0644\u0645\u062d\u062f\u062f\u0629 \u0628\u062e\u0637 \u0625\u0631\u0633\u0627\u0644.";
+    const paceWait = "\u0627\u0633\u062a\u0631\u0627\u062d\u0629 :seconds \u062b \u0639\u0634\u0627\u0646 \u0627\u0644\u0648\u0627\u062a\u0633\u0627\u0628 \u0645\u0627 \u064a\u0642\u064a\u0651\u062f \u0627\u0644\u0631\u0642\u0645";
+    const safeTooMany = "\u0643\u062b\u064a\u0631. \u0647\u0627\u0644\u0645\u0631\u0629 \u0641\u064a \u0645\u062c\u0627\u0644 \u0644\u0640 :max \u0628\u0633. \u0631\u062a\u0651\u0628\u062a :max \u0648\u0634\u0644\u062a \u0627\u0644\u0628\u0627\u0642\u064a \u0645\u0646 \u0627\u0644\u062a\u062d\u062f\u064a\u062f.";
+    const safeNeed = "\u0639\u0644\u0651\u0645 \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0623\u0648\u0644\u0627\u064b\u060c \u0628\u0639\u062f\u064a\u0646 \u0627\u0636\u063a\u0637 \u062a\u0631\u062a\u064a\u0628 \u0622\u0645\u0646.";
+    const safeNone = "\u0645\u0627 \u0641\u064a \u0645\u062c\u0627\u0644 \u0627\u0644\u064a\u0648\u0645. \u0643\u0644 \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0648\u0635\u0644\u062a \u062d\u062f\u0647\u0627 \u0623\u0648 \u0645\u0648\u0642\u0641\u0629.";
+    const safeOver = ":phone \u064a\u0642\u062f\u0631 \u064a\u0628\u0639\u062b :max \u0628\u0633 \u0647\u0627\u0644\u0645\u0631\u0629.";
+    const safeLeft = ":count \u0628\u0627\u0642\u064a";
+    const safeConfirm = "\u062a\u0646\u0628\u064a\u0647: \u0627\u0644\u0631\u0642\u0645 :phone \u0628\u0642\u064a \u0644\u0647 :max \u0625\u0631\u0633\u0627\u0644 \u0622\u0645\u0646\u060c \u0648\u0623\u0646\u062a \u062a\u0631\u0633\u0644 :count.\n\u0627\u0644\u0625\u0631\u0633\u0627\u0644 \u0641\u0648\u0642 \u0627\u0644\u062d\u062f \u064a\u0632\u064a\u062f \u062e\u0637\u0631 \u062d\u0638\u0631 \u0627\u0644\u0631\u0642\u0645 \u0645\u0646 \u0648\u0627\u062a\u0633\u0627\u0628.\n\n\u0625\u0631\u0633\u0627\u0644 \u0639\u0644\u0649 \u0623\u064a \u062d\u0627\u0644\u061f";
+    const audienceGroups = [];
+    const splitAudiences = audienceGroups.length > 0;
+    const groupOf = (audience) => (audienceGroups.find((group) => group.key === audience) || audienceGroups[0]).key;
+    const waveCap = 12;
+    const dayCap = 24;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    if (!modal || !list) return;
+
+    const rowLabel = (row) => (row.name ? row.name + ' · ' : '') + row.phone;
+
+    const contactRow = (row, sentAlready) => {
+        const label = document.createElement('label');
+        label.className = 'farz-send__row' + (sentAlready ? ' is-sent' : '');
+        label.dataset.name = row.name || '';
+        label.dataset.phone = row.phone || '';
+        const text = document.createElement('span');
+        text.className = 'farz-send__who';
+        const who = document.createElement('b');
+        who.textContent = row.name || '—';
+        const phone = document.createElement('small');
+        phone.dir = 'ltr';
+        phone.textContent = row.phone || '';
+        text.append(who, phone);
+        text.title = rowLabel(row);
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.value = String(row.id);
+        box.className = 'mansour-pick' + (sentAlready ? ' mansour-pick--sent' : '');
+        box.dataset.sent = (Array.isArray(row.sent_lines) ? row.sent_lines : []).join(',');
+        if (!sentAlready) {
+            label.append(box, text);
+            return label;
+        }
+        const tick = document.createElement('span');
+        tick.className = 'farz-send__tick';
+        tick.setAttribute('aria-hidden', 'true');
+        tick.textContent = '✓';
+        const badge = document.createElement('span');
+        badge.className = 'farz-send__sent';
+        badge.textContent = sentLabel;
+        label.append(box, tick, text, badge);
+        return label;
+    };
+
+    const pendingBox = (audience) => {
+        const id = splitAudiences
+            ? 'mansour-pending-' + groupOf(audience)
+            : 'mansour-pending';
+        let box = document.getElementById(id);
+        if (box) {
+            box.querySelector('.farz-send__empty')?.remove();
+            return box;
+        }
+        if (list.querySelector('.mansour-empty')) {
+            list.innerHTML = '';
+        }
+        box = document.createElement('div');
+        box.id = id;
+        box.className = 'mansour-pending';
+        const heading = list.querySelector('.farz-send__section');
+        list.insertBefore(box, heading);
+        return box;
+    };
+
+    const appendContact = (row, checked) => {
+        const existing = list.querySelector('.mansour-pick[value="' + row.id + '"]');
+        if (existing) {
+            existing.checked = checked || existing.checked;
+            return;
+        }
+        const label = contactRow(row, false);
+        const box = label.querySelector('.mansour-pick');
+        if (checked) {
+            box.checked = true;
+            fresh.add(String(row.id));
+        }
+        restoreLine(label, row);
+        pendingBox(row.audience).append(label);
+    };
+
+    const showEmpty = () => {
+        list.innerHTML = '';
+        const note = document.createElement('p');
+        note.className = 'mansour-empty farz-send__empty';
+        note.textContent = emptyLabel;
+        list.append(note);
+    };
+
+    const hideSendError = () => {
+        if (!sendError) return;
+        sendError.textContent = '';
+        sendError.classList.add('hidden');
+    };
+
+    const alreadySent = (row) => !!row.triggered || (Array.isArray(row.sent_lines) && row.sent_lines.length > 0);
+    const paintGroup = (rows) => {
+        const pending = rows.filter((row) => !alreadySent(row));
+        const sent = rows.filter((row) => alreadySent(row));
+        const pendingWrap = document.createElement('div');
+        pendingWrap.className = 'mansour-pending';
+        pending.forEach((row) => {
+            const label = contactRow(row, false);
+            restoreLine(label, row);
+            pendingWrap.append(label);
+        });
+        return { pendingWrap, sent };
+    };
+    const paintSent = (sent) => {
+        if (!sent.length) return;
+        const heading = document.createElement('p');
+        heading.className = 'farz-send__section';
+        heading.textContent = sentGroupLabel;
+        list.append(heading);
+        sent.forEach((row) => {
+            const label = contactRow(row, true);
+            restoreLine(label, row);
+            list.append(label);
+        });
+    };
+    // Paged list (invite bot youth): 1000 unsent numbers at a time, sent ones only counted.
+    const contactsQuery = false;
+    const paging = { after: 0, more: false, sent: 0 };
+    const paintPaging = (pendingWrap) => {
+        const sentNote = document.createElement('p');
+        sentNote.className = 'farz-send__section';
+        sentNote.textContent = 'تم الإرسال: ' + paging.sent;
+        list.insertBefore(sentNote, pendingWrap);
+        if (!paging.more) return;
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'farz-send__pill';
+        more.textContent = 'عرض المزيد';
+        more.addEventListener('click', async () => {
+            more.disabled = true;
+            more.textContent = '…';
+            try {
+                const res = await fetch(url + '&after=' + paging.after, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+                if (!res.ok) throw new Error('load');
+                const data = await res.json();
+                const rows = Array.isArray(data.contacts) ? data.contacts : [];
+                rows.forEach((row) => {
+                    const label = contactRow(row, false);
+                    restoreLine(label, row);
+                    pendingWrap.append(label);
+                });
+                if (rows.length) paging.after = rows[rows.length - 1].id;
+                paging.more = !!data.has_more;
+                if (!paging.more) {
+                    more.remove();
+                    return;
+                }
+                more.disabled = false;
+                more.textContent = 'عرض المزيد';
+            } catch (_) {
+                more.disabled = false;
+                more.textContent = 'تعذر التحميل، اضغط مرة ثانية';
+            }
+        });
+        list.append(more);
+    };
+    const paintContacts = (contacts) => {
+        list.innerHTML = '';
+        if (splitAudiences) {
+            audienceGroups.forEach((group) => {
+                const rows = contacts.filter((row) => groupOf(row.audience) === group.key);
+                const head = document.createElement('p');
+                head.className = 'farz-send__audience is-' + group.key;
+                const name = document.createElement('span');
+                name.textContent = group.title;
+                const hint = document.createElement('small');
+                hint.textContent = group.hint;
+                head.append(name, hint);
+                list.append(head);
+                const painted = paintGroup(rows);
+                painted.pendingWrap.id = 'mansour-pending-' + group.key;
+                if (!painted.pendingWrap.childElementCount) {
+                    const empty = document.createElement('p');
+                    empty.className = 'farz-send__empty';
+                    empty.textContent = 'لا توجد أرقام جديدة في هذا الملف.';
+                    painted.pendingWrap.append(empty);
+                }
+                list.append(painted.pendingWrap);
+                if (contactsQuery) {
+                    paintPaging(painted.pendingWrap);
+                    return;
+                }
+                paintSent(painted.sent);
+            });
+            return;
+        }
+        if (!contacts.length) {
+            showEmpty();
+            return;
+        }
+        const painted = paintGroup(contacts);
+        painted.pendingWrap.id = 'mansour-pending';
+        list.append(painted.pendingWrap);
+        if (contactsQuery) {
+            paintPaging(painted.pendingWrap);
+            return;
+        }
+        paintSent(painted.sent);
+    };
+
+    const lineChips = document.getElementById('mansour-line-chips');
+    let sendLines = [];
+    const linked = new Map();
+    const fresh = new Set();
+    const colorOf = (lineId) => {
+        const index = sendLines.findIndex((line) => line.id === lineId);
+        return (index < 0 ? 0 : index) % 6;
+    };
+    const markFrom = (label, lineId) => {
+        if (!label) return;
+        let from = label.querySelector('.farz-send__from');
+        if (!lineId) {
+            from?.remove();
+            return;
+        }
+        if (!from) {
+            from = document.createElement('b');
+            from.className = 'farz-send__from';
+            from.dir = 'ltr';
+            label.append(from);
+        }
+        from.textContent = linePhone(lineId);
+    };
+    const clearLine = (box) => {
+        fresh.delete(box.value);
+        linked.delete(box.value);
+        delete box.dataset.line;
+        const label = box.closest('label');
+        if (!label) return;
+        for (let i = 0; i < 6; i++) label.classList.remove('is-c' + i);
+        markFrom(label, '');
+    };
+    const paintLine = (box, lineId) => {
+        box.dataset.line = lineId;
+        linked.set(box.value, lineId);
+        fresh.delete(box.value);
+        const label = box.closest('label');
+        if (!label) return;
+        for (let i = 0; i < 6; i++) label.classList.remove('is-c' + i);
+        label.classList.add('is-c' + colorOf(lineId));
+        markFrom(label, lineId);
+    };
+    const restoreLine = (label, row) => {
+        const box = label.querySelector('.mansour-pick');
+        if (!box) return;
+        const lineId = linked.get(String(row.id));
+        if (lineId) {
+            box.dataset.line = lineId;
+            label.classList.add('is-c' + colorOf(lineId));
+            markFrom(label, lineId);
+            box.checked = true;
+        } else if (fresh.has(String(row.id))) {
+            box.checked = true;
+        }
+    };
+    const usableLine = (line) => !!(line && !line.sms && line.active && line.status !== 'blocked' && line.level !== 'dead');
+    const smsLine = (line) => !!(line && line.sms && line.active);
+    const roomOf = (line) => {
+        if (smsLine(line)) return Math.max(0, Number(line.cap || 0) - Number(line.today || 0));
+        if (!usableLine(line)) return 0;
+        const today = Number(line.today || 0);
+        const cap = Number(line.cap || dayCap);
+        return Math.min(waveCap, Math.max(0, cap - today));
+    };
+    const showSendError = (text) => {
+        if (!sendError) return;
+        sendError.textContent = text;
+        sendError.classList.remove('hidden');
+    };
+    const assignTo = (lineId) => {
+        const line = sendLines.find((item) => item.id === lineId);
+        if (!line || !line.active) {
+            showSendError(lineOffLabel);
+            return;
+        }
+        const targets = [...list.querySelectorAll('.mansour-pick:checked')].filter((box) => fresh.has(box.value));
+        if (!targets.length) {
+            showSendError(assignNeed);
+            return;
+        }
+        const already = [...list.querySelectorAll('.mansour-pick')].filter((box) => box.dataset.line === lineId && !targets.includes(box)).length;
+        const left = Math.max(0, roomOf(line) - already);
+        if (targets.length > left && !window.confirm(fill(safeConfirm, {
+            phone: line.phone || line.label || lineId,
+            max: left,
+            count: targets.length,
+        }))) {
+            return;
+        }
+        targets.forEach((box) => paintLine(box, lineId));
+        hideSendError();
+    };
+    const safeSort = () => {
+        const selected = [...list.querySelectorAll('.mansour-pick:checked')];
+        if (!selected.length) {
+            showSendError(safeNeed);
+            return;
+        }
+        const selectedSet = new Set(selected);
+        const slots = sendLines.map((line) => {
+            const taken = [...list.querySelectorAll('.mansour-pick')]
+                .filter((box) => box.dataset.line === line.id && !selectedSet.has(box)).length;
+            return { line, left: Math.max(0, roomOf(line) - taken) };
+        }).filter((slot) => slot.left > 0);
+        const totalRoom = slots.reduce((sum, slot) => sum + slot.left, 0);
+        const usable = sendLines.filter((line) => usableLine(line));
+        if (!usable.length) {
+            showSendError(safeNone);
+            return;
+        }
+        if (selected.length > totalRoom && !window.confirm(fill(safeConfirm, {
+            phone: usable.map((line) => line.phone || line.label || line.id).join('، '),
+            max: totalRoom,
+            count: selected.length,
+        }))) {
+            return;
+        }
+        selected.forEach((box) => clearLine(box));
+        const extra = usable.map((line) => ({ line, left: Infinity, used: 0 }));
+        selected.forEach((box) => {
+            const sent = new Set(String(box.dataset.sent || '').split(',').filter((id) => id !== ''));
+            const slot = slots
+                .filter((item) => item.left > 0 && !sent.has(item.line.id))
+                .sort((a, b) => b.left - a.left || Number(a.line.today || 0) - Number(b.line.today || 0))[0];
+            if (slot) {
+                box.checked = true;
+                paintLine(box, slot.line.id);
+                slot.left -= 1;
+                return;
+            }
+            const spill = extra
+                .filter((item) => !sent.has(item.line.id))
+                .sort((a, b) => a.used - b.used || Number(a.line.today || 0) - Number(b.line.today || 0))[0]
+                || extra.sort((a, b) => a.used - b.used)[0];
+            box.checked = true;
+            paintLine(box, spill.line.id);
+            spill.used += 1;
+        });
+        hideSendError();
+    };
+    const fillLines = (lines) => {
+        sendLines = Array.isArray(lines) ? lines : [];
+        if (!lineChips) return;
+        lineChips.innerHTML = '';
+        const ready = sendLines.filter((line) => usableLine(line));
+        const count = document.getElementById('mansour-lines-count');
+        if (count) count.textContent = ready.length + ' / ' + sendLines.length;
+        [...ready, ...sendLines.filter((line) => !usableLine(line) && !line.sms)].forEach((line) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            const usable = usableLine(line);
+            chip.className = 'farz-send__chip farz-send__assign is-c' + colorOf(line.id) + (usable ? '' : ' is-off');
+            const phone = document.createElement('span');
+            phone.dir = 'ltr';
+            phone.textContent = line.phone || line.label || line.id;
+            const left = document.createElement('small');
+            left.textContent = usable ? fill(safeLeft, { count: roomOf(line) }) : linePausedLabel;
+            chip.append(phone, left);
+            chip.title = phone.textContent + ' · ' + left.textContent;
+            chip.addEventListener('click', () => assignTo(line.id));
+            lineChips.append(chip);
+        });
+        paintChannel();
+    };
+    document.getElementById('mansour-lines-toggle')?.addEventListener('click', (event) => {
+        const bar = document.getElementById('mansour-assignbar');
+        const open = !bar?.classList.contains('is-open');
+        bar?.classList.toggle('is-open', open);
+        event.currentTarget.setAttribute('aria-expanded', open ? 'true' : 'false');
+        event.currentTarget.textContent = open ? 'إخفاء' : 'عرض الكل';
+    });
+    const linePhone = (lineId) => sendLines.find((line) => line.id === lineId)?.phone || '';
+    // WhatsApp (the number chips) or SMS (every chosen number by the 019 number).
+    const smsId = 'sms';
+    let sendChannel = 'whatsapp';
+    function paintChannel(note) {
+        const sms = sendLines.find((line) => line.sms);
+        if (sendChannel === 'sms' && !smsLine(sms)) sendChannel = 'whatsapp';
+        document.querySelectorAll('[data-mansour-channel]').forEach((button) => {
+            const on = button.dataset.mansourChannel === sendChannel;
+            button.classList.toggle('is-safe', on);
+            button.setAttribute('aria-pressed', on ? 'true' : 'false');
+            if (button.dataset.mansourChannel === 'sms') {
+                button.style.opacity = smsLine(sms) ? '' : '.55';
+                button.title = smsLine(sms) ? 'SMS ' + (sms.phone || '') : (sms?.note || 'SMS غير متاح بعد.');
+            }
+        });
+        const isSms = sendChannel === 'sms';
+        document.getElementById('mansour-assignbar')?.toggleAttribute('hidden', isSms);
+        document.getElementById('mansour-safe-sort')?.toggleAttribute('hidden', isSms);
+        const box = document.getElementById('mansour-channel-note');
+        if (box) {
+            const text = note || (isSms ? 'كل الأرقام المختارة تنبعت SMS من ' + (sms?.phone || '') + '، والردود بترجع للبوت.' : '');
+            box.textContent = text;
+            box.hidden = text === '';
+        }
+    }
+    document.querySelectorAll('[data-mansour-channel]').forEach((button) => button.addEventListener('click', () => {
+        const sms = sendLines.find((line) => line.sms);
+        if (button.dataset.mansourChannel === 'sms' && !smsLine(sms)) {
+            paintChannel(sms?.note || 'SMS غير متاح بعد.');
+            return;
+        }
+        sendChannel = button.dataset.mansourChannel;
+        paintChannel();
+    }));
+    const showLoaded = (contacts) => {
+        if (!Array.isArray(contacts)) {
+            list.innerHTML = '';
+            const note = document.createElement('p');
+            note.className = 'mansour-empty farz-send__empty';
+            note.textContent = 'تعذر تحميل الأرقام. أغلق النافذة وافتحها مرة ثانية.';
+            list.append(note);
+            return;
+        }
+        paintContacts(contacts);
+    };
+    let contactsRequest = null;
+    const pullContacts = () => fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+        .then((res) => {
+            if (!res.ok) {
+                throw new Error('load');
+            }
+            return res.json();
+        });
+    const loadContacts = () => {
+        if (!contactsRequest) {
+            contactsRequest = pullContacts()
+                .catch(() => pullContacts())
+                .then((data) => {
+                    fillLines(data.lines || []);
+                    const rows = Array.isArray(data.contacts) ? data.contacts : [];
+                    paging.after = rows.length ? rows[rows.length - 1].id : 0;
+                    paging.more = !!data.has_more;
+                    paging.sent = Number(data.sent_count || 0);
+                    return rows;
+                })
+                .catch(() => {
+                    contactsRequest = null;
+                    return null;
+                });
+        }
+        return contactsRequest;
+    };
+
+    const card = document.getElementById('mansour-send-card');
+    const pick = document.getElementById('mansour-pick');
+    const live = document.getElementById('mansour-live');
+    const liveList = document.getElementById('mansour-live-list');
+    const liveHuman = document.getElementById('mansour-live-human');
+    const liveMeta = document.getElementById('mansour-live-meta');
+    const liveRaw = document.getElementById('mansour-live-raw');
+    const liveSummary = document.getElementById('mansour-live-summary');
+    const runChips = document.getElementById('mansour-run-chips');
+    const title = document.getElementById('mansour-trigger-title');
+    let sending = false;
+    let runs = [];
+    const run = { paused: false, done: 0, total: 0 };
+    let refreshRun = () => {};
+    const stopBtn = document.getElementById('mansour-live-stop');
+    const resumeBtn = document.getElementById('mansour-live-resume');
+    const runControls = document.getElementById('mansour-run-controls');
+    const opener = document.getElementById('mansour-trigger-open');
+    const openerLabel = opener?.querySelector('span');
+    const openerText = openerLabel?.textContent || '';
+    const openerTitle = opener?.getAttribute('title') || '';
+
+    const parallelPick = document.getElementById('mansour-parallel');
+    try {
+        const saved = localStorage.getItem('mansour-parallel');
+        if (saved && parallelPick?.querySelector('option[value="' + saved + '"]')) parallelPick.value = saved;
+    } catch (_) {}
+    parallelPick?.addEventListener('change', () => {
+        try { localStorage.setItem('mansour-parallel', parallelPick.value); } catch (_) {}
+    });
+    const parallelCount = () => Math.min(8, Math.max(1, Number(parallelPick?.value) || 1));
+
+    const fill = (template, map) => template.replace(/:(\w+)/g, (_, key) => map[key] ?? '');
+
+    const setHidden = (el, hide) => {
+        if (!el) return;
+        el.hidden = hide;
+        el.classList.toggle('hidden', hide);
+    };
+
+    const syncControls = () => {
+        setHidden(runControls, !sending);
+        setHidden(stopBtn, !sending || run.paused);
+        setHidden(resumeBtn, !sending || !run.paused);
+        opener?.classList.toggle('is-live', sending && !run.paused);
+        opener?.classList.toggle('is-held', sending && run.paused);
+        if (openerLabel) {
+            openerLabel.textContent = sending ? (run.done + ' / ' + run.total) : openerText;
+        }
+        if (opener) {
+            opener.title = sending
+                ? fill(run.paused ? pausedLabel : continuesLabel, { done: run.done, total: run.total })
+                : openerTitle;
+        }
+    };
+
+    stopBtn?.addEventListener('click', () => {
+        if (!sending) return;
+        run.paused = true;
+        refreshRun();
+    });
+    resumeBtn?.addEventListener('click', () => {
+        if (!sending) return;
+        run.paused = false;
+        refreshRun();
+    });
+
+    const reveal = () => {
+        modal.hidden = false;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    };
+
+    const hideModal = () => {
+        modal.hidden = true;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        syncControls();
+    };
+
+    const showPick = () => {
+        pick.hidden = false;
+        live.hidden = true;
+        card?.classList.remove('is-wide');
+        if (title) title.textContent = pickTitle;
+    };
+
+    const showLive = () => {
+        pick.hidden = true;
+        live.hidden = false;
+        card?.classList.add('is-wide');
+        if (title) title.textContent = historyTitle;
+    };
+
+    const debugText = (row) => {
+        const debug = row?.debug;
+        if (!debug) return '';
+        const lines = [];
+        if (Array.isArray(debug.attempts) && debug.attempts.length) {
+            debug.attempts.forEach((attempt, index) => {
+                lines.push('#' + (index + 1) + '  ' + (attempt.provider === 'whapi' ? 'Whapi' : 'Green API') + '  HTTP ' + attempt.http);
+                if (attempt.message_id) lines.push(attempt.message_id);
+                if (attempt.line) lines.push(attempt.line);
+                if (attempt.body) lines.push(attempt.body);
+                lines.push('');
+            });
+            return lines.join('\n').trim();
+        }
+        return debug.body || '';
+    };
+
+    const metaText = (row) => {
+        const debug = row?.debug;
+        if (!debug) return '';
+        return [debug.provider, debug.http ? 'HTTP ' + debug.http : '', debug.whatsapp, debug.message_id, debug.line]
+            .filter((part) => part)
+            .join('  ·  ');
+    };
+
+    const takeover = document.getElementById('mansour-takeover');
+    const takeoverGo = document.getElementById('mansour-takeover-go');
+    const takeoverNote = document.getElementById('mansour-takeover-note');
+    const takeoverUrl = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/take-over";
+    const thisBotName = "The Last Day Group Bot";
+    let takeoverRow = null;
+    const isBusyElsewhere = (row) => row && row.ok !== true
+        && (row.code === 'live_elsewhere' || String(row.debug?.body || '').startsWith('live_elsewhere'));
+
+    const showDebug = (row) => {
+        liveHuman.textContent = row?.human || '';
+        liveMeta.textContent = metaText(row);
+        liveRaw.textContent = debugText(row);
+        takeoverRow = isBusyElsewhere(row) ? row : null;
+        if (!takeover) return;
+        takeover.hidden = !takeoverRow;
+        if (!takeoverRow) return;
+        const other = (String(row.human || '').match(/«([^»]+)»/) || [])[1] || 'البوت الآخر';
+        takeoverGo.disabled = sending;
+        takeoverGo.dataset.other = other;
+        takeoverGo.querySelector('span').textContent = 'أوقفه في «' + other + '» وأرسل من هنا';
+        takeoverNote.textContent = 'يتوقف رد «' + other + '» في محادثة هذا الشخص فقط، ثم يرسل «' + thisBotName + '» رسالته.';
+        takeoverNote.classList.remove('is-bad');
+    };
+
+    takeoverGo?.addEventListener('click', async () => {
+        const row = takeoverRow;
+        if (!row || sending) return;
+        const other = takeoverGo.dataset.other || '';
+        if (!window.confirm('إيقاف «' + other + '» في محادثة ' + (row.name || row.phone || '') + ' وإرسال الرسالة من «' + thisBotName + '»؟')) return;
+        takeoverGo.disabled = true;
+        takeoverNote.textContent = '…';
+        try {
+            const res = await fetch(takeoverUrl, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify({ contact_id: row.contact_id, line: row.debug?.line || null }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || requestFailedLabel);
+            await loadHistory(data.run_id);
+            if (!data.ok && takeoverNote) {
+                takeover.hidden = false;
+                takeoverNote.textContent = data.message || requestFailedLabel;
+                takeoverNote.classList.add('is-bad');
+            }
+        } catch (error) {
+            takeoverGo.disabled = false;
+            takeoverNote.textContent = error.message;
+            takeoverNote.classList.add('is-bad');
+        }
+    });
+
+    const paintLive = (people, activeId) => {
+        try {
+        liveList.innerHTML = '';
+        let active = null;
+        people.forEach((row) => {
+            const hit = document.createElement('button');
+            hit.type = 'button';
+            const state = row.ok === true ? ' is-ok' : row.ok === false ? ' is-bad' : ' is-wait';
+            const on = String(row.contact_id) === String(activeId);
+            hit.className = 'farz-send__hit' + state + (on ? ' is-on' : '');
+            const who = document.createElement('span');
+            who.textContent = row.name || row.phone || '';
+            const num = document.createElement('span');
+            num.className = 'farz-send__num';
+            num.textContent = (row.line_phone ? row.line_phone + ' → ' : '') + (row.phone || '');
+            const outcome = document.createElement('span');
+            outcome.className = 'farz-send__outcome';
+            outcome.textContent = row.human || waitingLabel;
+            hit.append(who, num, outcome);
+            hit.addEventListener('click', () => {
+                liveList.querySelectorAll('.farz-send__hit').forEach((el) => el.classList.remove('is-on'));
+                hit.classList.add('is-on');
+                showDebug(row);
+            });
+            liveList.append(hit);
+            if (on) active = row;
+        });
+        showDebug(active || people[people.length - 1] || null);
+        const current = liveList.querySelector('.is-on');
+        current?.scrollIntoView({ block: 'nearest' });
+        } catch (_) {}
+    };
+
+    const paintRuns = (activeId) => {
+        runChips.innerHTML = '';
+        runs.forEach((run) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'farz-send__chip' + (run.id === activeId ? ' is-on' : '');
+            const when = run.at ? new Date(run.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            chip.textContent = [when, fill(doneLabel, { sent: run.sent ?? 0, failed: run.failed ?? 0 }), run.finished ? '' : stoppedLabel]
+                .filter((part) => part)
+                .join(' · ');
+            chip.addEventListener('click', () => {
+                if (sending) return;
+                paintRuns(run.id);
+                const people = run.results || [];
+                liveSummary.textContent = run.note || fill(doneLabel, { sent: run.sent ?? 0, failed: run.failed ?? 0 });
+                paintLive(people, people[0]?.contact_id);
+            });
+            runChips.append(chip);
+        });
+    };
+
+    const loadHistory = async (preferId) => {
+        const res = await fetch(sendsUrl, { headers: { Accept: 'application/json' } });
+        const data = await res.json().catch(() => ({}));
+        runs = data.runs || [];
+        if (!runs.length) {
+            runChips.innerHTML = '';
+            liveList.innerHTML = '';
+            liveSummary.textContent = historyEmpty;
+            showDebug(null);
+            return;
+        }
+        const run = runs.find((item) => item.id === preferId) || runs[0];
+        paintRuns(run.id);
+        const people = run.results || [];
+        liveSummary.textContent = run.note || (run.finished ? fill(doneLabel, { sent: run.sent ?? 0, failed: run.failed ?? 0 }) : stoppedLabel);
+        paintLive(people, people[0]?.contact_id);
+    };
+
+    const openResults = async () => {
+        reveal();
+        showLive();
+        if (sending) {
+            syncControls();
+            return;
+        }
+        liveSummary.textContent = '…';
+        await loadHistory();
+    };
+
+    const open = async () => {
+        if (sending) {
+            reveal();
+            showLive();
+            syncControls();
+            return;
+        }
+        hideSendError();
+        reveal();
+        showPick();
+        if (!list.querySelector('.mansour-pick') && !list.querySelector('.mansour-empty')) {
+            list.textContent = '…';
+        }
+        showLoaded(await loadContacts());
+    };
+
+    loadContacts();
+
+    document.getElementById('mansour-trigger-open')?.addEventListener('click', () => {
+        contactsRequest = null;
+        open();
+    });
+    document.getElementById('mansour-history-open')?.addEventListener('click', () => {
+        openResults();
+    });
+    document.getElementById('mansour-show-history')?.addEventListener('click', () => {
+        openResults();
+    });
+    document.getElementById('mansour-live-back')?.addEventListener('click', () => {
+        contactsRequest = null;
+        showPick();
+        loadContacts().then(showLoaded);
+    });
+    document.getElementById('mansour-safe-sort')?.addEventListener('click', () => {
+        safeSort();
+    });
+    document.getElementById('mansour-select-unsent')?.addEventListener('click', () => {
+        const boxes = list.querySelectorAll('.mansour-pending .mansour-pick');
+        boxes.forEach((box) => {
+            box.checked = true;
+            if (!box.dataset.line) fresh.add(box.value);
+        });
+        if (boxes.length) hideSendError();
+    });
+    document.getElementById('mansour-select-sent')?.addEventListener('click', () => {
+        const boxes = list.querySelectorAll('.mansour-pick--sent');
+        boxes.forEach((box) => {
+            box.checked = true;
+            if (!box.dataset.line) fresh.add(box.value);
+        });
+        if (boxes.length) hideSendError();
+    });
+    modal.querySelectorAll('[data-mansour-random]').forEach((btn) => btn.addEventListener('click', () => {
+        const want = Number(btn.dataset.mansourRandom) || 0;
+        list.querySelectorAll('.mansour-pick').forEach((box) => {
+            box.checked = false;
+            clearLine(box);
+        });
+        fresh.clear();
+        const pool = [...list.querySelectorAll('.mansour-pending .mansour-pick')]
+            .filter((box) => !box.classList.contains('mansour-pick--sent') && box.closest('label')?.offsetParent !== null);
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        pool.slice(0, want).forEach((box) => {
+            box.checked = true;
+            fresh.add(box.value);
+        });
+        if (pool.length) hideSendError();
+        list.dispatchEvent(new Event('change'));
+    }));
+    document.getElementById('mansour-clear-all')?.addEventListener('click', () => {
+        list.querySelectorAll('.mansour-pick').forEach((box) => {
+            box.checked = false;
+            clearLine(box);
+        });
+        fresh.clear();
+    });
+    document.getElementById('mansour-delete-selected')?.addEventListener('click', async () => {
+        const selected = [...list.querySelectorAll('.mansour-pending .mansour-pick:checked')];
+        if (!selected.length || !window.confirm(deleteConfirm)) {
+            return;
+        }
+        const res = await fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+            },
+            body: JSON.stringify({ contact_ids: selected.map((box) => box.value) }),
+        });
+        if (!res.ok) {
+            return;
+        }
+        selected.forEach((box) => box.closest('label')?.remove());
+        if (!list.querySelector('.mansour-pick') && !list.querySelector('.is-sent')) {
+            showEmpty();
+        }
+    });
+    customForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (customError) {
+            customError.classList.add('hidden');
+            customError.textContent = '';
+        }
+        const body = new FormData(customForm);
+        const res = await fetch(customUrl, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+            body,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.contact) {
+            if (customError) {
+                customError.textContent = data.message || '';
+                customError.classList.remove('hidden');
+            }
+            return;
+        }
+        appendContact(data.contact, true);
+        customForm.reset();
+    });
+    modal.querySelectorAll('[data-mansour-close]').forEach((btn) => btn.addEventListener('click', hideModal));
+    // Hold the mouse on a number and move over the others: they all take the state of the first one.
+    // Near the top or bottom edge the list scrolls by itself.
+    const drag = { on: false, state: false, moved: false, scroll: null, y: 0 };
+    const dragBox = (target) => {
+        const label = target instanceof Element ? target.closest('label') : null;
+        const box = label?.querySelector('.mansour-pick');
+        return box && list.contains(label) ? box : null;
+    };
+    const dragSet = (box) => {
+        if (!box || box.disabled || box.checked === drag.state) return;
+        box.checked = drag.state;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    const dragStop = () => {
+        drag.on = false;
+        clearInterval(drag.scroll);
+        drag.scroll = null;
+    };
+    list.addEventListener('pointerdown', (event) => {
+        const box = dragBox(event.target);
+        if (!box || event.button !== 0) return;
+        event.preventDefault();
+        drag.on = true;
+        drag.moved = false;
+        drag.state = !box.checked;
+        dragSet(box);
+        drag.y = event.clientY;
+        drag.scroll = setInterval(() => {
+            if (!drag.on) return;
+            const rect = list.getBoundingClientRect();
+            if (drag.y < rect.top + 36) list.scrollTop -= 14;
+            else if (drag.y > rect.bottom - 36) list.scrollTop += 14;
+            else return;
+            dragSet(dragBox(document.elementFromPoint(rect.left + rect.width / 2, drag.y)));
+        }, 40);
+    });
+    list.addEventListener('pointerover', (event) => {
+        if (!drag.on) return;
+        drag.moved = true;
+        dragSet(dragBox(event.target));
+    });
+    list.addEventListener('pointermove', (event) => {
+        if (drag.on) drag.y = event.clientY;
+    });
+    // The state was set on pointerdown: the label's own click must not flip it back.
+    list.addEventListener('click', (event) => {
+        if (dragBox(event.target) && event.detail > 0) event.preventDefault();
+    }, true);
+    document.addEventListener('pointerup', dragStop);
+    document.addEventListener('pointercancel', dragStop);
+    list.addEventListener('change', (event) => {
+        const box = event.target;
+        if (!(box instanceof HTMLInputElement) || !box.classList.contains('mansour-pick')) return;
+        if (box.checked) {
+            fresh.add(box.value);
+            hideSendError();
+            return;
+        }
+        clearLine(box);
+    });
+    document.getElementById('mansour-send')?.addEventListener('click', async () => {
+        const selected = [...list.querySelectorAll('.mansour-pick:checked')];
+        if (selected.some((box) => box.classList.contains('mansour-pick--sent')) && !window.confirm(resendConfirm)) {
+            return;
+        }
+        if (!selected.length) {
+            if (sendError) {
+                sendError.textContent = noneSelected;
+                sendError.classList.remove('hidden');
+            }
+            return;
+        }
+        if (sendChannel === 'sms') {
+            selected.forEach((box) => paintLine(box, smsId));
+        } else {
+            selected.filter((box) => box.dataset.line === smsId).forEach((box) => clearLine(box));
+        }
+        if (selected.some((box) => !box.dataset.line)) {
+            showSendError(assignMissing);
+            return;
+        }
+        const sendingCount = new Map();
+        selected.forEach((box) => {
+            const id = box.dataset.line;
+            sendingCount.set(id, (sendingCount.get(id) || 0) + 1);
+        });
+        const over = [...sendingCount].map(([id, count]) => {
+            const line = sendLines.find((item) => item.id === id);
+            return { phone: line?.phone || line?.label || id, max: roomOf(line), count };
+        }).filter((item) => item.count > item.max);
+        if (over.length && !window.confirm(over.map((item) => fill(safeConfirm, item)).join('\n\n'))) {
+            return;
+        }
+        hideSendError();
+        const sendButton = document.getElementById('mansour-send');
+        if (sendButton) sendButton.disabled = true;
+        const people = selected.map((box) => {
+            const label = box.closest('label');
+            const line = box.dataset.line;
+            return {
+                contact_id: Number(box.value),
+                name: label?.dataset.name || '',
+                phone: label?.dataset.phone || '',
+                line,
+                line_phone: linePhone(line),
+                ok: null,
+                human: waitingLabel,
+                debug: null,
+            };
+        });
+        sending = true;
+        run.paused = false;
+        run.done = 0;
+        run.total = people.length;
+        showLive();
+        liveSummary.textContent = fill(progressLabel, { done: 0, total: people.length });
+        paintLive(people, people[0]?.contact_id);
+        syncControls();
+        let runId = null;
+        let stopped = false;
+        const waits = new Map();
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        const gapMs = () => 25000 + Math.floor(Math.random() * 15001);
+        const breathMs = () => 60000 + Math.floor(Math.random() * 30001);
+        const renderProgress = (finished) => {
+            const done = people.filter((item) => item.ok !== null).length;
+            run.done = done;
+            run.total = people.length;
+            if (finished) {
+                liveSummary.textContent = fill(doneLabel, {
+                    sent: people.filter((item) => item.ok === true).length,
+                    failed: people.filter((item) => item.ok === false).length,
+                });
+                syncControls();
+                return;
+            }
+            if (run.paused) {
+                liveSummary.textContent = fill(pausedLabel, { done, total: people.length });
+                syncControls();
+                return;
+            }
+            let text = fill(progressLabel, { done, total: people.length });
+            const left = [...waits.values()].filter((seconds) => seconds > 0);
+            if (left.length) text += ' · ' + fill(paceWait, { seconds: Math.min(...left) });
+            liveSummary.textContent = text;
+            syncControls();
+        };
+        refreshRun = () => renderProgress(false);
+        // Up to `parallel` numbers send at the same moment. Until the run exists, one at a time,
+        // so every send lands in the same run.
+        const parallel = parallelCount();
+        let active = 0;
+        const waiting = [];
+        const takeSlot = async () => {
+            while (active >= (runId ? parallel : 1)) {
+                await new Promise((resolve) => waiting.push(resolve));
+            }
+            active++;
+        };
+        const freeSlot = () => {
+            active--;
+            waiting.splice(0).forEach((wake) => wake());
+        };
+        const failPerson = (person, message) => {
+            person.ok = false;
+            person.human = message || requestFailedLabel;
+            person.code = 'request_failed';
+            person.debug = person.debug || {
+                provider: 'Green API',
+                http: 0,
+                body: person.human,
+                attempts: [],
+            };
+        };
+        const postOne = (person) => {
+            return takeSlot().then(async () => {
+                let data = {};
+                let res;
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 40000);
+                try {
+                    res = await fetch(triggerUrl, {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                            'X-Mansour-Live': '1',
+                        },
+                        body: JSON.stringify({
+                            contact_ids: [person.contact_id],
+                            run_id: runId,
+                            finish: false,
+                            line: person.line,
+                        }),
+                        signal: controller.signal,
+                    });
+                    data = await res.json();
+                } catch (error) {
+                    data = { message: requestFailedLabel };
+                    res = { ok: false };
+                } finally {
+                    clearTimeout(timer);
+                }
+                if (data.run_id) runId = data.run_id;
+                if (res.ok && !(data.rows || [])[0]) {
+                    data = { message: data.message || requestFailedLabel, run_id: data.run_id };
+                    res = { ok: false };
+                }
+                freeSlot();
+                return { data, res };
+            });
+        };
+        const hold = async () => {
+            while (run.paused && !stopped) {
+                renderProgress(false);
+                await sleep(400);
+            }
+        };
+        const pause = async (line, ms) => {
+            let spent = 0;
+            while (!stopped && spent < ms) {
+                if (run.paused) {
+                    waits.delete(line);
+                    renderProgress(false);
+                    await hold();
+                    continue;
+                }
+                const left = ms - spent;
+                waits.set(line, Math.ceil(left / 1000));
+                renderProgress(false);
+                const slice = Math.min(400, left);
+                await sleep(slice);
+                if (!run.paused) spent += slice;
+            }
+            waits.delete(line);
+            if (!stopped && !run.paused) renderProgress(false);
+        };
+        const sendQueue = async (queue) => {
+            for (let i = 0; i < queue.length; i++) {
+                await hold();
+                if (stopped) return;
+                const person = queue[i];
+                paintLive(people, person.contact_id);
+                const { data, res } = await postOne(person);
+                if (data.code === 'held') {
+                    stopped = true;
+                    people.forEach((row) => {
+                        if (row.ok === null) {
+                            row.ok = false;
+                            row.human = data.message || '';
+                            row.code = 'held';
+                        }
+                    });
+                    liveSummary.textContent = data.message || '';
+                    paintLive(people, person.contact_id);
+                    return;
+                }
+                if (!res.ok) {
+                    for (let j = i; j < queue.length; j++) {
+                        if (queue[j].ok === null) failPerson(queue[j], data.message);
+                    }
+                    paintLive(people, person.contact_id);
+                    renderProgress(false);
+                    return;
+                }
+                const row = (data.rows || [])[0];
+                if (row) Object.assign(person, row);
+                paintLive(people, person.contact_id);
+                renderProgress(false);
+                if (!stopped && i < queue.length - 1) {
+                    const extra = (i + 1) % 4 === 0 ? breathMs() : 0;
+                    await pause(person.line, person.line === smsId ? 1500 : gapMs() + extra);
+                }
+            }
+        };
+        try {
+            const groups = new Map();
+            people.forEach((person) => {
+                if (!groups.has(person.line)) groups.set(person.line, []);
+                groups.get(person.line).push(person);
+            });
+            let stagger = 0;
+            await Promise.all([...groups.values()].map((queue) => {
+                const wait = stagger;
+                stagger += Math.max(2000, Math.round(10000 / parallel));
+                return sleep(wait).then(() => sendQueue(queue));
+            }));
+            if (!stopped) {
+                people.forEach((person) => {
+                    if (person.ok === null) failPerson(person, requestFailedLabel);
+                });
+            }
+            if (!stopped && runId) {
+                await fetch(triggerUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Mansour-Live': '1',
+                    },
+                    body: JSON.stringify({ contact_ids: [], run_id: runId, finish: true }),
+                }).catch(() => {});
+            }
+            if (!stopped) renderProgress(true);
+        } finally {
+            sending = false;
+            run.paused = false;
+            refreshRun = () => {};
+            syncControls();
+            if (sendButton) sendButton.disabled = false;
+            contactsRequest = null;
+            if (runId) {
+                const saved = await fetch(sendsUrl, { headers: { Accept: 'application/json' } })
+                    .then((res) => res.json())
+                    .catch(() => ({}));
+                runs = saved.runs || [];
+                paintRuns(runId);
+            }
+        }
+    });
+});
+</script>
+    <div id="apps-followup-modal" class="farz-send fixed inset-0 z-50 hidden items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="apps-followup-title" hidden>
+    <div class="farz-send__backdrop absolute inset-0" data-followup-close></div>
+    <div class="farz-send__card relative z-10 flex w-full flex-col overflow-hidden">
+        <header class="farz-send__head">
+            <span class="farz-send__badge"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M5 22h14M5 2h14"/><path d="M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22"/><path d="M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/></svg></span>
+            <h3 id="apps-followup-title">الرسالة الثانية: قناة الواتساب</h3>
+            <p class="farz-send__via">اختار مين يوصله رابط القناة. بينبعت رقم رقم، بفواصل حتى ما ينحظر خط الواتساب.</p>
+            <button type="button" class="farz-send__x" data-followup-close aria-label="إغلاق" title="إغلاق"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </header>
+                <div class="farz-send__bar">
+            <button type="button" id="apps-followup-select" class="farz-send__pill" title="تحديد اللي ما انبعت"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M3 12l4 4 8-9"/><path d="M11 16l1 1 9-10"/></svg><span>تحديد اللي ما انبعت</span></button>
+            <button type="button" id="apps-followup-clear" class="farz-send__pill" title="إلغاء الكل"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg><span>إلغاء الكل</span></button>
+        </div>
+        <div id="apps-followup-list" class="farz-send__list min-h-0 flex-1 overflow-y-auto"></div>
+        <div class="farz-send__foot">
+            <p id="apps-followup-error" class="farz-send__error hidden"></p>
+            <p id="apps-followup-progress" class="farz-send__via" hidden></p>
+            <button type="button" id="apps-followup-send" class="farz-send__go"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg> إرسال رسالة القناة</button>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('apps-followup-modal');
+    const list = document.getElementById('apps-followup-list');
+    const error = document.getElementById('apps-followup-error');
+    const progress = document.getElementById('apps-followup-progress');
+    const sendButton = document.getElementById('apps-followup-send');
+    if (!modal || !list) return;
+
+    const url = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/followups";
+    const customUrl = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/contacts\/custom";
+    const triggerUrl = "http:\/\/abedyamen.local\/ai-chatbot\/instances\/2\/workspace\/mansour\/trigger";
+    const emptyLabel = "\u0644\u0633\u0627 \u0645\u0627 \u0641\u064a \u062d\u062f\u0627 \u0631\u062f \u0648\u0648\u0635\u0644\u0647 \u0631\u0627\u0628\u0637 \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629.";
+    const sentGroupLabel = "\u0648\u0635\u0644\u062a\u0647\u0645 \u0631\u0633\u0627\u0644\u0629 \u0627\u0644\u0642\u0646\u0627\u0629";
+    const sentLabel = "\u0627\u0646\u0628\u0639\u062a\u062a";
+    const resendConfirm = "\u0641\u064a \u0623\u0631\u0642\u0627\u0645 \u0648\u0635\u0644\u062a\u0647\u0645 \u0631\u0633\u0627\u0644\u0629 \u0627\u0644\u0642\u0646\u0627\u0629 \u0645\u0646 \u0642\u0628\u0644. \u062a\u0628\u0639\u062a\u0647\u0627 \u0645\u0631\u0629 \u062b\u0627\u0646\u064a\u0629\u061f";
+    const sendKind = "channel";
+    const noneSelected = "\u0645\u0627 \u0641\u064a \u0631\u0642\u0645 \u0645\u062d\u062f\u062f";
+    const waitingLabel = "\u0645\u0646\u0633\u062a\u0646\u0649 \u0631\u062f \u0648\u0627\u062a\u0633\u0627\u0628\u2026";
+    const progressLabel = "\u0639\u0645 \u0646\u0628\u0639\u062a :done \u0645\u0646 :total";
+    const doneLabel = "\u0627\u0646\u0628\u0639\u062a :sent. \u0645\u0627 \u0648\u0635\u0644 :failed.";
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    const showError = (text) => {
+        if (!error) return;
+        error.textContent = text || '';
+        error.classList.toggle('hidden', !text);
+    };
+
+    const rowLabel = (row) => (row.name ? row.name + ' · ' : '') + row.phone;
+
+    const contactRow = (row, nudged) => {
+        const label = document.createElement('label');
+        label.className = 'farz-send__row' + (nudged ? ' is-sent' : '');
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.value = String(row.id);
+        box.className = 'apps-followup-pick' + (nudged ? ' apps-followup-pick--sent' : '');
+        box.dataset.line = row.line || '';
+        const text = document.createElement('span');
+        text.className = 'farz-send__who';
+        text.textContent = rowLabel(row);
+        const preview = document.createElement('span');
+        preview.className = 'farz-send__preview';
+        preview.textContent = row.preview || '';
+        text.append(preview);
+        label.append(box, text);
+        if (!nudged) return label;
+        const badge = document.createElement('span');
+        badge.className = 'farz-send__sent';
+        badge.textContent = sentLabel;
+        label.append(badge);
+        return label;
+    };
+
+    const paint = (contacts) => {
+        list.innerHTML = '';
+        if (!contacts.length) {
+            const note = document.createElement('p');
+            note.className = 'farz-send__empty';
+            note.textContent = emptyLabel;
+            list.append(note);
+            return;
+        }
+        const pending = contacts.filter((row) => !row.nudged);
+        const nudged = contacts.filter((row) => row.nudged);
+        pending.forEach((row) => list.append(contactRow(row, false)));
+        if (!nudged.length) return;
+        const heading = document.createElement('p');
+        heading.className = 'farz-send__section';
+        heading.textContent = sentGroupLabel;
+        list.append(heading);
+        nudged.forEach((row) => list.append(contactRow(row, true)));
+    };
+
+    const load = () => {
+        list.innerHTML = '';
+        return fetch(url, { headers: { Accept: 'application/json' } })
+            .then((res) => res.json())
+            .then((data) => {
+                paint(data.contacts || []);
+                return data;
+            })
+            .catch(() => {
+                paint([]);
+                return { contacts: [] };
+            });
+    };
+
+    document.getElementById('apps-followup-custom')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        showError('');
+        const body = new FormData(form);
+        body.set('followup', '1');
+        let data = {};
+        let res;
+        try {
+            res = await fetch(customUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body,
+            });
+            data = await res.json();
+        } catch (err) {
+            showError(waitingLabel);
+            return;
+        }
+        if (!res.ok) {
+            showError(data.message || waitingLabel);
+            return;
+        }
+        form.reset();
+        await load();
+        const box = list.querySelector(`input[value="${data.contact?.id || ''}"]`);
+        if (box) box.checked = true;
+    });
+
+    const open = () => {
+        showError('');
+        if (progress) {
+            progress.hidden = true;
+            progress.textContent = '';
+        }
+        modal.hidden = false;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        load();
+    };
+
+    const close = () => {
+        modal.hidden = true;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    };
+
+    document.getElementById('apps-followup-open')?.addEventListener('click', open);
+    modal.querySelectorAll('[data-followup-close]').forEach((btn) => btn.addEventListener('click', close));
+    document.getElementById('apps-followup-select')?.addEventListener('click', () => {
+        list.querySelectorAll('.apps-followup-pick:not(.apps-followup-pick--sent)').forEach((box) => { box.checked = true; });
+        showError('');
+    });
+    document.getElementById('apps-followup-clear')?.addEventListener('click', () => {
+        list.querySelectorAll('.apps-followup-pick').forEach((box) => { box.checked = false; });
+    });
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const fill = (template, map) => template.replace(/:(\w+)/g, (_, key) => map[key] ?? '');
+
+    sendButton?.addEventListener('click', async () => {
+        const selected = [...list.querySelectorAll('.apps-followup-pick:checked')];
+        if (!selected.length) {
+            showError(noneSelected);
+            return;
+        }
+        if (selected.some((box) => box.classList.contains('apps-followup-pick--sent')) && !window.confirm(resendConfirm)) {
+            return;
+        }
+        showError('');
+        sendButton.disabled = true;
+        const people = selected.map((box) => ({
+            id: Number(box.value),
+            line: box.dataset.line || '',
+            ok: null,
+        }));
+        let runId = null;
+        const groups = new Map();
+        people.forEach((person) => {
+            const key = person.line || '';
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(person);
+        });
+        const postOne = async (person) => {
+            let data = {};
+            let res;
+            try {
+                res = await fetch(triggerUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Mansour-Live': '1',
+                    },
+                    body: JSON.stringify({
+                        contact_ids: [person.id],
+                        run_id: runId,
+                        finish: false,
+                        line: person.line || null,
+                        kind: sendKind,
+                    }),
+                });
+                data = await res.json();
+            } catch (err) {
+                data = { message: waitingLabel };
+                res = { ok: false };
+            }
+            if (data.run_id) runId = data.run_id;
+            return { data, res };
+        };
+        const sendQueue = async (queue) => {
+            for (let i = 0; i < queue.length; i++) {
+                const person = queue[i];
+                const done = people.filter((item) => item.ok !== null).length;
+                if (progress) {
+                    progress.hidden = false;
+                    progress.textContent = fill(progressLabel, { done, total: people.length });
+                }
+                const { data, res } = await postOne(person);
+                if (!res.ok || data.code === 'held') {
+                    person.ok = false;
+                    showError(data.message || waitingLabel);
+                    for (let j = i; j < queue.length; j++) {
+                        if (queue[j].ok === null) queue[j].ok = false;
+                    }
+                    return;
+                }
+                const row = (data.rows || [])[0];
+                person.ok = row ? row.ok === true : false;
+                if (row && row.ok === false && row.human) showError(row.human);
+                if (i < queue.length - 1) {
+                    const gap = 25000 + Math.floor(Math.random() * 15001);
+                    const extra = (i + 1) % 4 === 0 ? 60000 + Math.floor(Math.random() * 30001) : 0;
+                    await sleep(gap + extra);
+                }
+            }
+        };
+        try {
+            let stagger = 0;
+            await Promise.all([...groups.values()].map((queue) => {
+                const wait = stagger;
+                stagger += 10000;
+                return sleep(wait).then(() => sendQueue(queue));
+            }));
+            if (runId) {
+                await fetch(triggerUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Mansour-Live': '1',
+                    },
+                    body: JSON.stringify({ contact_ids: [], run_id: runId, finish: true, kind: sendKind }),
+                });
+            }
+            if (progress) {
+                progress.hidden = false;
+                progress.textContent = fill(doneLabel, {
+                    sent: people.filter((item) => item.ok === true).length,
+                    failed: people.filter((item) => item.ok === false).length,
+                });
+            }
+            load();
+        } finally {
+            sendButton.disabled = false;
+        }
+    });
+});
+</script>
+    
+    <div id="toast" class="fixed bottom-4 inset-x-0 mx-auto w-fit max-w-sm hidden z-50 rounded-xl bg-[#2b1e11] text-white text-sm px-4 py-2 shadow-lg" role="status"></div>
+</div>
+</main>
+
+<script>
+    document.addEventListener('click', (event) => {
+        document.querySelectorAll('.farz-bar__bot[open], .farz-switch[open]').forEach((menu) => {
+            if (!menu.contains(event.target)) menu.removeAttribute('open');
+        });
+    });
+</script>
+    <div id="farz-sync" class="farz-sync" hidden>
+        <div class="farz-sync__card" role="dialog" aria-modal="true" aria-labelledby="farz-sync-title">
+            <header class="farz-sync__head">
+                <h2 id="farz-sync-title">رسائل وصلت واتساب وما انحفظت</h2>
+                <button type="button" id="farz-sync-close" class="farz-sync__x" aria-label="إغلاق"><svg viewBox="0 0 24 24" class="farz-i" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            </header>
+            <p id="farz-sync-note" class="farz-sync__note"></p>
+            <div id="farz-sync-list" class="farz-sync__list"></div>
+            <footer class="farz-sync__foot">
+                <button type="button" id="farz-sync-skip-all" class="farz-sync__btn">تخطي الكل</button>
+                <button type="button" id="farz-sync-continue-all" class="farz-sync__btn farz-sync__btn--go">يكمل الكل</button>
+                <button type="button" id="farz-sync-apply" class="farz-sync__btn farz-sync__btn--go" disabled>تطبيق</button>
+            </footer>
+        </div>
+    </div>
+    <script>
+        (() => {
+            const open = document.getElementById('farz-sync-open');
+            const modal = document.getElementById('farz-sync');
+            const list = document.getElementById('farz-sync-list');
+            const note = document.getElementById('farz-sync-note');
+            const apply = document.getElementById('farz-sync-apply');
+            if (!open || !modal || !list) return;
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            let token = '';
+            let chats = [];
+            const choices = {};
+            const post = async (url, body) => {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': tokenMeta ? tokenMeta.content : '',
+                    },
+                    body: JSON.stringify(body),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'تعذر المزامنة');
+                return data;
+            };
+            const ready = () => chats.length > 0 && chats.every((chat) => choices[chat.key]);
+            const paint = () => {
+                list.innerHTML = '';
+                chats.forEach((chat) => {
+                    const row = document.createElement('div');
+                    row.className = 'farz-sync__row';
+                    const picked = choices[chat.key] || '';
+                    row.innerHTML = '<div><b></b><small></small><p></p></div><div class="farz-sync__picks"><button type="button" data-act="continue">يكمل</button><button type="button" data-act="skip">تخطي</button></div>';
+                    row.querySelector('b').textContent = chat.name || chat.phone || 'محادثة';
+                    row.querySelector('small').textContent = (chat.phone || '') + (chat.count > 1 ? ' · ' + chat.count + ' رسائل' : '');
+                    row.querySelector('p').textContent = chat.preview || '';
+                    row.querySelectorAll('button').forEach((button) => {
+                        if (button.dataset.act === picked) button.classList.add('is-on');
+                        button.addEventListener('click', () => {
+                            choices[chat.key] = button.dataset.act;
+                            paint();
+                        });
+                    });
+                    list.appendChild(row);
+                });
+                apply.disabled = !ready();
+            };
+            const close = () => { modal.hidden = true; };
+            const submit = async (forced) => {
+                if (forced) chats.forEach((chat) => { choices[chat.key] = forced; });
+                if (!ready()) return;
+                apply.disabled = true;
+                note.textContent = 'جاري الحفظ…';
+                try {
+                    const data = await post(open.dataset.apply, { token, choices });
+                    note.textContent = 'تم. كمل الذكاء ' + (data.continued || 0) + '، وتخطى ' + (data.skipped || 0) + '.';
+                    setTimeout(() => window.location.reload(), 700);
+                } catch (error) {
+                    note.textContent = error.message;
+                    apply.disabled = !ready();
+                }
+            };
+            open.addEventListener('click', async () => {
+                open.disabled = true;
+                const label = open.querySelector('span');
+                const previous = label ? label.textContent : '';
+                if (label) label.textContent = '…';
+                try {
+                    const data = await post(open.dataset.url, {});
+                    chats = Array.isArray(data.chats) ? data.chats : [];
+                    token = data.token || '';
+                    Object.keys(choices).forEach((key) => delete choices[key]);
+                    if (chats.length === 0) {
+                        note.textContent = '';
+                        window.alert('ما في رسائل ناقصة.');
+                        return;
+                    }
+                    note.textContent = 'لكل محادثة: خليه يكمل، أو تخطى الرسالة بدون رد.';
+                    paint();
+                    modal.hidden = false;
+                } catch (error) {
+                    window.alert(error.message);
+                } finally {
+                    open.disabled = false;
+                    if (label) label.textContent = previous;
+                }
+            });
+            document.getElementById('farz-sync-close')?.addEventListener('click', close);
+            modal.addEventListener('click', (event) => { if (event.target === modal) close(); });
+            document.getElementById('farz-sync-skip-all')?.addEventListener('click', () => submit('skip'));
+            document.getElementById('farz-sync-continue-all')?.addEventListener('click', () => submit('continue'));
+            apply.addEventListener('click', () => submit(null));
+        })();
+    </script>
+            <script>
+                (function () {
+                    const sync = () => document.querySelectorAll('[data-analytics-bar]').forEach((bar) => {
+                        const pct = document.querySelector(`[data-analytics="${bar.dataset.analyticsBar}_pct"]`);
+                        if (pct) bar.style.width = Math.min(100, parseInt(pct.textContent, 10) || 0) + '%';
+                    });
+                    new MutationObserver(sync).observe(document.body, { subtree: true, characterData: true, childList: true });
+                })();
+            </script>
+        <script src="http://abedyamen.local/js/workspace-chat.js?v=1793783572" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (!window.WorkspaceChat) return;
+    const page = document.getElementById('workspace-list');
+    const list = document.getElementById('workspace-list-pane');
+    window.WorkspaceChat.startListPolling(list);
+    if (page?.dataset.analyticsUrl) {
+        window.WorkspaceChat.startAnalyticsPolling(page);
+        window.WorkspaceChat.bindInsightFilters(page, list);
+    }
+});
+</script>
+<script src="http://abedyamen.local/js/mowahada.js?v=1793092309" defer></script>
+<script>
+(function () {
+    var url = "http:\/\/abedyamen.local\/csrf-token";
+
+    function applyToken(token) {
+        if (!token) return;
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) meta.setAttribute('content', token);
+        document.querySelectorAll('input[name="_token"]').forEach(function (input) {
+            input.value = token;
+        });
+    }
+
+    function refreshCsrf() {
+        return fetch(url, {
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(function (response) {
+            if (!response.ok) return null;
+            return response.json();
+        }).then(function (data) {
+            if (data && data.token) applyToken(data.token);
+        }).catch(function () {});
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') refreshCsrf();
+    });
+
+    setInterval(function () {
+        if (document.visibilityState === 'visible') refreshCsrf();
+    }, 10 * 60 * 1000);
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        if (form.dataset.csrfReady === '1') return;
+        // Forms that a page script sends in the background itself (data-ajax-submit) are left to it.
+        if (form.hasAttribute('data-ajax-submit')) return;
+        if ((form.method || 'get').toLowerCase() === 'get') return;
+        if (!form.querySelector('input[name="_token"]')) return;
+
+        event.preventDefault();
+        refreshCsrf().finally(function () {
+            form.dataset.csrfReady = '1';
+            HTMLFormElement.prototype.submit.call(form);
+        });
+    }, true);
+
+    function reloadExpiredLivewire() {
+        if (!window.Livewire || window.__kamanExpiredHook) return;
+        window.__kamanExpiredHook = true;
+        Livewire.hook('request', function (hooks) {
+            hooks.fail(function (payload) {
+                if (payload.status !== 419) return;
+                payload.preventDefault();
+                window.location.reload();
+            });
+        });
+    }
+
+    document.addEventListener('livewire:init', reloadExpiredLivewire);
+    reloadExpiredLivewire();
+})();
+</script>
+</body>
+</html>

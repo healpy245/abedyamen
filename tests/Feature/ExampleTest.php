@@ -14,10 +14,7 @@ class ExampleTest extends TestCase
 
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee(__('auth.sign_in'));
-
-        $this->get(route('chatbots.login'))
-            ->assertOk()
-            ->assertSee(__('auth.chatbots_sign_in'));
+            ->assertSee(__('auth.sign_in'))
+            ->assertDontSee(__('auth.chatbots_login_link'));
     }
 }

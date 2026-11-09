@@ -170,6 +170,7 @@ class LogIssueGrouper
                 'sourceLabel' => (string) ($row['sourceLabel'] ?? ''),
                 'platform' => (string) ($row['platform'] ?? ''),
                 'version' => (string) ($row['version'] ?? ''),
+                'product' => (string) ($row['product'] ?? ''),
                 'restaurant' => (string) ($row['restaurant'] ?? ''),
                 'level' => (string) ($row['level'] ?? ''),
                 'stack' => $split['stack'],

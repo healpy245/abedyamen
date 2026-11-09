@@ -70,7 +70,7 @@
                                 @endphp
                                 <tr class="border-b border-[#f3ebe0] last:border-0 hover:bg-[#fff8f0]">
                                     <td class="px-3 py-2 whitespace-nowrap font-mono text-xs">
-                                        <a href="{{ route('kaman-support.show', $ticket) }}" class="font-semibold text-[#c2410c] hover:underline">{{ $ticket->public_id }}</a>
+                                        <a href="{{ route('kaman-support.inbox', ['ticket' => $ticket->public_id]) }}" class="font-semibold text-[#c2410c] hover:underline">{{ $ticket->public_id }}</a>
                                     </td>
                                     <td class="px-3 py-2">
                                         <span class="kaman-badge {{ $tone['bg'] }} {{ $tone['text'] }} {{ $tone['border'] }}">{{ $ticket->status?->label() }}</span>
@@ -82,7 +82,7 @@
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 max-w-md">
-                                        <a href="{{ route('kaman-support.show', $ticket) }}" class="line-clamp-2 text-[#2b1e11] hover:underline">{{ $ticket->summary }}</a>
+                                        <a href="{{ route('kaman-support.inbox', ['ticket' => $ticket->public_id]) }}" class="line-clamp-2 text-[#2b1e11] hover:underline">{{ $ticket->summary }}</a>
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs text-[#7c6a56]">{{ $ticket->created_at?->timezone(config('kaman-support.display_timezone', 'Asia/Jerusalem'))->format('Y-m-d H:i') }}</td>
                                     <td class="px-3 py-2 whitespace-nowrap text-xs">

@@ -38,6 +38,8 @@
         var form = event.target;
         if (!(form instanceof HTMLFormElement)) return;
         if (form.dataset.csrfReady === '1') return;
+        // Forms that a page script sends in the background itself (data-ajax-submit) are left to it.
+        if (form.hasAttribute('data-ajax-submit')) return;
         if ((form.method || 'get').toLowerCase() === 'get') return;
         if (!form.querySelector('input[name="_token"]')) return;
 

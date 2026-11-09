@@ -60,7 +60,7 @@
                 <input type="hidden" name="view" value="{{ $view }}">
                 <label class="flex w-56 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
                     {{ __('kaman-support.filter_restaurant') }}
-                    <select name="restaurant" class="kaman-input">
+                    <select name="restaurant" class="kaman-input" data-ds-select>
                         <option value="">{{ __('kaman-support.all_restaurants') }}</option>
                         @foreach($restaurants as $restaurant)
                             @php
@@ -73,7 +73,7 @@
                 </label>
                 <label class="flex w-44 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
                     {{ __('kaman-support.filter_kind') }}
-                    <select name="kind" class="kaman-input">
+                    <select name="kind" class="kaman-input" data-ds-select>
                         <option value="">{{ __('kaman-support.all_kinds') }}</option>
                         <option value="tablet" @selected($kind === 'tablet')>{{ __('kaman-support.kind_tablet') }}</option>
                         <option value="desktop" @selected($kind === 'desktop')>{{ __('kaman-support.kind_desktop') }}</option>

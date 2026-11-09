@@ -389,7 +389,7 @@ class AppDevelopmentWorkflowTest extends TestCase
         $qa = $this->makeQa();
         $outsider = User::factory()->create([
             'is_admin' => false,
-            'projects' => [Project::AiChatbot->value],
+            'projects' => [],
         ]);
         $ticket = $this->makeTicket($qa);
 
@@ -445,7 +445,6 @@ class AppDevelopmentWorkflowTest extends TestCase
         $yamen = User::query()->where('email', 'yamen@kaman.rest')->firstOrFail();
         $this->assertTrue($yamen->is_admin);
         $this->assertTrue($yamen->canAccessProject(Project::Form));
-        $this->assertTrue($yamen->canAccessProject(Project::AiChatbot));
         $this->assertTrue($yamen->canAccessProject(Project::AppDevelopment));
         $this->assertTrue($yamen->canAccessProject(Project::KamanSupport));
         $this->assertTrue($yamen->isQa());
@@ -456,10 +455,6 @@ class AppDevelopmentWorkflowTest extends TestCase
         $this->assertSame(1, User::query()->where('email', 'yamen@kaman.rest')->count());
         $this->assertSame(0, User::query()->where('email', 'yamen@kaman')->count());
 
-        $malan = User::query()->where('email', 'malan@kaman.rest')->firstOrFail();
-        $this->assertSame(['ai-chatbot'], $malan->projectKeys());
-        $this->assertFalse($malan->canAccessProject(Project::AppDevelopment));
-
         $ahmad = User::query()->where('email', 'ahmad@kaman.rest')->firstOrFail();
         $this->assertSame(['form'], $ahmad->projectKeys());
 
@@ -469,18 +464,15 @@ class AppDevelopmentWorkflowTest extends TestCase
         $ahmadEssa = User::query()->where('email', 'ahmadessa@kaman.rest')->firstOrFail();
         $this->assertTrue($ahmadEssa->canAccessProject(Project::Form));
         $this->assertTrue($ahmadEssa->canAccessProject(Project::AppDevelopment));
-        $this->assertFalse($ahmadEssa->canAccessProject(Project::AiChatbot));
 
         $moaz = User::query()->where('email', 'moaz@kaman.rest')->firstOrFail();
         $this->assertSame(['kaman-support'], $moaz->projectKeys());
-        $this->assertTrue($moaz->posLiveLogsOnly());
         $this->assertFalse($moaz->canAccessProject(Project::AppDevelopment));
         $this->assertNull($moaz->appDevelopmentRole());
 
         $connections = User::query()->where('email', 'connections@kaman.rest')->firstOrFail();
         $this->assertSame(['kaman-support'], $connections->projectKeys());
         $this->assertTrue($connections->supportConnectionsOnly());
-        $this->assertFalse($connections->posLiveLogsOnly());
         $this->assertFalse($connections->canAccessProject(Project::AppDevelopment));
     }
 

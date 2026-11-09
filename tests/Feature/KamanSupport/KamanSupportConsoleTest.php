@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\KamanSupport;
 
+use App\Models\KamanSupport\SupportDevice;
 use App\Models\KamanSupport\SupportTicket;
 use App\Models\User;
 use App\Services\KamanSupport\SupportDeviceSessionService;
 use App\Services\KamanSupport\SupportTicketService;
 use Database\Seeders\WorkspaceUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class KamanSupportConsoleTest extends TestCase
@@ -46,6 +49,108 @@ class KamanSupportConsoleTest extends TestCase
         return app(SupportTicketService::class)->submitFromPos($payload)['ticket'];
     }
 
+    public function test_ticket_modal_plays_voice_and_screen_recordings(): void
+    {
+        Storage::fake('local');
+        $ticket = $this->submitTicket([
+            'clientTicketId' => 'KAM-REC001',
+            'level' => 'danger_now',
+        ]);
+        app(SupportTicketService::class)->attachMedia(
+            $ticket,
+            UploadedFile::fake()->create('voice.wav', 12, 'audio/wav'),
+            UploadedFile::fake()->create('screen.kscr', 16, 'application/octet-stream'),
+        );
+
+        $this->actingAs($this->yamen())
+            ->getJson(route('kaman-support.show', 'KAM-REC001'))
+            ->assertOk()
+            ->assertJsonPath('ticket.voice', route('kaman-support.tickets.audio', 'KAM-REC001'))
+            ->assertJsonPath('ticket.screen', route('kaman-support.tickets.screen', 'KAM-REC001'))
+            ->assertJsonPath('copy.voice', __('kaman-support.voice'));
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.inbox'))
+            ->assertOk()
+            ->assertSee('data-logo="kaman"', false)
+            ->assertSee('ticket-view.js', false);
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.tickets.audio', 'KAM-REC001'))
+            ->assertOk();
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.tickets.screen', 'KAM-REC001'))
+            ->assertOk();
+    }
+
+    public function test_restaurant_names_open_the_restaurant_modal_on_its_support_section(): void
+    {
+        \Illuminate\Support\Facades\Cache::put('kaman.rest.companies.v2', [[
+            'id' => '01a0af60-0000-7000-8000-000000000001', 'name' => 'Kaman', 'subdomain' => 'kaman', 'url' => 'https://kaman.kaman.rest',
+            'color' => '', 'lang' => 'ar', 'address' => '', 'logo' => '', 'hours' => '', 'cityId' => '',
+        ]]);
+        $ticket = $this->submitTicket();
+        $this->submitTicket(['clientTicketId' => 'KAM-OTHER01', 'restaurant' => 'not-on-kaman-rest', 'restaurantName' => 'Other place']);
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.inbox'))
+            ->assertOk()
+            ->assertSee('data-act="open-support" data-id="01a0af60-0000-7000-8000-000000000001"', false)
+            ->assertSee('data-act="open-support" data-id="sup-not-on-kaman-rest"', false)
+            ->assertSee('id="ag-portal"', false)
+            ->assertSee('agents-workspace.js', false);
+
+        $this->actingAs($this->yamen())
+            ->getJson(route('kaman-support.show', $ticket))
+            ->assertOk()
+            ->assertJsonPath('ticket.restaurantKey', '01a0af60-0000-7000-8000-000000000001');
+
+        $support = app(\App\Services\KamanSupport\RestaurantSupport::class);
+        $data = $support->byCompany($this->yamen());
+        $this->assertSame($ticket->public_id, $data['01a0af60-0000-7000-8000-000000000001']['tickets'][0]['id']);
+        $this->assertSame(1, $data['01a0af60-0000-7000-8000-000000000001']['openTickets']);
+        $this->assertNotNull($data['01a0af60-0000-7000-8000-000000000001']['tickets'][0]['url']);
+        $this->assertSame(['sup-not-on-kaman-rest'], array_column($support->extraRestaurants($this->yamen()), 'id'));
+        $this->assertSame('kaman', $data['01a0af60-0000-7000-8000-000000000001']['slug']);
+        $this->assertNotNull($support->boot($this->yamen())['card']);
+    }
+
+    public function test_restaurant_card_gives_the_boards_view_of_one_restaurant(): void
+    {
+        $ticket = $this->submitTicket();
+
+        $this->actingAs($this->yamen())
+            ->getJson(route('kaman-support.restaurant.card', ['restaurant' => 'kaman']))
+            ->assertOk()
+            ->assertJsonPath('card.id', 'kaman')
+            ->assertJsonPath('card.tickets.0.id', $ticket->public_id)
+            ->assertJsonStructure(['card' => ['online', 'total', 'status', 'devices', 'tickets'], 'logs']);
+
+        $this->actingAs(User::factory()->create(['is_admin' => true]))
+            ->getJson(route('kaman-support.restaurant.card', ['restaurant' => 'kaman']))
+            ->assertForbidden();
+    }
+
+    public function test_inbox_shows_the_pos_report_level(): void
+    {
+        $this->submitTicket([
+            'level' => 'danger_now',
+            'summary' => 'Danger now: the oven is off',
+        ]);
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.inbox'))
+            ->assertOk()
+            ->assertSee(__('kaman-support.level.danger_now'), false)
+            ->assertSee('Danger now: the oven is off', false);
+
+        $this->actingAs($this->yamen())
+            ->getJson(route('kaman-support.show', 'KAM-XSS001'))
+            ->assertOk()
+            ->assertJsonPath('ticket.levelLabel', __('kaman-support.level.danger_now'));
+    }
+
     public function test_guests_are_sent_to_workspace_login(): void
     {
         $this->get('/kaman-support/')->assertRedirect('/login');
@@ -67,17 +172,16 @@ class KamanSupportConsoleTest extends TestCase
             ->assertSee('KAM-XSS001', false)
             ->assertSee('طلب 45 لا يطبع', false);
 
+        // No ticket page: a ticket link opens the inbox with the ticket modal, which loads the ticket as JSON.
         $this->actingAs($this->yamen())
             ->get(route('kaman-support.show', $ticket))
+            ->assertRedirect(route('kaman-support.inbox', ['ticket' => $ticket->public_id]));
+
+        $this->actingAs($this->yamen())
+            ->getJson(route('kaman-support.show', $ticket))
             ->assertOk()
-            ->assertSee('جريل', false)
-            ->assertSee('noMatchingKitchenType', false)
-            ->assertSee(__('kaman-support.live_coming'))
-            ->assertSee(__('kaman-support.nav.live'), false)
-            ->assertSee('/downloads/kaman-support', false)
-            ->assertSee(__('kaman-support.nav.download'), false)
-            ->assertDontSee('<script>alert(1)</script>', false)
-            ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false);
+            ->assertJsonPath('ticket.id', $ticket->public_id)
+            ->assertJsonPath('ticket.title', $ticket->summary);
 
         $this->actingAs(User::query()->where('email', 'burhan@kaman.rest')->firstOrFail())
             ->get('/kaman-support/')
@@ -86,33 +190,6 @@ class KamanSupportConsoleTest extends TestCase
         $this->actingAs(User::query()->where('email', 'ahmad@kaman.rest')->firstOrFail())
             ->get('/kaman-support/')
             ->assertForbidden();
-    }
-
-    public function test_worker_can_change_status_and_add_a_note(): void
-    {
-        $ticket = $this->submitTicket();
-
-        $this->actingAs($this->yamen())
-            ->patch(route('kaman-support.update', $ticket), [
-                'status' => 'in_progress',
-                'assignee' => 'Yamen',
-                'note' => 'Working the grill printer',
-            ])
-            ->assertRedirect(route('kaman-support.show', $ticket));
-
-        $this->actingAs($this->yamen())
-            ->post(route('kaman-support.events.store', $ticket), [
-                'type' => 'note',
-                'message' => 'Asked them to reprint order 45',
-            ])
-            ->assertRedirect(route('kaman-support.show', $ticket));
-
-        $this->actingAs($this->yamen())
-            ->get(route('kaman-support.show', $ticket))
-            ->assertOk()
-            ->assertSee('Working the grill printer', false)
-            ->assertSee('Asked them to reprint order 45', false)
-            ->assertSee(__('kaman-support.status.in_progress'));
     }
 
     public function test_yamen_can_open_live_pos_log_page(): void
@@ -383,93 +460,6 @@ class KamanSupportConsoleTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_moaz_sees_only_1_0_live_logs(): void
-    {
-        $sessions = app(SupportDeviceSessionService::class);
-        $legacy = $sessions->heartbeat([
-            'deviceId' => 'tablet-1-0',
-            'restaurant' => 'old-branch',
-            'restaurantName' => 'Old Branch',
-            'cashierName' => 'Moaz Cashier',
-            'platform' => 'android',
-            'deviceKind' => 'tablet',
-            'appVersion' => '1.0.6+12',
-            'loggedIn' => true,
-            'logs' => [[
-                'id' => 'old-log',
-                'level' => 'error',
-                'source' => 'api',
-                'message' => 'GET /orders 500 on 1.0',
-            ]],
-        ]);
-        $current = $sessions->heartbeat([
-            'deviceId' => 'tablet-1-3',
-            'restaurant' => 'new-branch',
-            'restaurantName' => 'New Branch',
-            'cashierName' => 'Other Cashier',
-            'platform' => 'android',
-            'deviceKind' => 'tablet',
-            'appVersion' => '1.3.15+38',
-            'loggedIn' => true,
-            'logs' => [[
-                'id' => 'new-log',
-                'level' => 'error',
-                'source' => 'api',
-                'message' => 'GET /orders 500 on 1.3',
-            ]],
-        ]);
-
-        $moaz = User::query()->where('email', 'moaz@kaman.rest')->firstOrFail();
-
-        $this->actingAs($moaz)
-            ->get('/kaman-support/')
-            ->assertRedirect(route('kaman-support.live'));
-
-        $this->actingAs($moaz)
-            ->get(route('kaman-support.live'))
-            ->assertOk()
-            ->assertSee('Old Branch', false)
-            ->assertSee('GET /orders 500 on 1.0', false)
-            ->assertDontSee('New Branch', false)
-            ->assertDontSee('GET /orders 500 on 1.3', false)
-            ->assertDontSee(__('kaman-support.nav.tickets'), false)
-            ->assertDontSee('/kaman-support/failed', false)
-            ->assertSee('/downloads/kaman-support', false)
-            ->assertSee(__('kaman-support.nav.download'), false);
-
-        $this->actingAs($moaz)
-            ->get(route('kaman-support.live.feed'))
-            ->assertOk()
-            ->assertSee('Old Branch', false)
-            ->assertDontSee('New Branch', false);
-
-        $this->actingAs($moaz)
-            ->get(route('kaman-support.device', $legacy))
-            ->assertRedirect(route('kaman-support.live'));
-
-        $this->actingAs($moaz)
-            ->get(route('kaman-support.device', $current))
-            ->assertNotFound();
-
-        $this->actingAs($moaz)
-            ->get(route('kaman-support.device.feed', $current))
-            ->assertNotFound();
-
-        $this->actingAs($moaz)->get(route('kaman-support.failed'))->assertForbidden();
-        $this->actingAs($moaz)->get(route('kaman-support.show', $this->submitTicket()))->assertForbidden();
-        $this->actingAs($moaz)
-            ->post(route('kaman-support.device.commands', $legacy), ['name' => 'retry_failed_prints'])
-            ->assertForbidden();
-        $this->actingAs($moaz)->get(route('app-development.index'))->assertForbidden();
-        $this->actingAs($moaz)->get(route('form.index'))->assertForbidden();
-
-        $this->actingAs($this->yamen())
-            ->get(route('kaman-support.live'))
-            ->assertOk()
-            ->assertSee('Old Branch', false)
-            ->assertSee('New Branch', false);
-    }
-
     public function test_connections_user_sees_only_live_app_connections(): void
     {
         $sessions = app(SupportDeviceSessionService::class);
@@ -509,7 +499,6 @@ class KamanSupportConsoleTest extends TestCase
 
         $user = User::query()->where('email', 'connections@kaman.rest')->firstOrFail();
         $this->assertTrue($user->supportConnectionsOnly());
-        $this->assertNull($user->posAppVersionPrefix());
 
         $this->actingAs($user)
             ->get('/kaman-support/')
@@ -562,7 +551,6 @@ class KamanSupportConsoleTest extends TestCase
             ->assertForbidden();
         $this->actingAs($user)->get(route('app-development.index'))->assertForbidden();
         $this->actingAs($user)->get(route('form.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('ai-chatbot.index'))->assertForbidden();
     }
 
     public function test_logs_workspace_groups_loaded_errors_without_dropping_them(): void
@@ -603,6 +591,7 @@ class KamanSupportConsoleTest extends TestCase
             ]],
         ]);
 
+        \Illuminate\Support\Facades\Http::fake(['kaman.rest/*' => \Illuminate\Support\Facades\Http::response(['data' => ['companies' => []]])]);
         $response = $this->actingAs($this->yamen())->get(route('kaman-support.logs'));
 
         $response->assertOk();
@@ -623,5 +612,179 @@ class KamanSupportConsoleTest extends TestCase
             ->assertDontSee('No kitchen items to print', false)
             ->assertDontSee('Invalid coupon', false)
             ->assertDontSee('sup-inv__issue', false);
+    }
+
+    public function test_card_terminal_refusals_are_server_logs(): void
+    {
+        $sessions = app(SupportDeviceSessionService::class);
+        $sessions->heartbeat([
+            'deviceId' => 'cashier-visa',
+            'restaurant' => 'tazejitalian',
+            'restaurantName' => 'Tazej',
+            'cashierName' => 'kopa',
+            'platform' => 'ios',
+            'appVersion' => '1.3.76+100',
+            'logs' => [[
+                'id' => 'visa-user',
+                'level' => 'error',
+                'source' => 'server',
+                'message' => 'POST /orders/01a19850/pay/visa -> 400 operation canceled by user',
+            ], [
+                'id' => 'visa-bank',
+                'level' => 'error',
+                'source' => 'api',
+                'message' => 'POST /orders/01a19850/pay/visa -> 400 transaction refused.',
+            ], [
+                'id' => 'cash-canceled',
+                'level' => 'error',
+                'source' => 'api',
+                'message' => 'POST /orders/01a19850/pay/cash -> 400 Order is canceled',
+            ]],
+        ]);
+
+        $device = $this->actingAs($this->yamen())
+            ->get(route('kaman-support.logs', ['restaurant' => 'tazejitalian']));
+        $device->assertOk();
+        $device->assertSee('Order is canceled', false);
+        $device->assertDontSee('operation canceled by user', false);
+        $device->assertDontSee('transaction refused', false);
+
+        $server = $this->actingAs($this->yamen())
+            ->get(route('kaman-support.logs', ['lane' => 'server', 'restaurant' => 'tazejitalian']));
+        $server->assertOk();
+        $server->assertSee('operation canceled by user', false);
+        $server->assertSee('transaction refused', false);
+        $server->assertDontSee('Order is canceled', false);
+        $server->assertDontSee(__('kaman-support.ws_inv_server_title'), false);
+    }
+
+    public function test_the_app_decides_the_product_not_the_version(): void
+    {
+        $sessions = app(SupportDeviceSessionService::class);
+        $device = fn (string $id, array $extra) => $sessions->heartbeat([
+            'deviceId' => $id, 'restaurant' => $id, 'platform' => 'android', ...$extra,
+        ]);
+        $products = fn (string $id) => $this->actingAs($this->yamen())
+            ->getJson(route('kaman-support.restaurant.card', $id))
+            ->assertOk()
+            ->json('card.products');
+
+        $device('lite-on-1-0', ['appVersion' => '1.0.7+3', 'product' => 'lite']);
+        $device('mall-on-1-0', ['appVersion' => '1.0.7+3', 'product' => 'MALL']);
+        $device('old-1-0', ['appVersion' => '1.0.7+3']);
+        $device('old-1-3', ['appVersion' => '1.3.15+38']);
+        $device('odd', ['appVersion' => '1.0.7+3', 'product' => 'something-else']);
+
+        $this->assertSame(['lite'], $products('lite-on-1-0'));
+        $this->assertSame(['mall'], $products('mall-on-1-0'));
+        $this->assertSame([], $products('old-1-0'));
+        $this->assertSame(['lite'], $products('old-1-3'));
+        $this->assertSame([], $products('odd'));
+
+        // A later heartbeat that leaves the product out keeps it.
+        $kept = $device('lite-on-1-0', ['appVersion' => '1.0.7+3']);
+        $this->assertSame('lite', $kept->productKey());
+
+        // A smaller heartbeat that leaves the version out keeps it too.
+        $this->assertSame('1.0.7+3', $device('mall-on-1-0', [])->app_version);
+        $this->assertSame('2.0.0', $device('mall-on-1-0', ['appVersion' => '2.0.0'])->app_version);
+    }
+
+    public function test_logs_label_the_product_the_app_reported(): void
+    {
+        \Illuminate\Support\Facades\Http::fake(['kaman.rest/*' => \Illuminate\Support\Facades\Http::response(['data' => ['companies' => []]])]);
+        app(SupportDeviceSessionService::class)->heartbeat([
+            'deviceId' => 'tablet-1', 'restaurant' => 'dochan', 'platform' => 'android',
+            'appVersion' => '1.0.7+3', 'product' => 'lite',
+            'logs' => [['id' => 'log-1', 'level' => 'error', 'source' => 'api', 'message' => 'Invalid coupon']],
+        ]);
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.logs'))
+            ->assertOk()
+            ->assertSee('dir="ltr">'.__('kaman-support.ws_lite').'</span>', false)
+            ->assertDontSee('dir="ltr">'.__('kaman-support.ws_cashier_mall').'</span>', false);
+    }
+
+    public function test_logs_restaurant_filter_lists_real_restaurants_only(): void
+    {
+        \Illuminate\Support\Facades\Cache::put('kaman.rest.companies.v2', [[
+            'id' => 'company-1', 'name' => 'Master Burger', 'subdomain' => 'MasterBurger', 'url' => '',
+            'color' => '', 'lang' => 'ar', 'address' => '', 'logo' => 'https://admin.kaman.rest/storage/logos/master.png', 'hours' => '', 'cityId' => '',
+        ], [
+            'id' => 'company-2', 'name' => 'Asado', 'subdomain' => 'asado', 'url' => '',
+            'color' => '', 'lang' => 'ar', 'address' => '', 'logo' => '', 'hours' => '', 'cityId' => '',
+        ]]);
+        $sessions = app(SupportDeviceSessionService::class);
+        foreach (['masterburger', '_pending', 'ghost'] as $restaurant) {
+            $sessions->heartbeat(['deviceId' => 'tablet-'.$restaurant, 'restaurant' => $restaurant, 'platform' => 'android', 'appVersion' => '1.4.2']);
+        }
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.logs'))
+            ->assertOk()
+            ->assertSee('name="restaurants[]" value="asado"', false)
+            ->assertSee('name="restaurants[]" value="masterburger"', false)
+            ->assertSee('Master Burger')
+            ->assertSee('https://admin.kaman.rest/storage/logos/master.png', false)
+            ->assertDontSee('value="MasterBurger"', false)
+            ->assertDontSee('value="_pending"', false)
+            ->assertDontSee('value="ghost"', false);
+
+        // A restaurant already picked stays listed, ticked, so it can be cleared.
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.logs', ['restaurants' => ['ghost']]))
+            ->assertOk()
+            ->assertSee('name="restaurants[]" value="ghost" checked', false)
+            ->assertDontSee('value="_pending"', false);
+    }
+
+    public function test_logs_restaurant_filter_falls_back_when_kaman_rest_is_unreachable(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('kaman.rest.companies.v2');
+        \Illuminate\Support\Facades\Http::fake(['kaman.rest/*' => \Illuminate\Support\Facades\Http::response('', 500)]);
+        app(SupportDeviceSessionService::class)->heartbeat(['deviceId' => 'tablet-1', 'restaurant' => 'dochan', 'platform' => 'android', 'appVersion' => '1.4.2']);
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.logs'))
+            ->assertOk()
+            ->assertSee('name="restaurants[]" value="dochan"', false);
+    }
+
+    public function test_recent_logs_show_failures_of_the_last_48_hours_and_no_successes(): void
+    {
+        $device = SupportDevice::query()->forceCreate(['restaurant' => 'kaman', 'device_id' => 'till-1', 'last_seen_at' => now()]);
+        $log = fn (string $id, string $level, string $message, int $hoursAgo) => $device->logs()->forceCreate([
+            'client_id' => $id, 'level' => $level, 'source' => 'api', 'message' => $message, 'logged_at' => now()->subHours($hoursAgo),
+        ]);
+        $log('a', 'error', 'printer jammed', 1);
+        $log('b', 'info', 'GET /orders -> 500 kitchen down', 2);
+        $log('c', 'warn', 'POST /pay 402 refused', 3);
+        $log('d', 'info', 'GET /menu -> 200 ok', 1);
+        $log('e', 'info', 'tapped Save order', 1);
+        $log('f', 'error', 'an old error', 50);
+
+        $messages = $this->actingAs($this->yamen())
+            ->getJson(route('kaman-support.live.feed', ['restaurant' => 'kaman', 'view' => 'failed', 'hours' => 48, 'limit' => 200]))
+            ->assertOk()
+            ->json('logs.*.message');
+
+        $this->assertEqualsCanonicalizing(['printer jammed', 'GET /orders -> 500 kitchen down', 'POST /pay 402 refused'], $messages);
+    }
+
+    public function test_a_restaurant_card_marks_devices_not_seen_for_3_days_as_old(): void
+    {
+        foreach (['fresh' => now()->subDays(2), 'stale' => now()->subDays(4), 'never' => null] as $id => $seen) {
+            SupportDevice::query()->forceCreate(['restaurant' => 'kaman', 'device_id' => $id, 'last_seen_at' => $seen]);
+        }
+
+        $devices = collect($this->actingAs($this->yamen())
+            ->getJson(route('kaman-support.restaurant.card', ['restaurant' => 'kaman']))
+            ->assertOk()
+            ->json('card.devices'))->keyBy('deviceId');
+
+        $this->assertFalse($devices['fresh']['old']);
+        $this->assertTrue($devices['stale']['old']);
+        $this->assertTrue($devices['never']['old']);
     }
 }

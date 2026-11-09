@@ -31,6 +31,7 @@ class StoreDeviceSessionRequest extends FormRequest
             'deviceKind' => ['nullable', 'string', 'max:32'],
             'device_kind' => ['nullable', 'string', 'max:32'],
             'appVersion' => ['nullable', 'string', 'max:64'],
+            'product' => ['nullable', 'string', 'max:32'],
             'hostname' => ['nullable', 'string', 'max:191'],
             'deviceName' => ['nullable', 'string', 'max:191'],
             'locale' => ['nullable', 'string', 'max:16'],
@@ -58,6 +59,10 @@ class StoreDeviceSessionRequest extends FormRequest
             'scan' => ['nullable', 'array'],
             'lan' => ['nullable', 'array'],
             'lanScan' => ['nullable', 'array'],
+            'settings' => ['nullable', 'array'],
+            'pizzaMeals' => ['nullable', 'array', 'max:400'],
+            'pizzaMeals.*.id' => ['nullable', 'string', 'max:64'],
+            'pizzaMeals.*.name' => ['nullable', 'string', 'max:120'],
         ];
     }
 

@@ -9,21 +9,20 @@
 @section('title', __('kaman-support.nav_tickets'))
 
 @section('content')
-    <div class="tk-board">
-        <header class="tk-board__head">
+    <div class="ds-page sp-inbox">
+        <header class="ds-head">
             <div>
-                <h1>{{ __('kaman-support.nav_tickets') }}</h1>
-                <p>{{ __('kaman-support.ticket_lead') }}</p>
+                <h1 class="ds-h1">{{ __('kaman-support.nav_tickets') }}</h1>
+                <p class="ds-sub">{{ __('kaman-support.ticket_lead') }}</p>
             </div>
-            <div class="tk-board__tools">
-                <div class="kb-switch" role="tablist">
-                    <a href="{{ route('kaman-support.inbox') }}" @if($state === '') aria-selected="true" @endif>{{ __('app-development.tabs.all') }}</a>
-                    <a href="{{ route('kaman-support.inbox', ['state' => 'open']) }}" @if($state === 'open') aria-selected="true" @endif>{{ __('app-development.tickets.open_state') }}</a>
-                    <a href="{{ route('kaman-support.inbox', ['state' => 'closed']) }}" @if($state === 'closed') aria-selected="true" @endif>{{ __('app-development.tickets.closed_state') }}</a>
-                </div>
-            </div>
+            <nav class="ds-seg" aria-label="{{ __('app-development.tickets.status') }}">
+                <a href="{{ route('kaman-support.inbox') }}" @if($state === '') aria-current="page" @endif>{{ __('app-development.tabs.all') }}</a>
+                <a href="{{ route('kaman-support.inbox', ['state' => 'open']) }}" @if($state === 'open') aria-current="page" @endif>{{ __('app-development.tickets.open_state') }}</a>
+                <a href="{{ route('kaman-support.inbox', ['state' => 'closed']) }}" @if($state === 'closed') aria-current="page" @endif>{{ __('app-development.tickets.closed_state') }}</a>
+            </nav>
         </header>
 
+        {{-- The topbar search writes into this hidden field. --}}
         <form class="tk-search-proxy" method="get" action="{{ route('kaman-support.inbox') }}">
             @if($state !== '')
                 <input type="hidden" name="state" value="{{ $state }}">
@@ -31,22 +30,34 @@
             <input type="search" name="q" value="{{ $search }}" data-sup-search>
         </form>
 
-        <div class="tk-stats">
-            <article class="tk-stat"><div><strong>{{ $stats['total'] }}</strong><small>{{ __('app-development.tickets.total') }}</small></div></article>
-            <article class="tk-stat"><div><strong>{{ $stats['open'] }}</strong><small>{{ __('app-development.tickets.open_state') }}</small></div></article>
-            <article class="tk-stat"><div><strong>{{ $stats['progress'] }}</strong><small>{{ __('kaman-support.status.in_progress') }}</small></div></article>
-            <article class="tk-stat"><div><strong>{{ $stats['closed'] }}</strong><small>{{ __('app-development.tickets.closed_state') }}</small></div></article>
-        </div>
+        <section class="ds-stats ds-card">
+            <div class="ds-stat">
+                <span class="ds-label">{{ __('app-development.tickets.total') }}</span>
+                <strong class="ds-num">{{ $stats['total'] }}</strong>
+            </div>
+            <div class="ds-stat">
+                <span class="ds-label">{{ __('app-development.tickets.open_state') }}</span>
+                <strong class="ds-num">{{ $stats['open'] }}</strong>
+            </div>
+            <div class="ds-stat">
+                <span class="ds-label">{{ __('kaman-support.status.in_progress') }}</span>
+                <strong class="ds-num {{ $stats['progress'] > 0 ? 'is-warn' : '' }}">{{ $stats['progress'] }}</strong>
+            </div>
+            <div class="ds-stat">
+                <span class="ds-label">{{ __('app-development.tickets.closed_state') }}</span>
+                <strong class="ds-num">{{ $stats['closed'] }}</strong>
+            </div>
+        </section>
 
-        <div class="tk-table-wrap">
-            <table class="tk-table">
+        <div class="ds-table-wrap">
+            <table class="ds-table ds-table--stack">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th class="ds-col-tight">ID</th>
                         <th>{{ __('app-development.tickets.title_col') }}</th>
                         <th>{{ __('app-development.tickets.status') }}</th>
-                        <th>{{ __('app-development.tickets.restaurant') }}</th>
-                        <th></th>
+                        <th class="ds-hide-narrow">{{ __('app-development.tickets.restaurant') }}</th>
+                        <th class="ds-col-tight"><span class="ds-sr-only">{{ __('app-development.tickets.view') }}</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -54,83 +65,79 @@
                         @php
                             $closed = $ticket->status === \App\Enums\KamanSupport\SupportTicketStatus::Closed;
                             $escalated = filled($ticket->escalated_ticket_id);
-                            $pill = $closed ? 'is-closed' : ($ticket->status === \App\Enums\KamanSupport\SupportTicketStatus::InProgress ? 'is-review' : 'is-open');
+                            $tone = $closed ? null : ($ticket->status === \App\Enums\KamanSupport\SupportTicketStatus::InProgress ? 'amber' : 'green');
+                            $restaurantKey = app(\App\Services\KamanSupport\RestaurantSupport::class)->keyFor(auth()->user(), $ticket->restaurant);
                         @endphp
                         <tr
                             data-public="{{ $ticket->public_id }}"
                             data-title="{{ $ticket->summary }}"
                             data-details="{{ $ticket->details }}"
-                            data-restaurant="{{ $ticket->restaurant_name ?: $ticket->restaurant }}"
                         >
-                            <td><bdi dir="ltr">{{ $ticket->public_id }}</bdi></td>
-                            <td>
-                                <button type="button" class="tk-title" data-ticket-view>{{ $ticket->summary }}</button>
-                                @if($closed)
-                                    <span class="tk-sub">
-                                        {{ $ticket->close_note }}
-                                        @if($ticket->closedBy) · {{ __('kaman-support.closed_by', ['name' => $ticket->closedBy->name]) }} @endif
-                                        @if($ticket->closeDurationLabel()) · {{ __('kaman-support.time_to_close', ['time' => $ticket->closeDurationLabel()]) }} @endif
+                            <td class="ds-col-tight"><bdi dir="ltr" class="ds-num">{{ $ticket->public_id }}</bdi></td>
+                            <td class="ds-cell-lead">
+                                <button type="button" class="ds-cell-title" data-ticket-view>
+                                    <span class="sp-ticket-rest">
+                                        @include('kaman-support.partials.restaurant-logo', [
+                                            'slug' => $ticket->restaurant,
+                                            'name' => $ticket->restaurant_name ?: $ticket->restaurant,
+                                        ])
+                                        <span>
+                                            <strong>{{ $ticket->summary }}</strong>
+                                            @include('kaman-support.partials.level', ['ticket' => $ticket])
+                                            @if($closed && (filled($ticket->close_note) || $ticket->closedBy || $ticket->closeDurationLabel()))
+                                                <small>
+                                                    {{ $ticket->close_note }}
+                                                    @if($ticket->closedBy) · {{ __('kaman-support.closed_by', ['name' => $ticket->closedBy->name]) }} @endif
+                                                    @if($ticket->closeDurationLabel()) · {{ __('kaman-support.time_to_close', ['time' => $ticket->closeDurationLabel()]) }} @endif
+                                                </small>
+                                            @endif
+                                        </span>
                                     </span>
+                                </button>
+                            </td>
+                            <td>
+                                <span class="sp-status">
+                                    <x-ds.badge plain :tone="$tone">{{ $ticket->status?->label() }}</x-ds.badge>
+                                    @if($escalated && ! $closed)
+                                        <x-ds.badge soft tone="blue">{{ __('kaman-support.escalated') }}</x-ds.badge>
+                                    @endif
+                                </span>
+                            </td>
+                            <td class="ds-hide-phone ds-hide-narrow">
+                                @if($restaurantKey !== '')
+                                    <button type="button" class="sp-rest-link" data-act="open-support" data-id="{{ $restaurantKey }}">{{ $ticket->restaurant_name ?: $ticket->restaurant }}</button>
+                                @else
+                                    {{ $ticket->restaurant_name ?: $ticket->restaurant }}
                                 @endif
                             </td>
-                            <td><span class="tk-pill {{ $pill }}"><i></i>{{ $ticket->status?->label() }}</span></td>
-                            <td>{{ $ticket->restaurant_name ?: $ticket->restaurant }}</td>
-                            <td>
-                                <div class="tk-actions">
-                                    <button type="button" class="tk-act tk-act--view" data-ticket-view>
-                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
-                                        <span>{{ __('app-development.tickets.view') }}</span>
-                                    </button>
+                            <td class="ds-col-tight ds-cell-end">
+                                <div class="ds-actions">
+                                    <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-ticket-view>{{ __('app-development.tickets.view') }}</button>
                                     @unless($closed)
-                                        @if($escalated)
-                                            <span class="tk-pill is-escalated"><i></i>{{ __('kaman-support.escalated') }}</span>
-                                        @else
-                                            <button type="button" class="tk-act tk-act--up" data-escalate-open="{{ $ticket->public_id }}">
-                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
-                                                <span>{{ __('kaman-support.escalate') }}</span>
-                                            </button>
-                                        @endif
-                                        <button type="button" class="tk-act tk-act--close" data-close-open="{{ $ticket->public_id }}">
-                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5 10 16.5 18 8"/></svg>
-                                            <span>{{ __('kaman-support.close_ticket') }}</span>
+                                        @unless($escalated)
+                                            <button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" data-escalate-open="{{ $ticket->public_id }}">{{ __('kaman-support.escalate') }}</button>
+                                        @endunless
+                                        <button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" data-close-open="{{ $ticket->public_id }}">
+                                            <x-ds.icon name="check" />
+                                            {{ __('kaman-support.close_ticket') }}
                                         </button>
                                     @endunless
                                 </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5">{{ __('kaman-support.empty') }}</td></tr>
+                        <tr>
+                            <td colspan="5" class="ds-empty-cell">
+                                <x-ds.empty :title="__('kaman-support.empty')" icon="receipt" />
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-        <div>{{ $tickets->withQueryString()->links() }}</div>
+        <div class="kb-pages">{{ $tickets->withQueryString()->links() }}</div>
     </div>
 
-    <dialog class="tk-assure" data-view-dialog>
-        <div class="tk-assure__sheet">
-            <div class="tk-assure__head">
-                <div class="tk-assure__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
-                <div>
-                    <h2 data-view-title></h2>
-                </div>
-                <button class="tk-assure__x" type="button" data-dialog-cancel aria-label="{{ __('kaman-support.ws_close') }}">×</button>
-            </div>
-            <dl class="tk-assure__body">
-                <div>
-                    <dt>{{ __('kaman-support.details') }}</dt>
-                    <dd data-view-details></dd>
-                </div>
-                <div>
-                    <dt>{{ __('kaman-support.restaurant') }}</dt>
-                    <dd data-view-restaurant></dd>
-                </div>
-            </dl>
-            <div class="tk-assure__foot">
-                <button class="tk-act" type="button" data-dialog-cancel>{{ __('kaman-support.ws_close') }}</button>
-            </div>
-        </div>
-    </dialog>
 
     <dialog class="tk-assure" data-escalate-dialog>
         <form method="post" data-escalate-form>
@@ -141,17 +148,17 @@
                     <h2>{{ __('kaman-support.escalate') }}</h2>
                     <p data-escalate-name></p>
                 </div>
-                <button class="tk-assure__x" type="button" data-dialog-cancel aria-label="{{ __('app-development.cancel') }}">×</button>
+                <button class="ds-btn ds-btn--ghost ds-btn--icon tk-assure__x" type="button" data-dialog-cancel aria-label="{{ __('app-development.cancel') }}"><x-ds.icon name="x" /></button>
             </div>
             <p class="tk-assure__done" data-escalate-done hidden></p>
             <div data-escalate-actions>
                 <label>
                     {{ __('kaman-support.details') }}
-                    <textarea name="description" rows="5" data-escalate-description></textarea>
+                    <textarea class="ds-textarea" name="description" rows="5" data-escalate-description></textarea>
                 </label>
                 <div class="tk-assure__foot">
-                    <button class="tk-act" type="button" data-dialog-cancel>{{ __('app-development.cancel') }}</button>
-                    <button class="tk-new" type="button" data-escalate-send>{{ __('kaman-support.escalate') }}</button>
+                    <button class="ds-btn ds-btn--secondary" type="button" data-dialog-cancel>{{ __('app-development.cancel') }}</button>
+                    <button class="ds-btn ds-btn--primary" type="button" data-escalate-send>{{ __('kaman-support.escalate') }}</button>
                 </div>
             </div>
         </form>
@@ -165,27 +172,30 @@
                 <div>
                     <h2>{{ __('kaman-support.close_title') }}</h2>
                 </div>
-                <button class="tk-assure__x" type="button" data-dialog-cancel aria-label="{{ __('app-development.cancel') }}">×</button>
+                <button class="ds-btn ds-btn--ghost ds-btn--icon tk-assure__x" type="button" data-dialog-cancel aria-label="{{ __('app-development.cancel') }}"><x-ds.icon name="x" /></button>
             </div>
             <label>
                 {{ __('kaman-support.close_note') }}
-                <textarea name="note" rows="4"></textarea>
+                <textarea class="ds-textarea" name="note" rows="4"></textarea>
             </label>
             <div class="tk-assure__foot">
-                <button class="tk-act" type="button" data-dialog-cancel>{{ __('app-development.cancel') }}</button>
-                <button class="tk-new" type="submit">{{ __('kaman-support.close_ticket') }}</button>
+                <button class="ds-btn ds-btn--secondary" type="button" data-dialog-cancel>{{ __('app-development.cancel') }}</button>
+                <button class="ds-btn ds-btn--primary" type="submit">{{ __('kaman-support.close_ticket') }}</button>
             </div>
         </form>
     </dialog>
+    @include('workspace.partials.restaurant-modal', ['surface' => 'support'])
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/ticket-view.js') }}?v={{ filemtime(public_path('js/ticket-view.js')) }}"></script>
 <script>
 (function () {
     const base = @json(url('/kaman-support/tickets'));
     const closeDialog = document.querySelector('[data-close-dialog]');
     const closeForm = document.querySelector('[data-close-form]');
-    const viewDialog = document.querySelector('[data-view-dialog]');
+    const ticketUrl = @json(route('kaman-support.show', ['ticket' => '__ID__']));
+    const openTicket = (publicId) => window.TicketView && publicId && window.TicketView.open(ticketUrl.replace('__ID__', encodeURIComponent(publicId)));
     const escalatedLabel = @json(__('kaman-support.escalated'));
     const escalateDialog = document.querySelector('[data-escalate-dialog]');
     const escalateForm = document.querySelector('[data-escalate-form]');
@@ -206,17 +216,29 @@
         if (submit) submit.disabled = false;
     }
 
-    function fillView(row) {
-        if (!row || !viewDialog) return;
-        viewDialog.querySelector('[data-view-title]').textContent = row.getAttribute('data-title') || '';
-        viewDialog.querySelector('[data-view-details]').textContent = row.getAttribute('data-details') || '—';
-        viewDialog.querySelector('[data-view-restaurant]').textContent = row.getAttribute('data-restaurant') || '—';
-        if (typeof viewDialog.showModal === 'function') viewDialog.showModal();
+    const logoMarks = Array.from(document.querySelectorAll('.sp-inbox [data-logo]'));
+    const logoSlugs = [...new Set(logoMarks.map((mark) => mark.getAttribute('data-logo')).filter(Boolean))];
+    if (logoSlugs.length) {
+        const query = logoSlugs.map((slug) => 'restaurants[]=' + encodeURIComponent(slug)).join('&');
+        fetch(@json(route('kaman-support.logos')) + '?' + query, { headers: { Accept: 'application/json' } })
+            .then((response) => response.json())
+            .then((payload) => {
+                const logos = (payload && payload.logos) || {};
+                logoMarks.forEach((mark) => {
+                    const src = logos[mark.getAttribute('data-logo')];
+                    if (!src || mark.querySelector('img')) return;
+                    const image = document.createElement('img');
+                    image.alt = '';
+                    image.src = src;
+                    mark.prepend(image);
+                });
+            })
+            .catch(() => {});
     }
 
     document.addEventListener('click', (event) => {
         const view = event.target.closest('[data-ticket-view]');
-        if (view) fillView(view.closest('tr'));
+        if (view) openTicket(view.closest('tr')?.getAttribute('data-public'));
 
         const escalate = event.target.closest('[data-escalate-open]');
         if (escalate && escalateForm && escalateDialog) {
@@ -295,12 +317,16 @@
         escalateForm.querySelector('[data-escalate-send]')?.addEventListener('click', sendEscalate);
     }
 
-    [closeDialog, viewDialog, escalateDialog].forEach((dialog) => {
+    [closeDialog, escalateDialog].forEach((dialog) => {
         if (!dialog) return;
         dialog.addEventListener('click', (event) => {
             if (event.target === dialog) shut(dialog);
         });
     });
+
+    // Links to a ticket land here and open it in the ticket modal.
+    const linked = new URLSearchParams(window.location.search).get('ticket');
+    if (linked) openTicket(linked);
 })();
 </script>
 @endpush

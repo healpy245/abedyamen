@@ -15,7 +15,7 @@
     $boardWorkspace = ($activeProject ?? null) === \App\Enums\Project::AppDevelopment->value;
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', $locale) }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}" class="kaman-booting">
+<html lang="{{ str_replace('_', '-', $locale) }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}" class="kaman-booting" data-door="{{ $boardWorkspace ? 'development' : 'kaman' }}">
 <head>
     @include('partials.theme-boot')
     <meta charset="utf-8">
@@ -43,9 +43,14 @@
     @endif
     @if(auth()->check())
         <link rel="stylesheet" href="{{ asset('css/workspace-frame.css') }}?v={{ @filemtime(public_path('css/workspace-frame.css')) }}">
+        @include('partials.workspace-ui')
+    @endif
+    @if($boardWorkspace)
+        <link rel="stylesheet" href="{{ asset('css/ds.css') }}?v={{ filemtime(public_path('css/ds.css')) }}">
+        <link rel="stylesheet" href="{{ asset('css/dev-ds.css') }}?v={{ filemtime(public_path('css/dev-ds.css')) }}">
     @endif
 </head>
-<body class="antialiased min-h-screen flex flex-col {{ auth()->check() ? 'kaman-signed-in' : '' }}{{ $boardWorkspace ? ' ws-page ws-dev' : '' }}">
+<body class="antialiased min-h-screen flex flex-col {{ auth()->check() ? 'kaman-signed-in' : '' }}{{ $boardWorkspace ? ' ws-page ws-dev ds' : '' }}">
 @if($boardWorkspace && auth()->check())
     @include('partials.boot-splash')
     <x-workspace.shell door="development">
@@ -57,6 +62,7 @@
         </x-slot:nav>
         @yield('content')
     </x-workspace.shell>
+    <script src="{{ asset('js/ds.js') }}?v={{ filemtime(public_path('js/ds.js')) }}" defer></script>
     @stack('scripts')
     @include('partials.csrf-keepalive')
 </body>
@@ -70,7 +76,7 @@
 @endphp
 @if(auth()->check() && ! $boardWorkspace)
 <div class="kaman-shell{{ $boardWorkspace ? ' kaman-shell--board' : '' }}">
-    @unless(auth()->user()->isMowahada() || $boardWorkspace)
+    @unless($boardWorkspace)
         @include('partials.sidebar', ['activeProject' => $activeProject ?? null])
     @endunless
     <div class="kaman-shell__main">

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\AppDevelopment;
 use App\Enums\AppDevelopmentAppType;
 use App\Enums\AppDevelopmentTaskStatus;
 use App\Enums\AppDevelopmentTicketPriority;
+use App\Enums\AppDevelopmentTicketStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AppDevelopment\StoreTaskRequest;
 use App\Http\Requests\AppDevelopment\UpdateTaskRequest;
@@ -166,12 +167,15 @@ class TaskController extends Controller
             'search' => $search,
             'developers' => $this->developers(),
             'selectedAppTypes' => $selectedAppTypes->map(static fn (AppDevelopmentAppType $type): string => $type->value)->all(),
-            'notifyDevelopers' => $user->isAppDevelopmentAdmin()
-                ? AppDevelopmentMember::selectableDevelopers()->get()->sortBy(fn (AppDevelopmentMember $member): string => mb_strtolower((string) $member->user?->name))->values()
+            'notifyTeam' => $user->isAppDevelopmentAdmin()
+                ? AppDevelopmentMember::selectableTeam()->get()->sortBy(fn (AppDevelopmentMember $member): string => mb_strtolower((string) $member->user?->name))->values()
                 : collect(),
-            'notifyTesters' => $user->isAppDevelopmentAdmin()
-                ? AppDevelopmentMember::selectableTesters()->get()->sortBy(fn (AppDevelopmentMember $member): string => mb_strtolower((string) $member->user?->name))->values()
-                : collect(),
+            'notifyCounts' => $user->isAppDevelopmentAdmin()
+                ? [
+                    'open' => AppDevelopmentTicket::query()->where('status', AppDevelopmentTicketStatus::Open)->count(),
+                    'qa' => AppDevelopmentTicket::query()->where('status', AppDevelopmentTicketStatus::Qa)->count(),
+                ]
+                : ['open' => 0, 'qa' => 0],
             'filters' => [
                 'assignee' => $request->query('assignee'),
                 'ticket' => $request->query('ticket'),
@@ -331,8 +335,6 @@ class TaskController extends Controller
 
         if ($request->filled('due_at')) {
             $data['due_at'] = Carbon::parse((string) $request->validated('due_at'));
-        } else {
-            $data['due_at'] = null;
         }
 
         $task->forceFill($data)->save();

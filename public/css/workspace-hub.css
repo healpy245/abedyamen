@@ -1,248 +1,380 @@
-/* Clean Overview cycle. No illustration, no 3D doors. */
+/* Kaman Portal: one circle, four curved doors that swing open on a side hinge into lit passages. */
 #hub-scene[hidden] { display: none !important; }
 
 body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
     overflow: auto;
-    padding: 8px 20px 24px;
+    padding: 0 24px 18px;
 }
 
-.cycle {
-    width: min(100%, 960px);
-    margin-inline: auto;
+.portal-scene {
+    --portal-accent: #f58220;
+    --portal-ink: #f4ebe2;
+    --portal-open: 0.62s;
+    --portal-close: 0.52s;
+    --portal-ease-open: cubic-bezier(0.22, 0.75, 0.2, 1);
+    --portal-ease-close: cubic-bezier(0.45, 0, 0.25, 1);
+    /* Everything around the circle (shell, caption, button) needs ~344px of height. */
+    --portal-size: clamp(300px, min(100%, calc(100dvh - 344px)), 760px);
+    --portal-font: "Plus Jakarta Sans", "DM Sans", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    min-height: 100%;
+    justify-content: center;
+    padding-top: clamp(14px, 2.6vh, 28px);
+    overflow: clip;
 }
 
-.cycle-intro {
-    text-align: center;
-    margin: 4px auto 18px;
-}
+html[lang="ar"] .portal-scene { --portal-font: Almarai, "Plus Jakarta Sans", sans-serif; }
+html[lang="he"] .portal-scene { --portal-font: Heebo, "Plus Jakarta Sans", sans-serif; }
 
-.cycle-eyebrow {
-    color: var(--ws-orange, #f58220);
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    font-weight: 800;
-    text-transform: uppercase;
-}
+/* ------------------------------------------------------------------ circle */
 
-.cycle-intro h1 {
-    margin: 10px 0 8px;
-    font: 800 clamp(24px, 3vw, 34px) / 1.1 "Plus Jakarta Sans", Almarai, Heebo, sans-serif;
-    letter-spacing: -0.04em;
-}
-
-.cycle-intro p {
-    margin: 0;
-    color: var(--ws-muted, #9b8876);
-}
-
-.cycle-board {
+.portal {
     position: relative;
-    height: 420px;
-    max-width: 900px;
-    margin-inline: auto;
-}
-
-.cycle-ring {
-    position: absolute;
-    width: 300px;
-    height: 300px;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    border: 1px dashed rgba(245, 130, 32, 0.3);
+    width: var(--portal-size);
+    aspect-ratio: 1;
+    flex: none;
     border-radius: 50%;
-    pointer-events: none;
+    container-type: inline-size;
+    isolation: isolate;
+    transform-origin: var(--zx, 50%) var(--zy, 50%);
+    transition: transform 0.6s cubic-bezier(0.55, 0, 0.7, 0.2), opacity 0.26s ease 0.32s;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.cycle-ring::after {
-    content: "";
-    position: absolute;
-    inset: 33px;
-    border-radius: 50%;
-    border: 1px solid var(--ws-line, #eedfd0);
-}
-
-.cycle-links {
+.portal > svg,
+.portal-door,
+.portal-leaf > svg,
+.portal-hit,
+.portal-leaf {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+}
+
+.portal-base { overflow: visible; }
+.portal-base__shadow { fill: #000; opacity: 0.55; }
+html:not([data-theme="dark"]) .portal-base__shadow { fill: #5c3816; opacity: 0.3; }
+.portal-base__plate { stroke: rgba(255, 226, 200, 0.07); stroke-width: 1; }
+.portal-base__core { stroke: rgba(255, 214, 180, 0.1); stroke-width: 1; }
+
+.portal-mark {
+    fill: none;
+    stroke: var(--portal-accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    opacity: 0.22;
+    transition: opacity 0.45s ease;
+}
+
+/* ------------------------------------------------------------------ passages behind the doors */
+
+.portal-room__floor { fill: #070605; }
+.portal-room__step { fill: none; stroke: rgba(255, 196, 150, 0.09); stroke-width: 1; }
+.portal-room__shade { opacity: 0; transition: opacity 0.3s ease; }
+
+/* ------------------------------------------------------------------ doors */
+
+.portal-door {
+    display: block;
+    pointer-events: none;
+    /* Perspective follows the circle's size so the swing reads the same at every scale. */
+    perspective: 150cqw;
+    perspective-origin: 50% 50%;
+    color: inherit;
+    text-decoration: none;
+    outline: none;
+    z-index: 2;
+    /* A swinging door never passes over the Kaman core (core + gap = 108 of 300 units). */
+    -webkit-mask: radial-gradient(circle closest-side, transparent 36%, #000 36.3%);
+    mask: radial-gradient(circle closest-side, transparent 36%, #000 36.3%);
+}
+
+.portal-door.is-open { z-index: 4; }
+
+.portal-leaf {
+    display: block;
+    transform-style: preserve-3d;
+    transform-origin: var(--ox) var(--oy);
+    transform: rotate3d(var(--ax), var(--ay), 0, 0deg);
+    transition: transform var(--portal-close) var(--portal-ease-close);
+    will-change: transform;
+}
+
+.portal-door.is-open .portal-leaf {
+    transform: rotate3d(var(--ax), var(--ay), 0, calc(var(--sw) * 76deg));
+    transition: transform var(--portal-open) var(--portal-ease-open);
+}
+
+/* Thin slices behind the face give the door a real edge once it turns. */
+.portal-leaf__edge {
+    transform: translateZ(-2.5px);
+    opacity: 0;
+    transition: opacity 0.18s ease 0.3s;
+}
+.portal-leaf__edge--deep { transform: translateZ(-5px); }
+.portal-leaf__edge path { fill: url(#portal-edge); }
+.portal-door.is-open .portal-leaf__edge { opacity: 1; transition-delay: 0s; transition-duration: 0.1s; }
+
+.portal-leaf__panel {
+    fill: url(#portal-face);
+    stroke: rgba(255, 228, 206, 0.09);
+    stroke-width: 1;
+}
+
+/* A hairline of light escaping where each door meets the core. */
+.portal-leaf__glow {
+    fill: none;
+    stroke: #ff9a45;
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    opacity: 0.28;
+    transition: opacity 0.35s ease;
+}
+
+.portal-leaf__inset {
+    fill: none;
+    stroke: rgba(255, 232, 214, 0.05);
+    stroke-width: 1;
+}
+
+.portal-leaf__shade {
+    fill: #000;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.portal-leaf__label {
+    position: absolute;
+    width: 22%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    justify-items: center;
+    gap: 1.2cqw;
+    text-align: center;
+    font: 650 clamp(12px, 2.45cqw, 18px) / 1.25 var(--portal-font);
+    color: var(--portal-ink);
+    transition: opacity 0.35s ease;
+}
+
+.portal-door.is-wide .portal-leaf__label { width: 40%; }
+
+.portal-leaf__label svg {
+    width: clamp(18px, 4cqw, 28px);
+    height: clamp(18px, 4cqw, 28px);
+    fill: none;
+    stroke: var(--portal-accent);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.portal-hit__area {
+    fill: transparent;
+    pointer-events: all;
+    cursor: pointer;
+}
+
+.portal-hit__focus {
+    fill: none;
+    stroke: var(--portal-accent);
+    stroke-width: 2;
+    opacity: 0;
     pointer-events: none;
 }
 
-.cycle-link {
-    stroke: rgba(245, 130, 32, 0.22);
-    stroke-width: 0.7;
-    transition: stroke 0.22s ease, stroke-width 0.22s ease;
-}
+.portal-door:focus-visible .portal-hit__focus { opacity: 0.9; }
+/* The door-shaped outline is the focus ring; drop the shell's rectangular one. */
+body.ws-page .portal-door:focus-visible { outline: none !important; }
 
-.cycle.is-support .cycle-link--support,
-.cycle.is-development .cycle-link--development,
-.cycle.is-agents .cycle-link--agents,
-.cycle.is-finance .cycle-link--finance {
-    stroke: #f58220;
-    stroke-width: 1.4;
-}
+/* Active: one door swings open, its passage lights up, the others settle back. */
+.portal-door:hover .portal-leaf__glow,
+.portal-door.is-open .portal-leaf__glow { opacity: 0.7; }
+.portal-door.is-open .portal-leaf__label { opacity: 0; }
+.portal[data-active] .portal-door:not(.is-open) .portal-leaf__shade { opacity: 0.3; }
+.portal[data-active] .portal-door:not(.is-open) .portal-leaf__label { opacity: 0.55; }
 
-.cycle-hub {
+.portal[data-active="agents"] [data-mark="agents"],
+.portal[data-active="support"] [data-mark="support"],
+.portal[data-active="development"] [data-mark="development"],
+.portal[data-active="finance"] [data-mark="finance"] { opacity: 1; }
+
+
+.portal[data-active="agents"] [data-room="agents"] .portal-room__shade,
+.portal[data-active="support"] [data-room="support"] .portal-room__shade,
+.portal[data-active="development"] [data-room="development"] .portal-room__shade,
+.portal[data-active="finance"] [data-room="finance"] .portal-room__shade { opacity: 1; }
+
+/* ------------------------------------------------------------------ core */
+
+.portal-core {
     position: absolute;
     left: 50%;
     top: 50%;
-    z-index: 1;
-    width: 164px;
-    height: 164px;
+    width: 34%;
+    aspect-ratio: 1;
     transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    border-radius: 50%;
-    background: var(--ws-surface, #fffdfa);
-    border: 1px solid rgba(245, 130, 32, 0.4);
-    box-shadow: 0 12px 38px rgba(165, 107, 35, 0.1), 0 0 0 12px rgba(245, 130, 32, 0.04);
+    gap: 2cqw;
+    pointer-events: none;
+    z-index: 5;
 }
 
-.cycle-hub img {
-    width: 69px;
-    height: 69px;
-    object-fit: contain;
-    border-radius: 16px;
-}
-
-.cycle-hub b {
-    font: 800 11px/1 "Plus Jakarta Sans", Almarai, Heebo, sans-serif;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ws-ink, #30271f);
-}
-
-.cycle-door {
+.portal-core__breath {
     position: absolute;
-    z-index: 2;
-    width: 242px;
-    min-height: 106px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 17px;
-    text-decoration: none;
-    color: var(--ws-ink, #30271f);
-    background: var(--ws-surface, #fffdfa);
-    border: 1px solid var(--ws-line, #eedfd0);
-    border-radius: 17px;
-    box-shadow: 0 9px 27px rgba(164, 106, 46, 0.05);
-    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+    inset: 8%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(245, 130, 32, 0.2), rgba(245, 130, 32, 0.05) 62%, transparent);
+    animation: portal-breathe 8s ease-in-out infinite;
+    will-change: transform, opacity;
 }
 
-.cycle-door:hover,
-.cycle-door:focus-visible {
-    transform: translateY(-4px);
-    border-color: var(--ws-orange, #f58220);
-    box-shadow: 0 15px 36px rgba(245, 130, 32, 0.14);
-    outline: none;
+.portal-core img {
+    position: relative;
+    width: 36%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    border-radius: 22%;
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.5));
 }
 
-.cycle-door:focus-visible {
-    outline: 2px solid var(--ws-orange, #f58220);
-    outline-offset: 3px;
+.portal-core__label {
+    position: relative;
+    max-width: 82%;
+    text-align: center;
+    font: 600 clamp(10px, 1.7cqw, 13px) / 1.3 var(--portal-font);
+    letter-spacing: 0.04em;
+    color: rgba(244, 235, 226, 0.6);
 }
 
-.cycle-door.is-opening {
-    transform: translateY(-4px);
-    border-color: var(--ws-orange, #f58220);
+html[lang="ar"] .portal-core__label,
+html[lang="he"] .portal-core__label { letter-spacing: 0; }
+
+/* ------------------------------------------------------------------ light that follows the cursor */
+
+.portal-glow {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 44%;
+    aspect-ratio: 1;
+    margin: -22% 0 0 -22%;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(closest-side, rgba(255, 170, 100, 0.08), transparent);
+    mix-blend-mode: screen;
+    opacity: 0;
+    transform: translate3d(var(--gx, 0), var(--gy, 0), 0);
+    transition: opacity 0.5s ease;
+    z-index: 6;
 }
 
-.cycle-door__icon {
-    width: 43px;
-    height: 43px;
-    flex: none;
+.portal.is-lit .portal-glow { opacity: 1; }
+
+.portal-flash {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle at var(--zx, 50%) var(--zy, 50%), rgba(255, 196, 140, 0.85), rgba(245, 130, 32, 0.3) 14%, transparent 36%);
+    opacity: 0;
+    z-index: 7;
+}
+
+/* Entering: zoom into the lit passage, then the browser navigates. */
+.portal.is-entering { transform: scale(2.4); opacity: 0; }
+.portal.is-entering .portal-flash { opacity: 1; transition: opacity 0.34s ease; }
+.portal-scene.is-leaving :is(.portal-caption, .portal-browse) {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* ------------------------------------------------------------------ caption + button */
+
+.portal-caption {
     display: grid;
-    place-items: center;
-    border-radius: 13px;
-    background: var(--ws-surface-2, #fff0e1);
-    color: var(--ws-orange, #f58220);
-    transition: background 0.22s ease;
+    min-height: 20px;
+    margin: clamp(12px, 2.2vh, 22px) 0 0;
+    text-align: center;
+    font: 500 13px/1.5 var(--portal-font);
 }
 
-.cycle-door:hover .cycle-door__icon,
-.cycle-door:focus-visible .cycle-door__icon {
-    background: #ffe4c8;
+.portal-caption > span {
+    grid-area: 1 / 1;
+    transition: opacity 0.3s ease, transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.cycle-door__icon svg,
-.cycle-door__arr svg,
-.cycle-browse svg {
-    width: 21px;
-    height: 21px;
-    display: block;
+.portal-caption__hint { color: var(--ws-muted, var(--ds-text-2, #9b8876)); opacity: 0.7; }
+.portal-caption__desc {
+    color: var(--ws-ink, var(--ds-text, #30271f));
+    opacity: 0;
+    transform: translateY(4px);
 }
 
-.cycle-door__copy {
-    min-width: 0;
-    flex: 1;
-}
+.portal-scene.has-active .portal-caption__hint { opacity: 0; transform: translateY(-4px); }
+.portal-scene.has-active .portal-caption__desc { opacity: 1; transform: none; }
 
-.cycle-door__copy strong {
-    display: block;
-    font: 800 13px/1.2 "Plus Jakarta Sans", Almarai, Heebo, sans-serif;
-}
-
-.cycle-door__copy small {
-    display: block;
-    margin-top: 6px;
-    color: var(--ws-muted, #9b8876);
-    font-size: 11px;
-}
-
-.cycle-door__arr {
-    margin-inline-start: auto;
-    color: var(--ws-orange, #f58220);
-    opacity: 0.65;
-    transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.cycle-door__arr svg { width: 15px; height: 15px; }
-
-.cycle-door:hover .cycle-door__arr,
-.cycle-door:focus-visible .cycle-door__arr {
-    opacity: 1;
-    transform: translate(3px, -3px);
-}
-
-[dir="rtl"] .cycle-links { transform: scaleX(-1); }
-[dir="rtl"] .cycle-door__arr svg,
-[dir="rtl"] .cycle-browse svg { transform: scaleX(-1); }
-
-[dir="rtl"] .cycle-door:hover .cycle-door__arr,
-[dir="rtl"] .cycle-door:focus-visible .cycle-door__arr {
-    transform: translate(-3px, -3px);
-}
-
-.cycle-door--support { top: 44px; inset-inline-start: 1%; }
-.cycle-door--development { top: 44px; inset-inline-end: 1%; }
-.cycle-door--agents { bottom: 44px; inset-inline-start: 1%; }
-.cycle-door--finance { bottom: 44px; inset-inline-end: 1%; }
-
-.cycle-foot {
-    display: flex;
-    justify-content: center;
-    margin-top: 14px;
-}
-
-.cycle-browse {
+.portal-browse {
     display: inline-flex;
     align-items: center;
-    gap: 9px;
-    padding: 13px 19px;
-    border-radius: 12px;
-    border: 1px solid var(--ws-orange, #f58220);
-    background: var(--ws-orange, #f58220);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 800;
+    gap: 10px;
+    margin-top: clamp(12px, 2vh, 18px);
+    padding: 11px 18px 11px 22px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--portal-accent) 40%, transparent);
+    background: color-mix(in srgb, var(--portal-accent) 8%, transparent);
+    color: var(--ws-orange-ink, #b65c16);
+    font: 650 13px/1 var(--portal-font);
     text-decoration: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+
+[dir="rtl"] .portal-browse { padding: 11px 22px 11px 18px; }
+.portal-browse svg { width: 16px; height: 16px; transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+[dir="rtl"] .portal-browse svg { transform: scaleX(-1); }
+
+.portal-browse:hover,
+.portal-browse:focus-visible {
+    background: color-mix(in srgb, var(--portal-accent) 15%, transparent);
+    border-color: var(--portal-accent);
+    box-shadow: 0 10px 26px rgba(245, 130, 32, 0.15);
+    transform: translateY(-1px);
+}
+
+.portal-browse:hover svg { transform: translateX(3px); }
+[dir="rtl"] .portal-browse:hover svg { transform: scaleX(-1) translateX(3px); }
+body.ws-page .portal-browse:focus-visible { outline: 2px solid var(--portal-accent); outline-offset: 3px; }
+
+/* ------------------------------------------------------------------ motion */
+
+@keyframes portal-breathe {
+    0%, 100% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.04); opacity: 1; }
+}
+
+@media (max-width: 640px) {
+    body.ws-page .ws-content:has(#hub-scene:not([hidden])) { padding: 4px 12px 18px; }
+    .portal-scene { --portal-size: clamp(260px, 100%, 480px); justify-content: flex-start; }
+    .portal-leaf__label { width: 25%; }
+    .portal-door.is-wide .portal-leaf__label { width: 44%; }
+    .portal-caption { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .portal-core__breath { animation: none; }
+    .portal,
+    .portal-leaf,
+    .portal-door.is-open .portal-leaf { transition: none; }
+    /* No swing: the door simply turns translucent over its lit passage. */
+    .portal-door.is-open .portal-leaf { transform: none; opacity: 0.1; }
+    .portal-leaf__edge,
+    .portal-glow { display: none; }
 }
 
 .rest-add {
@@ -251,8 +383,8 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
     gap: 8px;
     padding: 13px 19px;
     border-radius: 12px;
-    border: 1px solid var(--ws-orange, #f58220);
-    background: var(--ws-orange, #f58220);
+    border: 1px solid var(--ws-orange, var(--ds-accent, #f58220));
+    background: var(--ws-orange, var(--ds-accent, #f58220));
     color: #fff;
     font-size: 12px;
     font-weight: 800;
@@ -263,16 +395,9 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
     display: grid;
     place-items: center;
     font-weight: 800;
-    color: var(--ws-orange, #f58220);
+    color: var(--ws-orange, var(--ds-accent-text, #f58220));
 }
 
-.cycle-browse svg { width: 16px; height: 16px; }
-.cycle-browse:hover,
-.cycle-browse:focus-visible {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(245, 130, 32, 0.22);
-    outline: none;
-}
 
 /* Restaurant directory */
 .rest-head {
@@ -288,7 +413,7 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
     font: 800 25px/1.1 "Plus Jakarta Sans", Almarai, Heebo, sans-serif;
 }
 
-.rest-head p { margin: 0; color: var(--ws-muted, #9b8876); }
+.rest-head p { margin: 0; color: var(--ws-muted, var(--ds-text-2, #9b8876)); }
 
 .rest-grid {
     display: grid;
@@ -299,9 +424,9 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
 .rest-card {
     width: 100%;
     padding: 17px;
-    border: 1px solid var(--ws-line, #eedfd0);
+    border: 1px solid var(--ws-line, var(--ds-border-strong, #eedfd0));
     border-radius: 16px;
-    background: var(--ws-surface, #fffdfa);
+    background: var(--ws-surface, var(--ds-surface-2, #fffdfa));
     color: inherit;
     font: inherit;
     text-align: start;
@@ -312,7 +437,7 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
 .rest-card:hover,
 .rest-card:focus-visible {
     transform: translateY(-3px);
-    border-color: var(--ws-orange, #f58220);
+    border-color: var(--ws-orange, var(--ds-accent, #f58220));
     outline: none;
 }
 
@@ -328,7 +453,7 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
     flex: none;
     border-radius: 13px;
     object-fit: cover;
-    background: var(--ws-surface-2, #fff0e1);
+    background: var(--ws-surface-2, var(--ds-surface-2, #fff0e1));
 }
 
 .rest-card__name {
@@ -339,7 +464,7 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
 .rest-card__city {
     margin-top: 5px;
     font-size: 11px;
-    color: var(--ws-muted, #9b8876);
+    color: var(--ws-muted, var(--ds-text-2, #9b8876));
 }
 
 .rest-card__foot {
@@ -349,9 +474,9 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
     gap: 8px;
     margin-top: 16px;
     padding-top: 13px;
-    border-top: 1px solid var(--ws-line, #eedfd0);
+    border-top: 1px solid var(--ws-line, var(--ds-border-strong, #eedfd0));
     font-size: 11px;
-    color: var(--ws-muted, #9b8876);
+    color: var(--ws-muted, var(--ds-text-2, #9b8876));
 }
 
 .rest-card__status {
@@ -363,64 +488,71 @@ body.ws-page .ws-content:has(#hub-scene:not([hidden])) {
 }
 
 .rest-card__status.is-pending {
-    color: #bc8420;
+    color: var(--ds-accent-text, #bc8420);
     background: #f4a92317;
 }
 
-html[data-theme="dark"] .cycle-hub,
-html[data-theme="dark"] .cycle-door,
 html[data-theme="dark"] .rest-card {
-    background: var(--ws-surface, #2a221c);
+    background: var(--ws-surface, var(--ds-surface, #2a221c));
     border-color: var(--ws-line, rgba(255, 186, 130, 0.18));
-    color: var(--ws-ink, #f6efe6);
+    color: var(--ws-ink, var(--ds-text, #f6efe6));
 }
 
-html[data-theme="dark"] .cycle-hub b,
-html[data-theme="dark"] .cycle-door { color: var(--ws-ink, #f6efe6); }
-html[data-theme="dark"] .cycle-door__icon { background: var(--ws-surface-2, #3a2e24); }
-html[data-theme="dark"] .cycle-door:hover .cycle-door__icon { background: #4a3828; }
-
 @media (max-width: 1050px) {
-    .cycle-board { max-width: 750px; }
-    .cycle-door { width: 205px; padding: 14px; }
     .rest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 780px) {
-    .cycle-board {
-        height: auto;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        padding-top: 148px;
-    }
-    .cycle-ring,
-    .cycle-links { display: none; }
-    .cycle-hub {
-        top: 68px;
-        width: 118px;
-        height: 118px;
-    }
-    .cycle-hub img { width: 48px; height: 48px; }
-    .cycle-door {
-        position: relative;
-        inset: auto;
-        width: auto;
-        min-height: 96px;
-    }
-    .cycle-door__arr { display: none; }
     .rest-head { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 560px) {
-    .cycle-board { grid-template-columns: 1fr; }
     .rest-grid { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .cycle-door,
-    .cycle-door__arr,
-    .cycle-link,
-    .cycle-browse,
     .rest-card { transition: none; }
+}
+
+/* Directory cards: stacked name/city and softer motion. */
+.rest-card {
+    position: relative;
+    overflow: hidden;
+    transition: transform .28s cubic-bezier(.22, 1, .36, 1), border-color .2s ease, box-shadow .28s ease, background .2s ease;
+}
+.rest-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(420px 140px at var(--mx, 50%) -20%, color-mix(in srgb, var(--ws-orange, var(--ds-accent, #f58220)) 14%, transparent), transparent 70%);
+    opacity: 0;
+    transition: opacity .28s ease;
+    pointer-events: none;
+}
+.rest-card:hover,
+.rest-card:focus-visible {
+    transform: translateY(-4px);
+    border-color: color-mix(in srgb, var(--ws-orange, var(--ds-accent, #f58220)) 55%, var(--ws-line, var(--ds-border-strong, #eedfd0)));
+    box-shadow: 0 16px 34px #8d5d3022;
+}
+.rest-card:hover::before,
+.rest-card:focus-visible::before { opacity: 1; }
+.rest-card:active { transform: translateY(-1px) scale(.985); transition-duration: .12s; }
+.rest-card:focus-visible { outline: 2px solid var(--ws-orange, var(--ds-accent, #f58220)); outline-offset: 2px; }
+.rest-card__name { display: block; }
+.rest-card__city { display: block; }
+.rest-card__logo { transition: transform .28s cubic-bezier(.22, 1, .36, 1); }
+.rest-card:hover .rest-card__logo { transform: scale(1.06) rotate(-2deg); }
+.rest-card__foot > span:last-child { transition: color .2s ease, transform .2s ease; }
+.rest-card:hover .rest-card__foot > span:last-child { color: var(--ws-orange-ink, var(--ds-accent-text, #b65c16)); transform: translateX(2px); }
+html[dir="rtl"] .rest-card:hover .rest-card__foot > span:last-child { transform: translateX(-2px); }
+.rest-add { transition: transform .22s cubic-bezier(.22, 1, .36, 1), box-shadow .22s ease, filter .2s ease; }
+.rest-add:hover { transform: translateY(-2px); box-shadow: 0 10px 22px #f5822040; filter: brightness(1.04); }
+.rest-add:active { transform: translateY(0) scale(.97); }
+html[data-theme="dark"] .rest-card:hover,
+html[data-theme="dark"] .rest-card:focus-visible { box-shadow: 0 16px 34px #0008; }
+@media (max-width: 1100px) { .rest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .rest-grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+    .rest-card, .rest-card::before, .rest-card__logo, .rest-add { transition: none !important; }
 }

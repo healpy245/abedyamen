@@ -1,0 +1,294 @@
+/* The locked state of a door or sub door: the locked page, the marks on tabs and the sidebar, and locked modal sections. */
+
+:root {
+    --lock-ink: #30271f;
+    --lock-muted: #7d6c5c;
+    --lock-card: rgba(255, 253, 250, 0.78);
+    --lock-line: rgba(160, 110, 62, 0.18);
+    --lock-ghost: rgba(160, 110, 62, 0.08);
+    --lock-sheen: rgba(255, 255, 255, 0.72);
+    --lock-steel: #f58220;
+    --lock-steel-deep: #c25a0c;
+    --lock-hole: #4b2709;
+    --lock-glow: rgba(245, 130, 32, 0.28);
+    --lock-shadow: 0 24px 70px rgba(120, 72, 28, 0.16);
+    --lock-ease: cubic-bezier(.22, 1, .36, 1);
+}
+
+html[data-theme="dark"] {
+    --lock-ink: #f6efe6;
+    --lock-muted: #b5a394;
+    --lock-card: rgba(42, 34, 28, 0.74);
+    --lock-line: rgba(255, 186, 130, 0.18);
+    --lock-ghost: rgba(255, 186, 130, 0.07);
+    --lock-sheen: rgba(255, 220, 190, 0.1);
+    --lock-steel: #ff9d4d;
+    --lock-steel-deep: #d9772a;
+    --lock-hole: #2a1505;
+    --lock-glow: rgba(245, 130, 32, 0.34);
+    --lock-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------------------------------------------------------------- the page */
+
+.door-lock {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: min(68vh, 620px);
+    padding: 24px 16px 48px;
+    overflow: hidden;
+    color: var(--lock-ink);
+}
+
+/* An empty page shape behind the card. It is decoration only: nothing in it comes from the door. */
+.door-lock__ghost {
+    position: absolute;
+    inset: 8px 16px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 120px;
+    gap: 16px;
+    filter: blur(5px);
+    opacity: 0;
+    pointer-events: none;
+    animation: door-lock-fade 900ms var(--lock-ease) 80ms forwards;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
+    mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
+}
+.door-lock__ghost span {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    background: var(--lock-ghost);
+}
+.door-lock__ghost span:nth-child(4) { grid-column: span 2; }
+.door-lock__ghost span::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 20%, var(--lock-sheen) 50%, transparent 80%);
+    transform: translateX(-120%);
+    animation: door-lock-sheen 4.8s ease-in-out 900ms infinite;
+}
+html[dir="rtl"] .door-lock__ghost span::after { animation-name: door-lock-sheen-rtl; transform: translateX(120%); }
+
+.door-lock__card {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    width: min(100%, 440px);
+    padding: 36px 28px 30px;
+    border: 1px solid var(--lock-line);
+    border-radius: 24px;
+    background: var(--lock-card);
+    box-shadow: var(--lock-shadow);
+    text-align: center;
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    backdrop-filter: blur(16px) saturate(1.2);
+    animation: door-lock-rise 720ms var(--lock-ease) both;
+}
+.door-lock__door {
+    margin: 12px 0 0;
+    color: var(--lock-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    animation: door-lock-up 560ms var(--lock-ease) 420ms both;
+}
+.door-lock__card h1 {
+    margin: 0;
+    color: var(--lock-ink);
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.25;
+    animation: door-lock-up 560ms var(--lock-ease) 480ms both;
+}
+.door-lock__card p.door-lock__body {
+    margin: 0;
+    max-width: 34ch;
+    color: var(--lock-muted);
+    font-size: 14px;
+    line-height: 1.6;
+    animation: door-lock-up 560ms var(--lock-ease) 540ms both;
+}
+.door-lock__way {
+    margin-top: 12px;
+    animation: door-lock-up 560ms var(--lock-ease) 600ms both;
+}
+
+/* ---------------------------------------------------------------- the padlock */
+
+.door-lock__mark {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 104px;
+    height: 104px;
+}
+.door-lock__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid var(--lock-glow);
+    opacity: 0;
+    animation: door-lock-ring 3.6s ease-out 900ms infinite;
+}
+.door-lock__ring + .door-lock__ring { animation-delay: 2.7s; }
+.door-lock__halo {
+    position: absolute;
+    inset: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--lock-glow) 0%, transparent 70%);
+    animation: door-lock-breathe 4.2s ease-in-out 700ms infinite;
+}
+.door-lock__svg { position: relative; width: 64px; height: 64px; overflow: visible; }
+.door-lock__shackle {
+    fill: none;
+    stroke: var(--lock-steel-deep);
+    stroke-width: 5.5;
+    stroke-linecap: round;
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: door-lock-shackle 620ms cubic-bezier(.3, 1.5, .5, 1) 320ms both;
+}
+.door-lock__body {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: door-lock-click 420ms var(--lock-ease) 760ms both;
+}
+.door-lock__hole {
+    fill: var(--lock-hole);
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: door-lock-hole 520ms var(--lock-ease) 820ms both;
+}
+
+@keyframes door-lock-fade { to { opacity: 1; } }
+@keyframes door-lock-rise {
+    from { opacity: 0; transform: translateY(18px) scale(.97); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes door-lock-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes door-lock-shackle {
+    from { transform: translateY(-9px) rotate(-7deg); }
+    to { transform: none; }
+}
+@keyframes door-lock-click {
+    0% { transform: none; }
+    45% { transform: translateY(1.5px) scale(1.035, .97); }
+    100% { transform: none; }
+}
+@keyframes door-lock-hole {
+    from { opacity: .3; transform: scale(.7); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes door-lock-ring {
+    0% { opacity: 0; transform: scale(.62); }
+    18% { opacity: .9; }
+    100% { opacity: 0; transform: scale(1.14); }
+}
+@keyframes door-lock-breathe {
+    0%, 100% { opacity: .65; transform: scale(.96); }
+    50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes door-lock-sheen {
+    0% { transform: translateX(-120%); }
+    45%, 100% { transform: translateX(120%); }
+}
+@keyframes door-lock-sheen-rtl {
+    0% { transform: translateX(120%); }
+    45%, 100% { transform: translateX(-120%); }
+}
+@keyframes door-lock-nudge {
+    0%, 100% { transform: rotate(0); }
+    30% { transform: rotate(-11deg); }
+    65% { transform: rotate(8deg); }
+}
+
+/* ---------------------------------------------------------------- marks on the navigation */
+
+.ws-lockmark {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 14px;
+    height: 14px;
+    color: var(--ws-muted, currentColor);
+    transform-origin: 50% 20%;
+}
+.ws-lockmark svg {
+    width: 13px !important;
+    height: 13px !important;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.ws-navitem.is-locked,
+.ws-float a.is-locked { opacity: .62; transition: opacity 240ms var(--lock-ease), color 240ms var(--lock-ease), transform 240ms var(--lock-ease); }
+.ws-navitem.is-locked:hover,
+.ws-float a.is-locked:hover { opacity: .9; }
+.ws-navitem.is-active.is-locked,
+.ws-float a.is-selected.is-locked { opacity: 1; }
+.ws-navitem .ws-lockmark { margin-inline-start: auto; }
+.ws-navitem.is-locked:hover .ws-lockmark,
+.ws-float a.is-locked:hover .ws-lockmark { animation: door-lock-nudge 460ms var(--lock-ease); }
+
+/* The Overview circle: a locked door stays in place, dimmed, with the padlock beside its name. */
+.portal-door.is-locked .portal-leaf__face { filter: saturate(.45) brightness(.82); }
+.portal-door.is-locked .portal-leaf__label { opacity: .78; }
+.portal-door.is-locked .portal-leaf__lock {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .1);
+}
+.portal-door.is-locked .portal-leaf__lock svg { width: 12px; height: 12px; }
+
+/* ---------------------------------------------------------------- a locked section inside a modal */
+
+.rm-locked {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    padding: 44px 16px;
+    color: var(--lock-muted);
+    font-size: 13px;
+    text-align: center;
+    animation: door-lock-up 480ms var(--lock-ease) both;
+}
+.rm-locked .door-lock__svg { width: 40px; height: 40px; }
+
+@media (max-width: 640px) {
+    .door-lock__ghost { grid-template-columns: minmax(0, 1fr); }
+    .door-lock__ghost span:nth-child(4) { grid-column: auto; }
+    .door-lock__card { padding: 28px 20px 24px; }
+    .door-lock__card h1 { font-size: 21px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .door-lock__ghost { animation: none; opacity: 1; }
+    .door-lock__ghost span::after,
+    .door-lock__ring { display: none; }
+    .door-lock__card,
+    .door-lock__card *,
+    .door-lock__halo,
+    .door-lock__shackle,
+    .door-lock__body,
+    .door-lock__hole,
+    .rm-locked,
+    .ws-navitem.is-locked:hover .ws-lockmark,
+    .ws-float a.is-locked:hover .ws-lockmark {
+        animation: none;
+        transition: none;
+    }
+}

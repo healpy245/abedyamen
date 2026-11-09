@@ -51,8 +51,15 @@ class SupportTicketResource extends JsonResource
         ];
 
         if (is_array($ticket->extra) && $ticket->extra !== []) {
-            $data['extra'] = $ticket->extra;
+            $extra = $ticket->extra;
+            unset($extra['audioPath'], $extra['screenPath']);
+            if ($extra !== []) {
+                $data['extra'] = $extra;
+            }
         }
+
+        $data['hasVoice'] = $ticket->hasVoice();
+        $data['hasScreen'] = $ticket->hasScreen();
 
         if ($this->detailed) {
             $data['events'] = $ticket->events->map(static fn ($event): array => [

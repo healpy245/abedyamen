@@ -62,6 +62,7 @@ final class FormMenuAgentMemory
             'attachments' => $attachments,
             'menu_draft' => is_array($draft) ? $draft : null,
             'messages' => $messages,
+            'kaman' => is_array($state['kaman'] ?? null) ? $state['kaman'] : null,
         ];
     }
 
@@ -74,7 +75,32 @@ final class FormMenuAgentMemory
             'attachments' => array_values($state['attachments'] ?? []),
             'menu_draft' => $state['menu_draft'] ?? null,
             'messages' => array_values($state['messages'] ?? []),
+            'kaman' => $state['kaman'] ?? $this->restaurant($userId, $conversationId),
         ], now()->addHours(8));
+    }
+
+    /**
+     * The restaurant this conversation logged in to from a chat message. Follow-up messages
+     * go there, not to whichever restaurant the form session holds.
+     *
+     * @param  array{token: string, base_url: string}  $restaurant
+     */
+    public function rememberRestaurant(int $userId, string $conversationId, array $restaurant): void
+    {
+        $state = Cache::get($this->key($userId, $conversationId));
+        $state = is_array($state) ? $state : [];
+        $state['kaman'] = $restaurant;
+        Cache::put($this->key($userId, $conversationId), $state, now()->addHours(8));
+    }
+
+    /**
+     * @return array{token: string, base_url: string}|null
+     */
+    private function restaurant(int $userId, string $conversationId): ?array
+    {
+        $state = Cache::get($this->key($userId, $conversationId));
+
+        return is_array($state) && is_array($state['kaman'] ?? null) ? $state['kaman'] : null;
     }
 
     private function key(int $userId, string $conversationId): string

@@ -21,6 +21,85 @@ final class FormMenuAgentService
 
     public const MAX_ATTACHMENTS = 50;
 
+    private const TRANSLATION_RULES = <<<'RULES'
+Translate each restaurant menu row into Arabic, Hebrew, and English. Return only JSON {"rows":[{"id":"","name_ar":"","name_en":"","name_he":"","description_ar":"","description_en":"","description_he":""}]}. Keep the source text in its own language. Arabic must use Arabic letters. Hebrew must use Hebrew letters. English must use Latin letters. Do not copy one language into the other fields. A brand written in Latin letters is spelled out in Hebrew and Arabic letters in those fields.
+Translate the whole description, keep every number, price, and "|" separator, and do not add ingredients that are not written.
+Use local restaurant usage: فقع = mushrooms / פטריות. جامبا = bell pepper, gamba / גמבה. تيرس = corn / תירס. بيريه = mashed potato / פירה. هيليون = asparagus / אספרגוס. شمينت = cream / שמנת. دينيس = sea bream / דניס. شريمبس = shrimp / שרימפס. فواكة البحر = seafood / פירות ים. زعتر on a risotto = thyme / טימין. غرام = g / גרם. ملم = ml / מ"ל. صغير = small / קטן. كبير = large / גדול.
+If you are not sure what a word means, keep that word as written in Arabic inside the translation. Do not guess, and do not invent a meaning such as a wine name.
+RULES;
+
+    private const IMPORT_TEXTS = [
+        'en' => [
+            'verified' => 'The menu is built and verified on the public menu: %d categories, %d dishes, %d photos.',
+            'not_verified' => 'The import is NOT complete. The public menu shows %d categories, %d of the dishes, %d photos.',
+            'written' => '%d dishes created, %d already there and left as they were, %d updated.',
+            'could_not' => 'The menu could not be imported. Nothing is confirmed on the public menu.',
+            'splits' => 'Split into two dishes by size:',
+            'conflict' => '%s: the description says %s, the price badge says %s. I used the badge, because that is what the site charges.',
+            'extras' => '%d other dishes that were already on this menu are also showing.',
+            'warning_no_price' => '%s has no price on the source, so it was skipped.',
+            'warning_unnamed_prices' => '%s shows the prices %s but names no sizes. I used the first price.',
+            'warning_no_photo' => 'No photo on the source',
+            'problem_write_failed' => 'Could not be written',
+            'problem_hidden' => 'Status is not 1 in the manager API',
+            'problem_no_photo' => 'No photo in the manager API',
+            'problem_no_public_page' => 'The public menu page could not be opened',
+            'problem_no_chips' => 'The public menu shows no category chips',
+            'problem_empty_state' => 'The public menu shows no products',
+            'problem_not_public' => 'Not showing on the public menu',
+            'problem_no_public_photo' => 'No photo on the public menu',
+            'problem_wrong_price' => 'Wrong price on the public menu',
+            'problem_wrong_category' => 'Wrong category on the public menu',
+            'problem_broken_photo' => 'A sample photo from the public menu did not open as an image',
+        ],
+        'ar' => [
+            'verified' => 'تم بناء القائمة والتحقق منها في القائمة العامة: %d فئات، %d أطباق، %d صور.',
+            'not_verified' => 'لم يكتمل الاستيراد. القائمة العامة تعرض %d فئات و%d من الأطباق و%d صور.',
+            'written' => 'تم إنشاء %d أطباق، و%d موجودة مسبقا ولم تتغير، وتم تحديث %d.',
+            'could_not' => 'تعذر استيراد القائمة. لا يوجد شيء مؤكد في القائمة العامة.',
+            'splits' => 'تم تقسيمها إلى طبقين حسب الحجم:',
+            'conflict' => '%s: الوصف يذكر %s بينما شارة السعر تذكر %s. استخدمت شارة السعر لأن الموقع يحاسب عليها.',
+            'extras' => 'تظهر أيضا %d أطباق أخرى كانت موجودة في هذه القائمة.',
+            'warning_no_price' => '%s بدون سعر في المصدر، لذلك لم تتم إضافته.',
+            'warning_unnamed_prices' => '%s يعرض الأسعار %s بدون أحجام. استخدمت السعر الأول.',
+            'warning_no_photo' => 'بدون صورة في المصدر',
+            'problem_write_failed' => 'تعذرت الكتابة',
+            'problem_hidden' => 'الحالة ليست 1 في واجهة الإدارة',
+            'problem_no_photo' => 'بدون صورة في واجهة الإدارة',
+            'problem_no_public_page' => 'تعذر فتح صفحة القائمة العامة',
+            'problem_no_chips' => 'القائمة العامة لا تعرض الفئات',
+            'problem_empty_state' => 'القائمة العامة لا تعرض أي منتجات',
+            'problem_not_public' => 'لا يظهر في القائمة العامة',
+            'problem_no_public_photo' => 'بدون صورة في القائمة العامة',
+            'problem_wrong_price' => 'سعر خاطئ في القائمة العامة',
+            'problem_wrong_category' => 'فئة خاطئة في القائمة العامة',
+            'problem_broken_photo' => 'صورة نموذجية من القائمة العامة لم تفتح كصورة',
+        ],
+        'he' => [
+            'verified' => 'התפריט נבנה ואומת בתפריט הציבורי: %d קטגוריות, %d מנות, %d תמונות.',
+            'not_verified' => 'הייבוא לא הושלם. התפריט הציבורי מציג %d קטגוריות, %d מהמנות, %d תמונות.',
+            'written' => 'נוצרו %d מנות, %d כבר היו ונשארו כפי שהן, %d עודכנו.',
+            'could_not' => 'לא ניתן היה לייבא את התפריט. שום דבר לא אומת בתפריט הציבורי.',
+            'splits' => 'פוצל לשתי מנות לפי גודל:',
+            'conflict' => '%s: בתיאור כתוב %s, בתג המחיר כתוב %s. השתמשתי בתג המחיר, כי זה מה שהאתר גובה.',
+            'extras' => 'מוצגות גם %d מנות נוספות שכבר היו בתפריט הזה.',
+            'warning_no_price' => 'ל-%s אין מחיר במקור, ולכן לא נוסף.',
+            'warning_unnamed_prices' => '%s מציג את המחירים %s בלי גדלים. השתמשתי במחיר הראשון.',
+            'warning_no_photo' => 'אין תמונה במקור',
+            'problem_write_failed' => 'לא ניתן היה לכתוב',
+            'problem_hidden' => 'הסטטוס אינו 1 בממשק הניהול',
+            'problem_no_photo' => 'אין תמונה בממשק הניהול',
+            'problem_no_public_page' => 'לא ניתן היה לפתוח את דף התפריט הציבורי',
+            'problem_no_chips' => 'התפריט הציבורי לא מציג קטגוריות',
+            'problem_empty_state' => 'התפריט הציבורי לא מציג מוצרים',
+            'problem_not_public' => 'לא מופיע בתפריט הציבורי',
+            'problem_no_public_photo' => 'אין תמונה בתפריט הציבורי',
+            'problem_wrong_price' => 'מחיר שגוי בתפריט הציבורי',
+            'problem_wrong_category' => 'קטגוריה שגויה בתפריט הציבורי',
+            'problem_broken_photo' => 'תמונה לדוגמה מהתפריט הציבורי לא נפתחה כתמונה',
+        ],
+    ];
+
     /** @var callable(array<string, mixed>): void */
     private $emit;
 
@@ -28,6 +107,8 @@ final class FormMenuAgentService
     private array $turnAttachments = [];
 
     private string $turnApiKey = '';
+
+    private string $turnUserText = '';
 
     /** @var array<string, mixed>|null */
     private ?array $turnDraft = null;
@@ -39,6 +120,7 @@ final class FormMenuAgentService
     public function __construct(
         private readonly FormMenuDrinkCatalog $drinks,
         private readonly WoltMenuSource $wolt,
+        private readonly WebsiteMenuSource $website,
         private readonly KamanPublicMenuScraper $publicMenus,
         private readonly KamanMenuWriter $writer,
     ) {
@@ -110,6 +192,8 @@ final class FormMenuAgentService
         $this->turnDraft = $draft;
         $this->mealPhotosHandled = false;
         $this->mealPhotoReport = '';
+        $this->turnUserText = $userText;
+        $memory['has_new_menu_files'] = ! empty($memory['has_new_menu_files']) || $hasNewMenuFiles;
         $sourceUrl = $this->resolveMenuSource($userText, $history, $memory);
 
         if ($sourceUrl !== null) {
@@ -335,35 +419,50 @@ final class FormMenuAgentService
         return '';
     }
 
-    private function menuSourceUrl(string $text): ?string
+    /**
+     * Wolt and public Kaman menus are always a source. Any other public https link is one only
+     * when the same message asks to analyze, extract, build, copy, or import.
+     */
+    private function menuSourceUrl(string $text, ?bool $importIntent = null): ?string
     {
-        if (preg_match('#https?://[^\s<>"\']+#iu', $text, $match) !== 1) {
+        if (preg_match_all('#https?://[^\s<>"\',]+#iu', $text, $matches) === 0) {
             return null;
         }
-        $url = rtrim($match[0], '.,);]');
-        if (str_contains($url, '…') || str_ends_with($url, '...')) {
-            return null;
-        }
-        if ($this->wolt->isWoltUrl($url)) {
-            $path = (string) parse_url($url, PHP_URL_PATH);
-            if (preg_match('#/restaurant/[^/]+#', $path) !== 1) {
-                return null;
+        $importIntent ??= $this->wantsMenuImport($text);
+        foreach ($matches[0] as $candidate) {
+            $url = $this->acceptedSourceUrl(rtrim($candidate, '.,);]'), $importIntent);
+            if ($url !== null) {
+                return $url;
             }
-
-            return $url;
-        }
-        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
-        $path = (string) parse_url($url, PHP_URL_PATH);
-        if (str_contains($host, 'kaman.') && str_contains($path, '/menu')) {
-            return $url;
         }
 
         return null;
     }
 
+    private function acceptedSourceUrl(string $url, bool $importIntent): ?string
+    {
+        if (str_contains($url, '…') || str_ends_with($url, '...')) {
+            return null;
+        }
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        if ($this->wolt->isWoltUrl($url)) {
+            return preg_match('#/restaurant/[^/]+#', $path) === 1 ? $url : null;
+        }
+        if ($this->isKamanPublicMenuUrl($url)) {
+            return $url;
+        }
+        // Other wolt.com pages and a restaurant's own Kaman login are not menu sources.
+        if (str_ends_with($host, 'wolt.com') || preg_match('/(?:^|\.)kaman\.(?:rest|dev)$/', $host) === 1) {
+            return null;
+        }
+
+        return $importIntent && $this->website->isAllowedUrl($url) ? $url : null;
+    }
+
     private function wantsMenuImport(string $text): bool
     {
-        return preg_match('/build|copy|paste|import|scrape|analy[sz]e|from scratch|انسخ|حلل|ابن|תעתיק|תבנה|העתק|העתקה/u', mb_strtolower($text)) === 1;
+        return preg_match('/build|copy|paste|import|scrape|extract|analy[sz]e|from scratch|انسخ|حلل|ابن|استخرج|תעתיק|תבנה|העתק|העתקה|ייבא|חלץ/u', mb_strtolower($text)) === 1;
     }
 
     public function wantsLinkedMenuWork(string $text): bool
@@ -417,6 +516,21 @@ final class FormMenuAgentService
             return null;
         }
 
+        $url = $this->locateMenuSource($userText, $history, $memory);
+        // Menu files in this turn are the source, not a website mentioned next to them.
+        if ($url !== null && ! empty($memory['has_new_menu_files']) && $this->isWebsiteSource($url)) {
+            return null;
+        }
+
+        return $url;
+    }
+
+    /**
+     * @param  list<array{role: string, content: string}>  $history
+     * @param  array<string, mixed>  $memory
+     */
+    private function locateMenuSource(string $userText, array $history, array $memory): ?string
+    {
         $direct = $this->menuSourceUrl($userText);
         if ($direct !== null) {
             return $direct;
@@ -427,14 +541,12 @@ final class FormMenuAgentService
             return $fromHistory;
         }
 
-        foreach ([(string) ($memory['source_url'] ?? ''), (string) ($memory['title'] ?? '')] as $extra) {
-            $url = $this->menuSourceUrl($extra);
-            if ($url !== null) {
-                return $url;
-            }
+        $stored = $this->menuSourceUrl((string) ($memory['source_url'] ?? ''), true);
+        if ($stored !== null) {
+            return $stored;
         }
 
-        return null;
+        return $this->menuSourceUrl((string) ($memory['title'] ?? ''));
     }
 
     /**
@@ -444,6 +556,10 @@ final class FormMenuAgentService
      */
     private function importLinkedMenu(string $url, string $token, string $baseUrl, callable $emit, array $attachments, ?array $draft): array
     {
+        if ($this->isWebsiteSource($url)) {
+            return $this->importWebsiteMenu($url, $token, $baseUrl, $emit, $attachments, $draft);
+        }
+
         $emit([
             'event' => 'status',
             'message' => 'Opening the menu link…',
@@ -465,6 +581,11 @@ final class FormMenuAgentService
                 ]);
             });
             $reply = $this->importReport($report, $parsed);
+            $check = $this->verifyPublicMenu($parsed, $report, $token, $baseUrl, $emit);
+            foreach ($check['problems'] as $problem) {
+                $reply .= "\n".'Public menu check: '.$this->importText('en', 'problem_'.$problem['code'])
+                    .($problem['names'] === [] ? '' : ': '.implode(', ', array_slice($problem['names'], 0, 8)));
+            }
         } catch (FormWorkflowPausedException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -491,16 +612,537 @@ final class FormMenuAgentService
     }
 
     /**
+     * @param  list<array{name: string, path: string, mime: string}>  $attachments
+     * @param  array{categories?: list<array<string, mixed>>}|null  $draft
+     * @return array{reply: string, tool_calls: list<array<string, mixed>>, attachments: list<array{name: string, path: string, mime: string}>, menu_draft: ?array, failed: bool}
+     */
+    private function importWebsiteMenu(string $url, string $token, string $baseUrl, callable $emit, array $attachments, ?array $draft): array
+    {
+        $language = $this->replyLanguage($this->turnUserText);
+        $failed = true;
+        $emit([
+            'event' => 'status',
+            'message' => 'Opening the restaurant website…',
+        ]);
+
+        try {
+            $parsed = $this->website->parse($url);
+            if ($parsed['meals'] === []) {
+                $parsed = $this->extractWebsiteFallback((string) ($parsed['page_text'] ?? ''), $emit);
+            }
+            if ($parsed['meals'] === []) {
+                throw new \RuntimeException('No menu was found on that website.');
+            }
+            $emit([
+                'event' => 'status',
+                'message' => 'Found '.count($parsed['categories']).' categories and '.count($parsed['meals']).' dishes.',
+            ]);
+
+            $parsed = $this->fillEmptyDescriptions($this->translateMenu($parsed, $emit, true));
+            $parsed['keep_existing'] = ! $this->wantsRebuild($this->turnUserText);
+
+            $emit([
+                'event' => 'status',
+                'message' => 'Writing categories, dishes, and photos…',
+            ]);
+            $report = $this->writer->write($baseUrl, $token, $parsed, true, function (string $step, string $message) use ($emit): void {
+                $emit([
+                    'event' => 'status',
+                    'message' => $message,
+                ]);
+            });
+
+            $check = $this->verifyPublicMenu($parsed, $report, $token, $baseUrl, $emit);
+            $failed = ! $check['ok'];
+            $reply = $this->websiteReply($language, $parsed, $report, $check);
+        } catch (FormWorkflowPausedException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('Website menu import failed', ['url' => $url, 'error' => $e->getMessage()]);
+            $reply = $this->importText($language, 'could_not').' '.$e->getMessage();
+        }
+
+        $emit([
+            'event' => 'message',
+            'reply' => $reply,
+        ]);
+
+        return [
+            'reply' => $reply,
+            'tool_calls' => [[
+                'name' => 'import_menu_url',
+                'arguments' => ['url' => $url],
+                'ok' => ! $failed,
+                'summary' => $reply,
+            ]],
+            'attachments' => $attachments,
+            'menu_draft' => $draft,
+            'failed' => $failed,
+        ];
+    }
+
+    /**
+     * The writer's report is not proof. The manager API and the page a customer opens are.
+     *
+     * @param  array<string, mixed>  $parsed
+     * @param  array<string, mixed>  $report
+     * @return array{ok: bool, problems: list<array{code: string, names: list<string>}>, categories: int, dishes: int, photos: int, extras: int, missing_source_photos: list<string>}
+     */
+    private function verifyPublicMenu(array $parsed, array $report, string $token, string $baseUrl, callable $emit): array
+    {
+        $emit([
+            'event' => 'status',
+            'message' => 'Checking the public menu…',
+        ]);
+
+        $itemIds = [];
+        $created = [];
+        foreach (['created', 'updated', 'reused'] as $bucket) {
+            foreach ($report['meals'][$bucket] ?? [] as $row) {
+                if (is_array($row) && (string) ($row['id'] ?? '') !== '') {
+                    $itemIds[(string) ($row['haat_id'] ?? '')] = (string) $row['id'];
+                    if ($bucket === 'created') {
+                        $created[(string) ($row['haat_id'] ?? '')] = true;
+                    }
+                }
+            }
+        }
+        $categoryIds = [];
+        foreach (['created', 'updated', 'reused'] as $bucket) {
+            foreach ($report['categories'][$bucket] ?? [] as $row) {
+                if (is_array($row) && (string) ($row['id'] ?? '') !== '') {
+                    $categoryIds[(string) ($row['haat_id'] ?? '')] = (string) $row['id'];
+                }
+            }
+        }
+
+        $problems = [];
+        $failedRows = array_merge($report['meals']['failed'] ?? [], $report['categories']['failed'] ?? []);
+        if ($failedRows !== []) {
+            $problems['write_failed'] = array_map(static fn (array $row): string => (string) ($row['name'] ?? $row['haat_id'] ?? ''), $failedRows);
+        }
+
+        $meals = [];
+        $missingPhotos = [];
+        foreach ($parsed['meals'] ?? [] as $meal) {
+            if (! is_array($meal) || ! ($meal['is_available'] ?? true) || ! isset($itemIds[(string) ($meal['haat_id'] ?? '')])) {
+                continue;
+            }
+            $meals[] = $meal;
+            if (! $this->mealHasSourcePhoto($meal)) {
+                $missingPhotos[] = $this->mealLabel($meal);
+            }
+        }
+
+        $this->checkManagerItems($meals, $itemIds, $token, $baseUrl, $problems);
+
+        $public = null;
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $found = $this->checkPublicPage($meals, $itemIds, $categoryIds, $created, $baseUrl);
+            $public = $found;
+            if ($found['problems'] === [] || app()->environment('testing')) {
+                break;
+            }
+            sleep(5);
+        }
+        $problems = array_merge($problems, $public['problems']);
+
+        $out = [];
+        foreach ($problems as $code => $names) {
+            $out[] = ['code' => (string) $code, 'names' => array_values($names)];
+        }
+
+        return [
+            'ok' => $out === [],
+            'problems' => $out,
+            'categories' => $public['categories'],
+            'dishes' => $public['dishes'],
+            'photos' => $public['photos'],
+            'extras' => $public['extras'],
+            'missing_source_photos' => $missingPhotos,
+        ];
+    }
+
+    /**
+     * GET /items must show status 1 and a photo. A dish that does not gets one repair attempt.
+     *
+     * @param  list<array<string, mixed>>  $meals
+     * @param  array<string, string>  $itemIds
+     * @param  array<string, list<string>>  $problems
+     */
+    private function checkManagerItems(array $meals, array $itemIds, string $token, string $baseUrl, array &$problems): void
+    {
+        $rows = $this->itemsById($baseUrl, $token);
+        $repaired = false;
+        foreach ($meals as $meal) {
+            $row = $rows[$itemIds[(string) $meal['haat_id']]] ?? null;
+            if ($row === null) {
+                continue;
+            }
+            $hidden = ! $this->itemIsLive($row);
+            $noPhoto = $this->mealHasSourcePhoto($meal) && ! $this->itemHasPhoto($row);
+            if ($hidden || $noPhoto) {
+                $this->writer->repairMeal($baseUrl, $token, $row, $meal, $noPhoto);
+                $repaired = true;
+            }
+        }
+        if ($repaired) {
+            $rows = $this->itemsById($baseUrl, $token);
+        }
+        foreach ($meals as $meal) {
+            $row = $rows[$itemIds[(string) $meal['haat_id']]] ?? null;
+            if ($row === null) {
+                continue;
+            }
+            if (! $this->itemIsLive($row)) {
+                $problems['hidden'][] = $this->mealLabel($meal);
+            }
+            if ($this->mealHasSourcePhoto($meal) && ! $this->itemHasPhoto($row)) {
+                $problems['no_photo'][] = $this->mealLabel($meal);
+            }
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $meals
+     * @param  array<string, string>  $itemIds
+     * @param  array<string, string>  $categoryIds
+     * @param  array<string, bool>  $created
+     * @return array{problems: array<string, list<string>>, categories: int, dishes: int, photos: int, extras: int}
+     */
+    private function checkPublicPage(array $meals, array $itemIds, array $categoryIds, array $created, string $baseUrl): array
+    {
+        $problems = [];
+        $result = ['categories' => 0, 'dishes' => 0, 'photos' => 0, 'extras' => 0];
+
+        $http = Http::timeout(60)->withHeaders(['Accept' => 'text/html', 'User-Agent' => 'Mozilla/5.0 (compatible; KamanMenuClone/1.0)']);
+        if (! config('services.kaman.ssl_verify', true)) {
+            $http = $http->withoutVerifying();
+        }
+        try {
+            $response = $http->get(KamanUrl::originFromManagerApi($baseUrl).'/menu');
+        } catch (\Illuminate\Http\Client\ConnectionException) {
+            return ['problems' => ['no_public_page' => []]] + $result;
+        }
+        if (! $response->successful()) {
+            return ['problems' => ['no_public_page' => []]] + $result;
+        }
+
+        $page = $this->publicMenus->inspect($response->body());
+        if ($page['chips'] === []) {
+            $problems['no_chips'] = [];
+        }
+        if ($page['empty_visible'] || $page['dishes'] === []) {
+            $problems['empty_state'] = [];
+        }
+
+        $byName = [];
+        foreach ($page['dishes'] as $id => $dish) {
+            $byName[$dish['name']] ??= (string) $id;
+        }
+
+        $found = [];
+        $wantedChips = [];
+        $photoSample = '';
+        $photos = 0;
+        foreach ($meals as $meal) {
+            $haatId = (string) $meal['haat_id'];
+            $id = $itemIds[$haatId];
+            if (! isset($page['dishes'][$id])) {
+                foreach ($this->mealNames($meal) as $name) {
+                    if (isset($byName[$name])) {
+                        $id = $byName[$name];
+                        break;
+                    }
+                }
+            }
+            $dish = $page['dishes'][$id] ?? null;
+            if ($dish === null) {
+                $problems['not_public'][] = $this->mealLabel($meal);
+
+                continue;
+            }
+            $found[$id] = true;
+            if ($dish['image'] !== '') {
+                $photos++;
+                $photoSample = $photoSample !== '' ? $photoSample : $dish['image'];
+            } elseif ($this->mealHasSourcePhoto($meal)) {
+                $problems['no_public_photo'][] = $this->mealLabel($meal);
+            }
+            if (isset($created[$haatId])) {
+                if (abs((float) $dish['price'] - (float) $meal['price']) > 0.001) {
+                    $problems['wrong_price'][] = $this->mealLabel($meal);
+                }
+                $wanted = $categoryIds[(string) ($meal['category_haat_id'] ?? '')] ?? '';
+                if ($wanted !== '' && $dish['category'] !== '' && $dish['category'] !== $wanted) {
+                    $problems['wrong_category'][] = $this->mealLabel($meal);
+                }
+                if ($wanted !== '') {
+                    $wantedChips[$wanted] = true;
+                }
+            }
+        }
+        if (array_diff(array_keys($wantedChips), $page['chips']) !== []) {
+            $problems['no_chips'] = [];
+        }
+
+        if ($photoSample !== '' && ! $this->isImageUrl($photoSample)) {
+            $problems['broken_photo'] = [];
+        }
+
+        return [
+            'problems' => $problems,
+            'categories' => count($page['chips']),
+            'dishes' => count($found),
+            'photos' => $photos,
+            'extras' => max(0, count($page['dishes']) - count($found)),
+        ];
+    }
+
+    private function isImageUrl(string $url): bool
+    {
+        $http = Http::timeout(30);
+        if (! config('services.kaman.ssl_verify', true)) {
+            $http = $http->withoutVerifying();
+        }
+        try {
+            $response = $http->get($url);
+        } catch (\Illuminate\Http\Client\ConnectionException) {
+            return false;
+        }
+
+        return $response->successful() && str_starts_with(strtolower((string) $response->header('Content-Type')), 'image/');
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function itemsById(string $baseUrl, string $token): array
+    {
+        $rows = [];
+        foreach ($this->writer->listItems($baseUrl, $token) as $row) {
+            if (is_array($row) && (string) ($row['id'] ?? '') !== '') {
+                $rows[(string) $row['id']] = $row;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function itemIsLive(array $row): bool
+    {
+        if (! array_key_exists('status', $row)) {
+            return true;
+        }
+        $status = $row['status'];
+
+        return $status === true || in_array(strtolower(trim((string) $status)), ['1', 'true', 'active'], true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function itemHasPhoto(array $row): bool
+    {
+        return trim((string) ($row['image_url'] ?? $row['image'] ?? '')) !== '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $meal
+     */
+    private function mealHasSourcePhoto(array $meal): bool
+    {
+        return is_string($meal['image_url'] ?? null) && $meal['image_url'] !== '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $meal
+     */
+    private function mealLabel(array $meal): string
+    {
+        return (string) ($meal['source_name'] ?? $meal['name_ar'] ?? $meal['name_en'] ?? '');
+    }
+
+    /**
+     * @param  array<string, mixed>  $meal
+     * @return list<string>
+     */
+    private function mealNames(array $meal): array
+    {
+        return array_values(array_filter(array_map(
+            static fn (string $field): string => trim((string) ($meal[$field] ?? '')),
+            ['name_ar', 'name_en', 'name_he'],
+        )));
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
+     * @return array<string, mixed>
+     */
+    private function fillEmptyDescriptions(array $parsed): array
+    {
+        foreach ($parsed['meals'] ?? [] as $index => $meal) {
+            foreach (['ar', 'en', 'he'] as $code) {
+                if (trim((string) ($meal['description_'.$code] ?? '')) === '') {
+                    $parsed['meals'][$index]['description_'.$code] = (string) ($meal['name_'.$code] ?? '');
+                }
+            }
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * Last resort for a page with no repeated cards. The model reads text; it is never the parser
+     * for a page that has stable markup.
+     *
+     * @return array<string, mixed>
+     */
+    private function extractWebsiteFallback(string $pageText, callable $emit): array
+    {
+        if (trim($pageText) === '') {
+            return ['categories' => [], 'meals' => []];
+        }
+        $emit([
+            'event' => 'status',
+            'message' => 'This website has no regular menu layout. Reading its text…',
+        ]);
+
+        $choice = $this->chatCompletions(trim((string) config('openai.api_key')), [
+            ['role' => 'system', 'content' => 'You read the text of a restaurant website and return its menu as JSON: {"categories":[{"name":"","items":[{"name":"","description":"","price":"","image_url":""}]}]}. Copy names and descriptions exactly as written, in their original language. price is the selling price only, as written; when a dish shows several prices keep them separated by " | ". Never take a price from a description. image_url is the [image: url] directly next to the dish, or empty. Never invent a dish, a price, or an image. If the page has no menu, return {"categories":[]}.'],
+            ['role' => 'user', 'content' => $pageText],
+        ], null, [
+            'temperature' => 0,
+            'max_tokens' => 8000,
+            'reasoning_effort' => 'low',
+        ]);
+
+        $content = trim((string) ($choice['content'] ?? ''));
+        $content = preg_replace('/^```(?:json)?\s*|\s*```$/u', '', $content) ?? $content;
+        $decoded = $this->decodeMaybeJson($content);
+        $categories = is_array($decoded) && is_array($decoded['categories'] ?? null) ? $decoded['categories'] : [];
+
+        return $this->website->fromExtractedRows($categories, $pageText);
+    }
+
+    private function wantsRebuild(string $text): bool
+    {
+        return $this->wantsMenuRepair($text)
+            || preg_match('/rebuild|re-build|from scratch|overwrite|إعادة بناء|اعادة بناء|من جديد|מחדש/u', mb_strtolower($text)) === 1;
+    }
+
+    private function replyLanguage(string $text): string
+    {
+        $text = preg_replace('#https?://\S+|\S+@\S+|\S+\.kaman\.\S+#iu', ' ', $text) ?? $text;
+        if (preg_match('/\p{Hebrew}/u', $text) === 1) {
+            return 'he';
+        }
+
+        return preg_match('/\p{Arabic}/u', $text) === 1 ? 'ar' : 'en';
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
+     * @param  array<string, mixed>  $report
+     * @param  array<string, mixed>  $check
+     */
+    private function websiteReply(string $language, array $parsed, array $report, array $check): string
+    {
+        $lines = [$check['ok']
+            ? $this->importText($language, 'verified', $check['categories'], $check['dishes'], $check['photos'])
+            : $this->importText($language, 'not_verified', $check['categories'], $check['dishes'], $check['photos'])];
+        $lines[] = $this->importText(
+            $language,
+            'written',
+            count($report['meals']['created'] ?? []),
+            count($report['meals']['reused'] ?? []),
+            count($report['meals']['updated'] ?? []),
+        );
+
+        foreach ($check['problems'] as $problem) {
+            $names = array_slice($problem['names'], 0, 8);
+            $lines[] = '• '.$this->importText($language, 'problem_'.$problem['code']).($names === [] ? '' : ': '.implode('، ', $names));
+        }
+
+        $counts = [];
+        foreach ($parsed['meals'] ?? [] as $meal) {
+            $counts[(string) ($meal['category_haat_id'] ?? '')] = ($counts[(string) ($meal['category_haat_id'] ?? '')] ?? 0) + 1;
+        }
+        $lines[] = '';
+        foreach ($parsed['categories'] ?? [] as $category) {
+            $lines[] = trim((string) ($category['name_'.$language] ?? $category['source_name'] ?? '')).': '.($counts[(string) $category['haat_id']] ?? 0);
+        }
+
+        if (($parsed['size_splits'] ?? []) !== []) {
+            $lines[] = '';
+            $lines[] = $this->importText($language, 'splits');
+            foreach ($parsed['size_splits'] as $split) {
+                $sizes = array_map(static fn (array $size): string => $size['label'].' '.$size['price'], $split['sizes']);
+                $lines[] = '• '.$split['name'].': '.implode(' | ', $sizes);
+            }
+        }
+
+        if (($parsed['price_conflicts'] ?? []) !== []) {
+            $lines[] = '';
+            foreach ($parsed['price_conflicts'] as $conflict) {
+                $lines[] = '• '.$this->importText(
+                    $language,
+                    'conflict',
+                    $conflict['name'],
+                    implode(' / ', $conflict['description_prices']),
+                    implode(' / ', $conflict['badge_prices']),
+                );
+            }
+        }
+
+        foreach ($parsed['warnings'] ?? [] as $warning) {
+            if (in_array($warning['type'] ?? '', ['no_price', 'unnamed_prices'], true)) {
+                $lines[] = '• '.$this->importText($language, 'warning_'.$warning['type'], (string) $warning['name'], implode(' | ', $warning['prices'] ?? []));
+            }
+        }
+        if (($check['missing_source_photos'] ?? []) !== []) {
+            $lines[] = '• '.$this->importText($language, 'warning_no_photo').': '.implode('، ', array_slice($check['missing_source_photos'], 0, 8));
+        }
+        if (($check['extras'] ?? 0) > 0) {
+            $lines[] = '• '.$this->importText($language, 'extras', $check['extras']);
+        }
+
+        return trim(implode("\n", $lines));
+    }
+
+    private function importText(string $language, string $key, mixed ...$args): string
+    {
+        $texts = self::IMPORT_TEXTS[$language] ?? self::IMPORT_TEXTS['en'];
+
+        return vsprintf($texts[$key] ?? self::IMPORT_TEXTS['en'][$key] ?? $key, $args);
+    }
+
+    private function isWebsiteSource(string $url): bool
+    {
+        return ! $this->wolt->isWoltUrl($url) && ! $this->isKamanPublicMenuUrl($url);
+    }
+
+    private function isKamanPublicMenuUrl(string $url): bool
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        return str_contains($host, 'kaman.') && str_contains((string) parse_url($url, PHP_URL_PATH), '/menu');
+    }
+
+    /**
      * @param  array<string, mixed>  $arguments
      * @return array{ok: bool, summary: string, content: string}
      */
     private function importMenuTool(array $arguments, string $token, string $baseUrl): array
     {
         $url = trim((string) ($arguments['url'] ?? ''));
-        if ($this->menuSourceUrl($url) === null) {
+        if ($this->menuSourceUrl($url, $this->wantsLinkedMenuWork($this->turnUserText)) === null) {
             return [
                 'ok' => false,
-                'summary' => 'URL is not a Wolt restaurant or a public Kaman menu',
+                'summary' => 'URL is not a Wolt restaurant, a public Kaman menu, or a public restaurant website',
                 'content' => json_encode(['error' => 'unsupported url'], JSON_UNESCAPED_UNICODE),
             ];
         }
@@ -518,7 +1160,7 @@ final class FormMenuAgentService
      * @param  array<string, mixed>  $parsed
      * @return array<string, mixed>
      */
-    private function translateMenu(array $parsed, callable $emit): array
+    private function translateMenu(array $parsed, callable $emit, bool $strict = false): array
     {
         $rows = [];
         foreach (['categories', 'meals', 'unique_ingredient_categories', 'unique_ingredients'] as $list) {
@@ -550,10 +1192,24 @@ final class FormMenuAgentService
                 'event' => 'status',
                 'message' => 'Translating names '.(($index * 12) + 1).'–'.min(count($rows), ($index + 1) * 12).' of '.count($rows).'…',
             ]);
-            $translated += $this->translateMenuChunk($chunk);
+            $translated += $this->translateMenuChunk($chunk, $strict);
             $missing = array_values(array_filter($chunk, fn (array $row): bool => ! isset($translated[$row['id']])));
             if ($missing !== []) {
-                $translated += $this->translateMenuChunk($missing);
+                $translated += $this->translateMenuChunk($missing, $strict);
+            }
+        }
+        if ($strict) {
+            // Smaller and smaller batches. A row that still fails stops the job before any write.
+            foreach ([4, 1] as $size) {
+                $missing = array_values(array_filter($rows, fn (array $row): bool => ! isset($translated[$row['id']])));
+                foreach (array_chunk($missing, $size) as $chunk) {
+                    $translated += $this->translateMenuChunk($chunk, true);
+                }
+            }
+            $missing = array_values(array_filter($rows, fn (array $row): bool => ! isset($translated[$row['id']])));
+            if ($missing !== []) {
+                $names = array_map(static fn (array $row): string => (string) $row['name'], array_slice($missing, 0, 8));
+                throw new \RuntimeException('Translation failed for '.count($missing).' rows, so nothing was written: '.implode(', ', $names));
             }
         }
         $emit([
@@ -581,7 +1237,7 @@ final class FormMenuAgentService
      * @param  list<array{id: string, name: string, description: string}>  $rows
      * @return array<string, array<string, mixed>>
      */
-    private function translateMenuChunk(array $rows): array
+    private function translateMenuChunk(array $rows, bool $strict = false): array
     {
         if ($rows === []) {
             return [];
@@ -589,7 +1245,7 @@ final class FormMenuAgentService
 
         try {
             $choice = $this->chatCompletions(trim((string) config('openai.api_key')), [
-                ['role' => 'system', 'content' => 'Translate each restaurant menu row into Arabic, Hebrew, and English. Return only JSON {"rows":[{"id":"","name_ar":"","name_en":"","name_he":"","description_ar":"","description_en":"","description_he":""}]}. Keep the source text in its own language. Arabic must use Arabic letters. Hebrew must use Hebrew letters. English must use Latin letters. Do not copy one language into the other fields.'],
+                ['role' => 'system', 'content' => self::TRANSLATION_RULES],
                 ['role' => 'user', 'content' => $this->jsonForModel(['rows' => $rows], 20000)],
             ], null, [
                 'temperature' => 0.2,
@@ -618,7 +1274,8 @@ final class FormMenuAgentService
                 continue;
             }
             $source = $byId[(string) $row['id']];
-            if (! $this->translationAccepted((string) $source['name'], $row)) {
+            if (! $this->translationAccepted((string) $source['name'], $row)
+                || ! $this->descriptionAccepted((string) $source['description'], $row, $strict)) {
                 continue;
             }
             $accepted[(string) $row['id']] = $row;
@@ -638,6 +1295,12 @@ final class FormMenuAgentService
         if ($ar === '' || $en === '' || $he === '' || ($ar === $source && $en === $source && $he === $source)) {
             return false;
         }
+        if ($this->stillInWrongScript($he, '\p{Hebrew}')
+            || $this->stillInWrongScript($en, '[A-Za-z]')
+            || preg_match('/\p{Hebrew}/u', $en) === 1
+            || ! $this->keepsNumbers($source, [$en, $he])) {
+            return false;
+        }
         if (preg_match('/\p{Hebrew}/u', $source) === 1) {
             return preg_match('/\p{Arabic}/u', $ar) === 1
                 && preg_match('/[A-Za-z]/', $en) === 1
@@ -648,6 +1311,55 @@ final class FormMenuAgentService
         }
 
         return preg_match('/\p{Arabic}/u', $ar) === 1 && preg_match('/\p{Hebrew}/u', $he) === 1;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function descriptionAccepted(string $source, array $row, bool $strict): bool
+    {
+        if ($source === '') {
+            return true;
+        }
+        $en = trim((string) ($row['description_en'] ?? ''));
+        $he = trim((string) ($row['description_he'] ?? ''));
+        if ($en === '' || $he === '') {
+            return ! $strict;
+        }
+
+        return ! $this->stillInWrongScript($he, '\p{Hebrew}')
+            && ! $this->stillInWrongScript($en, '[A-Za-z]')
+            && $this->keepsNumbers($source, [$en, $he]);
+    }
+
+    /**
+     * Arabic left in a Hebrew or English field. One uncertain word inside a translated
+     * sentence is allowed; a field that is mostly Arabic is not a translation.
+     */
+    private function stillInWrongScript(string $value, string $wanted): bool
+    {
+        $arabic = preg_match_all('/\p{Arabic}/u', $value);
+        if ($arabic === 0) {
+            return false;
+        }
+
+        return $arabic > preg_match_all('/'.$wanted.'/u', $value);
+    }
+
+    /**
+     * @param  list<string>  $translations
+     */
+    private function keepsNumbers(string $source, array $translations): bool
+    {
+        preg_match_all('/[0-9]+/', $source, $numbers);
+        foreach ($translations as $translation) {
+            preg_match_all('/[0-9]+/', $translation, $kept);
+            if (array_diff($numbers[0], $kept[0]) !== []) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -696,6 +1408,10 @@ final class FormMenuAgentService
             foreach (['ar', 'en', 'he'] as $code) {
                 $field = $prefix.'_'.$code;
                 if (! array_key_exists($field, $row) && $prefix === 'description') {
+                    continue;
+                }
+                // The field the source was written in keeps the source wording.
+                if (in_array($field, $row['source_fields'] ?? [], true) && trim((string) ($row[$field] ?? '')) !== '') {
                     continue;
                 }
                 $value = trim((string) ($translation[$field] ?? ''));
@@ -1603,6 +2319,7 @@ final class FormMenuAgentService
                     'name_he' => $mealNames[2] !== '' ? $mealNames[2] : $mealNames[0],
                     'price' => $this->normalizePrice((string) ($meal['price'] ?? '0')),
                     'category_id' => $categoryId,
+                    'status' => ($meal['is_available'] ?? true) ? '1' : '0',
                     'description_en' => (string) ($meal['description_en'] ?? ''),
                     'description_ar' => (string) ($meal['description_ar'] ?? ''),
                     'description_he' => (string) ($meal['description_he'] ?? ''),
@@ -2463,7 +3180,7 @@ Logged in:
 Use tools to patch, rename, create leftovers, or delete duplicates. Do not stop after a sample. If the job is to store a menu, every meal from every photo must be written — except names that already exist.
 
 Tools:
-- import_menu_url: open a Wolt restaurant link or a public Kaman /menu link and copy the whole menu, including photos, prices, and option groups. Never say you cannot open the page.
+- import_menu_url: open a Wolt restaurant link, a public Kaman /menu link, or any public https restaurant website and copy the whole menu, including photos and prices. Never say you cannot open the page.
 - assign_meal_photos: match uploaded meal photos to meals by file name, then by looking at each photo, and upload the image onto the meal.
 - read_menu: the live menu (categories, meals, and option groups). Call this before any change.
 - edit_menu: apply chat edits to the live menu. Use this for rename, remove a phrase, change a price, change a description, or the same edit on many rows. Do not recreate meals to rename them.
@@ -2974,13 +3691,13 @@ PROMPT;
                 'type' => 'function',
                 'function' => [
                     'name' => 'import_menu_url',
-                    'description' => 'Open a Wolt restaurant URL or a public Kaman menu URL and copy the full menu onto this restaurant, including item photos and option groups.',
+                    'description' => 'Open a Wolt restaurant URL, a public Kaman menu URL, or a public restaurant website and copy the full menu onto this restaurant, including item photos. The public menu is checked afterwards.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
                             'url' => [
                                 'type' => 'string',
-                                'description' => 'https://wolt.com/.../restaurant/... or a public https://name.kaman.rest/menu link',
+                                'description' => 'https://wolt.com/.../restaurant/..., a public https://name.kaman.rest/menu link, or a restaurant website such as https://example.com/',
                             ],
                         ],
                         'required' => ['url'],
@@ -3233,6 +3950,11 @@ PROMPT;
                 'content' => json_encode(['error' => 'Invalid path. Use a manager path like /items.'], JSON_UNESCAPED_UNICODE),
                 'with_image' => false,
             ];
+        }
+
+        // Without a status Kaman stores the meal as 0, and the public menu hides it.
+        if ($method === 'POST' && $normalized === '/items' && ! isset($body['status'])) {
+            $body['status'] = '1';
         }
 
         if ($imagePath === null

@@ -94,12 +94,10 @@
                     </a>
                 @endcan
                 @if($user->isAppDevelopmentAdmin())
-                    <button type="button" class="kb-icon-btn kaman-filter-chip-bell" data-notify-open="open" title="{{ __('app-development.whatsapp.notify_open') }}" aria-label="{{ __('app-development.whatsapp.notify_open') }}">
-                        @include('app-development.partials.icon', ['name' => 'bell'])
-                    </button>
-                    <button type="button" class="kb-icon-btn kaman-filter-chip-bell" data-notify-open="qa" title="{{ __('app-development.whatsapp.notify_qa') }}" aria-label="{{ __('app-development.whatsapp.notify_qa') }}">
-                        @include('app-development.partials.icon', ['name' => 'bell'])
-                    </button>
+                    @include('app-development.partials.whatsapp-notify', [
+                        'members' => $notifyTeam ?? collect(),
+                        'counts' => $notifyCounts ?? ['open' => 0, 'qa' => 0],
+                    ])
                 @endif
             </div>
         </header>
@@ -110,32 +108,31 @@
             @if($search !== '')
                 <input type="hidden" name="q" value="{{ $search }}">
             @endif
-            <select name="assignee" aria-label="{{ __('app-development.tasks.assignee') }}">
+            <select name="assignee" data-ds-select data-ds-wrap="dv-filter" aria-label="{{ __('app-development.tasks.assignee') }}">
                 <option value="">{{ __('app-development.board.any_assignee') }}</option>
                 @foreach($developers as $developer)
                     <option value="{{ $developer->id }}" @selected((string) ($filters['assignee'] ?? '') === (string) $developer->id)>{{ $developer->name }}</option>
                 @endforeach
             </select>
-            <select name="priority" aria-label="{{ __('app-development.tickets.priority') }}">
+            <select name="priority" data-ds-select data-ds-wrap="dv-filter" aria-label="{{ __('app-development.tickets.priority') }}">
                 <option value="">{{ __('app-development.board.any_priority') }}</option>
                 @foreach(\App\Enums\AppDevelopmentTicketPriority::cases() as $priority)
                     <option value="{{ $priority->value }}" @selected(($filters['priority'] ?? '') === $priority->value)>{{ $priority->label() }}</option>
                 @endforeach
             </select>
-            <select name="status" aria-label="{{ __('app-development.tasks.status') }}">
+            <select name="status" data-ds-select data-ds-wrap="dv-filter" aria-label="{{ __('app-development.tasks.status') }}">
                 <option value="">{{ __('app-development.board.any_status') }}</option>
                 @foreach(\App\Enums\AppDevelopmentTaskStatus::cases() as $status)
                     <option value="{{ $status->value }}" @selected(($filters['status'] ?? '') === $status->value)>{{ $status->label() }}</option>
                 @endforeach
             </select>
-            <select name="app_type[]" aria-label="{{ __('app-development.tickets.app_types') }}">
+            <select name="app_type[]" data-ds-select data-ds-wrap="dv-filter" aria-label="{{ __('app-development.tickets.app_types') }}">
                 <option value="">{{ __('app-development.board.any_app') }}</option>
                 @foreach(\App\Enums\AppDevelopmentAppType::cases() as $appType)
                     <option value="{{ $appType->value }}" @selected(in_array($appType->value, $filters['app_type'] ?? [], true))>{{ $appType->label() }}</option>
                 @endforeach
             </select>
             <input class="kb-text" type="text" name="ticket" value="{{ $filters['ticket'] ?? '' }}" placeholder="{{ __('app-development.tasks.ticket') }}" aria-label="{{ __('app-development.tasks.ticket') }}" dir="ltr">
-            <input class="kb-text" type="date" name="due" value="{{ $filters['due'] ?? '' }}" aria-label="{{ __('app-development.tasks.due_at') }}">
             <button type="submit" class="kb-apply" aria-label="{{ __('app-development.board.filters') }}">
                 @include('app-development.partials.icon', ['name' => 'check'])
             </button>
@@ -172,7 +169,8 @@
                         $accent = match ($column['status']) {
                             \App\Enums\AppDevelopmentTaskStatus::Todo => '#4385fa',
                             \App\Enums\AppDevelopmentTaskStatus::InProgress => '#ff823f',
-                            \App\Enums\AppDevelopmentTaskStatus::Paused => '#e7ac30',
+                            \App\Enums\AppDevelopmentTaskStatus::QaTesting => '#e7ac30',
+                            \App\Enums\AppDevelopmentTaskStatus::PushedToGit => '#8b7cf6',
                             \App\Enums\AppDevelopmentTaskStatus::Completed => '#20aa69',
                         };
                         $loaded = $column['tasks']->count();
@@ -201,7 +199,6 @@
                             <th><a href="{{ $sortLink('priority') }}">{{ __('app-development.tickets.priority') }}</a></th>
                             <th><a href="{{ $sortLink('assignee') }}">{{ __('app-development.tasks.assignee') }}</a></th>
                             <th>{{ __('app-development.board.app') }}</th>
-                            <th><a href="{{ $sortLink('due') }}">{{ __('app-development.tasks.due_at') }}</a></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -221,11 +218,10 @@
                                 <td>{{ $task->priority->label() }}</td>
                                 <td>{{ $task->assignee?->name }}</td>
                                 <td>{{ $app?->label() }}</td>
-                                <td>@if($task->due_at)<bdi dir="ltr">{{ $task->due_at->format('Y-m-d') }}</bdi>@endif</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="tk-empty">{{ __('app-development.tasks.empty_column') }}</td>
+                                <td colspan="5" class="tk-empty">{{ __('app-development.tasks.empty_column') }}</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -248,22 +244,6 @@
         <div class="kb-toasts" data-kb-toasts aria-live="polite"></div>
     </div>
 
-    @if($user->isAppDevelopmentAdmin())
-        @include('app-development.partials.notify-picker', [
-            'audience' => 'open',
-            'action' => route('app-development.notify.open'),
-            'title' => __('app-development.whatsapp.notify_open'),
-            'hint' => __('app-development.whatsapp.pick_developers'),
-            'members' => $notifyDevelopers ?? collect(),
-        ])
-        @include('app-development.partials.notify-picker', [
-            'audience' => 'qa',
-            'action' => route('app-development.notify.qa'),
-            'title' => __('app-development.whatsapp.notify_qa'),
-            'hint' => __('app-development.whatsapp.pick_testers'),
-            'members' => $notifyTesters ?? collect(),
-        ])
-    @endif
 @endsection
 
 @push('scripts')

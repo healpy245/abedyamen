@@ -32,6 +32,9 @@ final class KamanMenuWriter
     /** @var array<string, mixed> */
     private array $plan = [];
 
+    /** @var array<string, array<string, mixed>> */
+    private array $snapshotItems = [];
+
     public function __construct(
         private readonly HaatImageDownloader $images,
         private readonly KamanCashierClient $cashier,
@@ -122,6 +125,12 @@ final class KamanMenuWriter
         ];
 
         $snapshot = $this->snapshot($baseUrl, $token, $parsed, $progress);
+        $this->snapshotItems = [];
+        foreach ($snapshot['items'] ?? [] as $row) {
+            if (is_array($row) && (string) ($row['id'] ?? '') !== '') {
+                $this->snapshotItems[(string) $row['id']] = $row;
+            }
+        }
         $this->plan = $this->planner->plan($parsed, $snapshot, $chat, $progress);
         $report['snapshot'] = [
             'cashier_available' => (bool) ($snapshot['cashier_available'] ?? false),
@@ -222,6 +231,44 @@ final class KamanMenuWriter
         }
 
         return $report;
+    }
+
+    /**
+     * Every item in the manager API, across all pages.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listItems(string $baseUrl, string $token): array
+    {
+        return $this->fetchList($baseUrl, $token, '/items', ['items']);
+    }
+
+    /**
+     * Fixes only status and photo on a meal that is already live. Its names, description,
+     * price and category stay as they are.
+     *
+     * @param  array<string, mixed>  $row  the live item
+     * @param  array<string, mixed>  $meal  the imported meal
+     */
+    public function repairMeal(string $baseUrl, string $token, array $row, array $meal, bool $withImage): bool
+    {
+        foreach (['name_ar', 'name_en', 'name_he', 'description_ar', 'description_en', 'description_he', 'price'] as $field) {
+            $current = trim((string) ($row[$field] ?? ''));
+            if ($current !== '') {
+                $meal[$field] = $current;
+            }
+        }
+        $categoryId = (string) ($row['category_id'] ?? (is_array($row['category'] ?? null) ? ($row['category']['id'] ?? '') : ''));
+
+        return $this->updateMeal(
+            $baseUrl,
+            $token,
+            (string) ($row['id'] ?? ''),
+            $meal,
+            $categoryId,
+            (string) ($meal['name_en'] ?? 'meal'),
+            $withImage,
+        );
     }
 
     private function http(int $timeout = 30): \Illuminate\Http\Client\PendingRequest
@@ -477,7 +524,10 @@ final class KamanMenuWriter
             if (is_string($matched) && $matched !== '' && $op !== 'create') {
                 $map[$meal['haat_id']] = $matched;
                 if ($op === 'update') {
-                    $ok = $this->updateMeal($baseUrl, $token, $matched, $meal, $categoryId, $label, $withImages);
+                    $keepExisting = ! empty($planned['keep_existing']) && isset($this->snapshotItems[$matched]);
+                    $ok = $keepExisting
+                        ? $this->repairMeal($baseUrl, $token, $this->snapshotItems[$matched], $meal, $withImages && in_array('image', $planned['changes'] ?? [], true))
+                        : $this->updateMeal($baseUrl, $token, $matched, $meal, $categoryId, $label, $withImages);
                     if ($ok) {
                         $report['meals']['updated'][] = ['haat_id' => $meal['haat_id'], 'id' => $matched, 'name' => $label];
                         $progress && $progress('meals', 'Updated '.$label, ['status' => 'ok', 'name' => $label]);
@@ -524,6 +574,7 @@ final class KamanMenuWriter
                 'description_he' => $descriptionHe,
                 'price' => $meal['price'],
                 'category_id' => $categoryId,
+                'status' => ($meal['is_available'] ?? true) ? '1' : '0',
             ];
 
             $hadImage = $withImages && is_string($meal['image_url'] ?? null) && $meal['image_url'] !== '';
@@ -565,7 +616,7 @@ final class KamanMenuWriter
             }
             $progress && $progress('meals', 'Created '.$label, ['status' => 'ok', 'name' => $label, 'id' => $id]);
 
-            if (! $meal['is_available']) {
+            if (! ($meal['is_available'] ?? true)) {
                 $this->send(fn () => $this->http()->withToken($token)->asForm()->post($baseUrl.'/items/'.$id, [
                     '_method' => 'PUT',
                     'status' => '0',
@@ -982,10 +1033,8 @@ final class KamanMenuWriter
             'description_he' => $descriptionHe,
             'price' => $meal['price'],
             'category_id' => $categoryId,
+            'status' => ($meal['is_available'] ?? true) ? '1' : '0',
         ];
-        if (! ($meal['is_available'] ?? true)) {
-            $body['status'] = '0';
-        }
         $imagePath = $withImages ? $this->images->download($meal['image_url'] ?? null) : null;
         $response = $this->send(fn () => $this->http()->withToken($token)->asJson()->put($baseUrl.'/items/'.$id, $body));
         if ($imagePath && File::exists($imagePath)) {

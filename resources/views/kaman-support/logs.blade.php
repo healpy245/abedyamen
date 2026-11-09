@@ -221,6 +221,8 @@
                             @endforeach
                         </div>
                     </section>
+                    {{-- Devices only make sense inside one restaurant, so this waits for a restaurant pick. --}}
+                    @if(count($picked) > 0 || $client['device'] !== '')
                     <section class="sup-inv__filter-device">
                         <h2>{{ __('kaman-support.device') }}</h2>
                         <input type="search" data-device-input value="{{ $client['device'] }}" placeholder="{{ __('kaman-support.ws_inv_search_device') }}" aria-label="{{ __('kaman-support.ws_inv_search_device') }}" autocomplete="off">
@@ -232,6 +234,7 @@
                             </div>
                         @endif
                     </section>
+                    @endif
                 @else
                     <section>
                         <h2>{{ __('kaman-support.ws_inv_integration') }}</h2>
@@ -254,7 +257,7 @@
             </div>
         </form>
 
-        @if($lane === 'server')
+        @if($lane === 'server' && $issues === [])
             <section class="sup-inv__server">
                 <span class="sup-inv__server-mark" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>

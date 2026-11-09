@@ -12,6 +12,8 @@ return [
 
     'max_body_bytes' => (int) env('KAMAN_SUPPORT_MAX_BODY_BYTES', 262144),
 
+    'max_media_bytes' => (int) env('KAMAN_SUPPORT_MAX_MEDIA_BYTES', 50331648),
+
     'ticket_rate_per_minute' => (int) env('KAMAN_SUPPORT_TICKET_RATE_PER_MINUTE', 30),
 
     'live_rate_per_minute' => (int) env('KAMAN_SUPPORT_LIVE_RATE_PER_MINUTE', 180),

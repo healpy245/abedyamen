@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\KamanSupport;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\KamanSupport\StorePosTicketMediaRequest;
 use App\Http\Requests\KamanSupport\StorePosTicketRequest;
 use App\Http\Requests\KamanSupport\StoreSupportTicketEventRequest;
 use App\Http\Requests\KamanSupport\UpdateSupportTicketRequest;
 use App\Http\Resources\KamanSupport\SupportTicketResource;
 use App\Models\KamanSupport\SupportTicket;
 use App\Services\KamanSupport\SupportTicketService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,6 +27,25 @@ class TicketController extends Controller
         $result = $this->tickets->submitFromPos($request->payload());
 
         return $this->ticketJson($result['ticket'], $result['created'] ? 201 : 200);
+    }
+
+    public function storeMedia(StorePosTicketMediaRequest $request, SupportTicket $ticket): JsonResponse
+    {
+        $audio = $request->file('audio');
+        $screen = $request->file('screen');
+        $audio = $audio instanceof UploadedFile ? $audio : null;
+        $screen = $screen instanceof UploadedFile ? $screen : null;
+
+        if ($audio === null && $screen === null) {
+            return $this->utf8Json([
+                'ok' => false,
+                'message' => 'Attach a voice recording, a screen recording, or both.',
+            ], 422);
+        }
+
+        $ticket = $this->tickets->attachMedia($ticket, $audio, $screen);
+
+        return $this->ticketJson($ticket);
     }
 
     public function index(Request $request): JsonResponse

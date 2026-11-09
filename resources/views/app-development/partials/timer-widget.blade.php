@@ -17,7 +17,7 @@
          data-task-url="{{ route('app-development.tasks.show', $activeTimer->task) }}">
         <span class="app-dev-timer-widget__dot" aria-hidden="true"></span>
         <span class="app-dev-timer-widget__label">{{ __('app-development.tasks.running') }}</span>
-        <a href="{{ route('app-development.tickets.show', ['ticket' => $activeTimer->task?->ticket ?? $activeTimer->task?->ticket_id, 'task' => $activeTimer->task_id]) }}"
+        <a href="{{ ($activeTimer->task?->ticket_id ?? null) ? route('app-development.tickets.show', ['ticket' => $activeTimer->task->ticket ?? $activeTimer->task->ticket_id, 'task' => $activeTimer->task_id]) : route('app-development.tasks.show', $activeTimer->task_id) }}"
            data-app-dev-modal
            class="app-dev-timer-widget__link">
             {{ $activeTimer->task?->ticket?->ticket_number ?? $activeTimer->task?->title }}

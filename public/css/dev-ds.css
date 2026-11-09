@@ -1,0 +1,551 @@
+/*
+ * Development door on the design system.
+ * The board, drawer and modal keep their markup (their scripts depend on it); this file restyles them
+ * with the ds tokens. Selectors start with `html body.ds.ws-dev` so they win over the older door
+ * styles, including app-development.css which the modal partial inlines into the page body.
+ */
+
+/* ================================================================ tickets page */
+
+html body.ds.ws-dev .tk-search-proxy { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ================================================================ board header & filters */
+
+html body.ds.ws-dev .kb-page { gap: 16px; }
+html body.ds.ws-dev .kb-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0; }
+html body.ds.ws-dev .kb-tabs {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border: 0;
+    border-radius: var(--ds-r-md);
+    background: var(--ds-surface-2);
+    box-shadow: none;
+}
+html body.ds.ws-dev .kb-tabs a {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: var(--ds-r);
+    color: var(--ds-text-2);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color var(--ds-t-tab) var(--ds-ease), color var(--ds-t-tab) var(--ds-ease);
+}
+html body.ds.ws-dev .kb-tabs a:hover { color: var(--ds-text); }
+html body.ds.ws-dev .kb-tabs a[aria-selected="true"] { background: var(--ds-surface); color: var(--ds-text); box-shadow: var(--ds-shadow-sm), 0 0 0 1px var(--ds-border); }
+html[data-theme="dark"] body.ds.ws-dev .kb-tabs a[aria-selected="true"] { background: var(--ds-selected); box-shadow: none; }
+
+html body.ds.ws-dev .kb-head__tools { display: flex; align-items: center; gap: 8px; }
+html body.ds.ws-dev .kb-search { display: none; }
+
+/* Primary action buttons of the door. */
+html body.ds.ws-dev :is(.kb-new, .dev-btn--primary, .tk-new) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: var(--ds-h);
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--ds-r);
+    background: var(--ds-accent);
+    color: var(--ds-on-accent);
+    font: 500 13px/1 var(--ds-font);
+    text-decoration: none;
+    box-shadow: var(--ds-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, .16);
+    transform: none;
+    transition: background-color var(--ds-t-hover) var(--ds-ease), transform var(--ds-t-press) var(--ds-ease);
+}
+html body.ds.ws-dev :is(.kb-new, .dev-btn--primary, .tk-new):hover { background: var(--ds-accent-hover); transform: none; box-shadow: var(--ds-shadow-sm); }
+html body.ds.ws-dev :is(.kb-new, .dev-btn--primary, .tk-new):active { transform: scale(.98); }
+html body.ds.ws-dev :is(.kb-new, .dev-btn--primary) .kaman-icon { width: 15px; height: 15px; }
+
+/* Secondary buttons. */
+html body.ds.ws-dev :is(.dev-btn:not(.dev-btn--primary), .kaman-button-ghost, .kb-apply, .tk-view, .report-export) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: var(--ds-h);
+    padding: 0 12px;
+    border: 1px solid var(--ds-border-strong);
+    border-radius: var(--ds-r);
+    background: var(--ds-surface);
+    color: var(--ds-text);
+    font: 500 13px/1 var(--ds-font);
+    text-decoration: none;
+    box-shadow: var(--ds-shadow-sm);
+    transform: none;
+    transition: background-color var(--ds-t-hover) var(--ds-ease), transform var(--ds-t-press) var(--ds-ease);
+}
+html[data-theme="dark"] body.ds.ws-dev :is(.dev-btn:not(.dev-btn--primary), .kaman-button-ghost, .kb-apply, .tk-view, .report-export) { background: var(--ds-surface-2); box-shadow: none; }
+html body.ds.ws-dev :is(.dev-btn:not(.dev-btn--primary), .kaman-button-ghost, .kb-apply, .tk-view, .report-export):hover { background: var(--ds-hover); transform: none; box-shadow: none; }
+html body.ds.ws-dev :is(.dev-btn, .kaman-button-ghost, .kb-apply, .tk-view, .report-export):active { transform: scale(.98); }
+html body.ds.ws-dev .kaman-button--sm { height: var(--ds-h-sm); padding: 0 10px; font-size: 12px; }
+html body.ds.ws-dev .kaman-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: var(--ds-h);
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--ds-r);
+    background: var(--ds-accent);
+    color: var(--ds-on-accent);
+    font: 500 13px/1 var(--ds-font);
+    text-decoration: none;
+    box-shadow: var(--ds-shadow-sm);
+    transition: background-color var(--ds-t-hover) var(--ds-ease), transform var(--ds-t-press) var(--ds-ease);
+}
+html body.ds.ws-dev .kaman-button:hover { background: var(--ds-accent-hover); transform: none; }
+html body.ds.ws-dev .kaman-button.kaman-button--sm { height: var(--ds-h-sm); padding: 0 10px; font-size: 12px; }
+
+/* Icon buttons. */
+html body.ds.ws-dev :is(.kb-icon-btn, .kb-reset) {
+    display: inline-grid;
+    place-items: center;
+    width: var(--ds-h);
+    height: var(--ds-h);
+    padding: 0;
+    border: 0;
+    border-radius: var(--ds-r);
+    background: transparent;
+    color: var(--ds-text-2);
+    box-shadow: none;
+    transition: background-color var(--ds-t-hover) var(--ds-ease), color var(--ds-t-hover) var(--ds-ease);
+}
+html body.ds.ws-dev :is(.kb-icon-btn, .kb-reset):hover { background: var(--ds-hover); color: var(--ds-text); transform: none; }
+
+/* WhatsApp notify button: neutral surface, green glyph. */
+html body.ds.ws-dev .wa-notify__toggle {
+    width: var(--ds-h);
+    height: var(--ds-h);
+    border: 1px solid var(--ds-border-strong);
+    border-radius: var(--ds-r);
+    background: var(--ds-surface);
+    color: #1fae57;
+    box-shadow: var(--ds-shadow-sm);
+}
+html[data-theme="dark"] body.ds.ws-dev .wa-notify__toggle { background: var(--ds-surface-2); color: #4ade80; box-shadow: none; }
+html body.ds.ws-dev .wa-notify__toggle:hover,
+html body.ds.ws-dev .wa-notify__toggle[aria-expanded="true"] { background: rgba(37, 211, 102, .12); color: #1fae57; transform: none; box-shadow: none; }
+html body.ds.ws-dev .wa-notify__toggle svg { width: 18px; height: 18px; }
+html body.ds.ws-dev .wa-notify__panel { border-color: var(--ds-border-strong); border-radius: var(--ds-r-lg); background: var(--ds-popover); box-shadow: var(--ds-shadow-lg); }
+html body.ds.ws-dev .wa-notify__badge { border-radius: var(--ds-r); }
+html body.ds.ws-dev .wa-notify__kinds { border-radius: var(--ds-r-md); background: var(--ds-surface-2); }
+html body.ds.ws-dev .wa-notify__kinds input:checked + span { background: var(--ds-surface); box-shadow: var(--ds-shadow-sm), 0 0 0 1px var(--ds-border); }
+html[data-theme="dark"] body.ds.ws-dev .wa-notify__kinds input:checked + span { background: var(--ds-selected); box-shadow: none; }
+html body.ds.ws-dev .wa-notify__kinds input:checked + span b { background: var(--ds-text); color: var(--ds-surface); }
+html body.ds.ws-dev .wa-notify__avatar { background: var(--ds-accent-soft); color: var(--ds-accent-text); }
+html body.ds.ws-dev .wa-notify__row:hover { background: var(--ds-hover); transform: none; }
+html body.ds.ws-dev .wa-notify__send { border-radius: var(--ds-r); }
+
+/* Filter row: same shapes as the ds toolbar. */
+html body.ds.ws-dev .kb-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+html body.ds.ws-dev .kb-filters .dv-filter { width: 160px; }
+html body.ds.ws-dev .kb-filters .kb-text {
+    width: 150px;
+    height: var(--ds-h);
+    padding: 0 11px;
+    border: 1px solid var(--ds-border-strong);
+    border-radius: var(--ds-r);
+    background: var(--ds-surface);
+    color: var(--ds-text);
+    font: 400 13px var(--ds-font);
+    box-shadow: var(--ds-shadow-sm);
+}
+html[data-theme="dark"] body.ds.ws-dev .kb-filters .kb-text { background: var(--ds-surface-2); box-shadow: none; color-scheme: dark; }
+html body.ds.ws-dev .kb-filters .kb-text:focus { outline: none; border-color: var(--ds-accent); box-shadow: var(--ds-ring); }
+html body.ds.ws-dev .kb-filters .kb-apply { width: var(--ds-h); padding: 0; }
+html body.ds.ws-dev .kb-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 0; }
+html body.ds.ws-dev .kb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 6px 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ds-accent-soft);
+    color: var(--ds-accent-text);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color var(--ds-t-hover) var(--ds-ease);
+}
+html body.ds.ws-dev .kb-chip span { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font-size: 13px; }
+html body.ds.ws-dev .kb-chip:hover span { background: color-mix(in srgb, var(--ds-accent) 22%, transparent); }
+
+/* ================================================================ board */
+
+html body.ds.ws-dev .kb-board { gap: 12px; }
+html body.ds.ws-dev .kb-column {
+    border: 0;
+    border-top: 0;
+    border-radius: var(--ds-r-lg);
+    background: color-mix(in srgb, var(--ds-surface-2) 55%, transparent);
+    box-shadow: none;
+}
+html[data-theme="dark"] body.ds.ws-dev .kb-column { background: color-mix(in srgb, var(--ds-surface) 80%, transparent); }
+html body.ds.ws-dev .kb-column::before { display: none; }
+html body.ds.ws-dev .kb-column__head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; border: 0; background: transparent; }
+html body.ds.ws-dev .kb-column__head::before { content: ""; width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--kb-accent, var(--ds-text-3)); }
+html body.ds.ws-dev .kb-column__head h2 { flex: 1; margin: 0; color: var(--ds-text); font-size: 13px; font-weight: 600; }
+html body.ds.ws-dev .kb-column__head b {
+    min-width: 22px;
+    padding: 2px 7px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ds-border);
+    color: var(--ds-text-2);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+html body.ds.ws-dev .kb-column__list { gap: 8px; padding: 4px 10px 12px; }
+html body.ds.ws-dev .kb-empty { border-color: var(--ds-border); border-radius: var(--ds-r-md); }
+
+/* Task card */
+html body.ds.ws-dev .tc {
+    gap: 6px;
+    padding: 12px 13px;
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-r-md);
+    background: var(--ds-surface);
+    color: var(--ds-text);
+    box-shadow: var(--ds-shadow-sm);
+    transition: border-color var(--ds-t-hover) var(--ds-ease), box-shadow var(--ds-t-hover) var(--ds-ease), transform var(--ds-t-hover) var(--ds-ease);
+}
+html[data-theme="dark"] body.ds.ws-dev .tc { background: var(--ds-surface-2); box-shadow: none; }
+html body.ds.ws-dev .tc:hover { border-color: var(--ds-border-strong); box-shadow: var(--ds-shadow-md); transform: translateY(-1px); }
+html body.ds.ws-dev .tc:focus-visible { outline: none; box-shadow: var(--ds-ring); }
+html body.ds.ws-dev .tc:active { transform: scale(.99); }
+html body.ds.ws-dev .tc-tag {
+    padding: 2px 6px;
+    border-radius: var(--ds-r-sm);
+    background: var(--ds-surface-2);
+    color: var(--ds-text-2);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .01em;
+}
+html[data-theme="dark"] body.ds.ws-dev .tc-tag { background: var(--ds-hover); }
+html body.ds.ws-dev .tc-title { color: var(--ds-text); font-size: 13px; font-weight: 600; line-height: 1.4; }
+html body.ds.ws-dev .tc-project { color: var(--ds-text-3); font-size: 12px; }
+html body.ds.ws-dev .tc-foot { padding-top: 4px; border-top: 0; }
+html body.ds.ws-dev .tc-avatar { width: 22px; height: 22px; border: 0; background: var(--ds-accent-soft); color: var(--ds-accent-text); font-size: 11px; font-weight: 700; }
+html body.ds.ws-dev .tc-avatar.is-empty { background: var(--ds-surface-2); }
+html body.ds.ws-dev .tc-status { color: var(--ds-text-3); font-size: 12px; }
+html body.ds.ws-dev .tc-pin { background: transparent; }
+html body.ds.ws-dev .tc-pin--high { color: var(--ds-amber); }
+html body.ds.ws-dev .tc-pin--critical { color: var(--ds-red); }
+
+/* Column jump buttons (phones). */
+html body.ds.ws-dev .kb-jumps button {
+    height: 30px;
+    border: 0;
+    border-radius: var(--ds-r);
+    background: var(--ds-surface-2);
+    color: var(--ds-text-2);
+    font: 500 12px var(--ds-font);
+}
+html body.ds.ws-dev .kb-jumps b { background: var(--ds-border); color: var(--ds-text-2); }
+
+/* Task list view */
+html body.ds.ws-dev .tk-table-wrap {
+    overflow: auto;
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-r-lg);
+    background: var(--ds-surface);
+    box-shadow: none;
+}
+html body.ds.ws-dev .tk-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+html body.ds.ws-dev .tk-table th {
+    height: 38px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--ds-divider);
+    background: var(--ds-surface);
+    color: var(--ds-text-3);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-align: start;
+}
+html body.ds.ws-dev .tk-table th a { display: inline; color: inherit; font-weight: 500; text-decoration: none; -webkit-line-clamp: unset; }
+html body.ds.ws-dev .tk-table th a:hover { color: var(--ds-text); }
+html body.ds.ws-dev .tk-table td { height: 56px; padding: 0 16px; border-top: 0; border-bottom: 1px solid var(--ds-divider); color: var(--ds-text); }
+html body.ds.ws-dev .tk-table tbody tr:last-child td { border-bottom: 0; }
+html body.ds.ws-dev .tk-table tbody tr:hover td { background: var(--ds-hover); }
+html body.ds.ws-dev .tk-table td strong { display: block; font-weight: 600; }
+html body.ds.ws-dev .tk-table td small { display: block; margin-top: 2px; color: var(--ds-text-3); font-size: 12px; }
+html body.ds.ws-dev .tk-table tr[data-kb-open] { cursor: pointer; }
+html body.ds.ws-dev .tk-empty { padding: 40px 16px !important; color: var(--ds-text-2); text-align: center; }
+
+/* Pagination */
+html body.ds.ws-dev .kb-pages :is(a, span) { border-color: var(--ds-border); border-radius: var(--ds-r); background: var(--ds-surface); color: var(--ds-text-2); }
+html body.ds.ws-dev .kb-pages [aria-current] span { background: var(--ds-selected); color: var(--ds-text); }
+
+/* ================================================================ toasts */
+
+html body.ds.ws-dev .kb-toast {
+    border: 1px solid var(--ds-border-strong);
+    border-radius: var(--ds-r-md);
+    background: var(--ds-popover);
+    color: var(--ds-text);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--ds-shadow-lg);
+}
+html body.ds.ws-dev .kb-toast--bad { border-color: color-mix(in srgb, var(--ds-red) 40%, transparent); color: var(--ds-red); }
+
+/* ================================================================ drawer + modal shells */
+
+html body.ds.ws-dev dialog.kb-drawer {
+    border: 0;
+    border-radius: var(--ds-r-xl);
+    background: var(--ds-overlay) !important;
+    color: var(--ds-text) !important;
+    box-shadow: var(--ds-shadow-lg);
+}
+html body.ds.ws-dev dialog.kb-drawer::backdrop { background: var(--ds-backdrop); backdrop-filter: blur(3px); }
+html body.ds.ws-dev .kb-drawer__bar { padding: 14px 18px; border-bottom: 1px solid var(--ds-divider); background: transparent; }
+html body.ds.ws-dev .kb-drawer__bar p { color: var(--ds-text-2); font-size: 13px; font-weight: 500; }
+html body.ds.ws-dev .kb-drawer__body { background: transparent; }
+
+html body.ds.ws-dev .app-dev-modal__backdrop { background: var(--ds-backdrop); backdrop-filter: blur(3px); }
+html body.ds.ws-dev .app-dev-modal__panel {
+    border: 0;
+    border-radius: var(--ds-r-xl);
+    background: var(--ds-overlay) !important;
+    color: var(--ds-text) !important;
+    box-shadow: var(--ds-shadow-lg);
+}
+html body.ds.ws-dev .app-dev-modal__header { padding: 16px 20px; border-bottom: 1px solid var(--ds-divider); background: transparent; }
+html body.ds.ws-dev .app-dev-modal__title { color: var(--ds-text); font: 600 15px/1.3 var(--ds-font-display); }
+html body.ds.ws-dev .app-dev-modal__header .kaman-button-ghost { width: var(--ds-h-sm); height: var(--ds-h-sm); padding: 0; border: 0; background: transparent; box-shadow: none; font-size: 0; color: var(--ds-text-2); }
+html body.ds.ws-dev .app-dev-modal__header .kaman-button-ghost .kaman-icon { width: 16px; height: 16px; }
+html body.ds.ws-dev .app-dev-modal__header .kaman-button-ghost:hover { background: var(--ds-hover); color: var(--ds-text); }
+html body.ds.ws-dev .app-dev-modal__body { padding: 20px; color: var(--ds-text); }
+html body.ds.ws-dev .app-dev-modal__loader { background: color-mix(in srgb, var(--ds-overlay) 86%, transparent); color: var(--ds-text-2); }
+
+/* Shared form controls inside the door (ticket and task forms, team page). */
+html body.ds.ws-dev :is(.kaman-input, .ti-field input, .ti-field select, .ti-field textarea, .task-comment-compose textarea, .app-dev-modal select, .app-dev-modal textarea, .app-dev-modal input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"])) {
+    min-height: var(--ds-h);
+    padding: 0 11px;
+    border: 1px solid var(--ds-border-strong) !important;
+    border-radius: var(--ds-r) !important;
+    background: var(--ds-surface) !important;
+    color: var(--ds-text) !important;
+    font: 400 13px/1.4 var(--ds-font);
+    box-shadow: var(--ds-shadow-sm);
+    transition: border-color var(--ds-t-hover) var(--ds-ease), box-shadow var(--ds-t-hover) var(--ds-ease);
+}
+html[data-theme="dark"] body.ds.ws-dev :is(.kaman-input, .ti-field input, .ti-field select, .ti-field textarea, .task-comment-compose textarea, .app-dev-modal select, .app-dev-modal textarea, .app-dev-modal input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"])) {
+    background: var(--ds-surface-2) !important;
+    box-shadow: none;
+    color-scheme: dark;
+}
+html body.ds.ws-dev :is(textarea.kaman-input, .ti-field textarea, .task-comment-compose textarea, .app-dev-modal textarea) { padding: 9px 11px; line-height: 1.55; }
+html body.ds.ws-dev :is(.kaman-input, .ti-field input, .ti-field select, .ti-field textarea, .task-comment-compose textarea, .app-dev-modal select, .app-dev-modal textarea, .app-dev-modal input):focus {
+    outline: none;
+    border-color: var(--ds-accent) !important;
+    box-shadow: var(--ds-ring) !important;
+}
+html body.ds.ws-dev .kaman-input--sm { min-height: var(--ds-h-sm); font-size: 12px; }
+html body.ds.ws-dev :is(.app-dev-modal, .kb-drawer) input[type="file"] {
+    padding: 6px;
+    border: 1px dashed var(--ds-border-strong);
+    border-radius: var(--ds-r);
+    background: transparent;
+    color: var(--ds-text-2);
+    font-size: 12px;
+}
+html body.ds.ws-dev :is(.app-dev-modal, .kb-drawer) input[type="file"]::file-selector-button {
+    margin-inline-end: 10px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: var(--ds-r-sm);
+    background: var(--ds-surface-2);
+    color: var(--ds-text);
+    font: 500 12px var(--ds-font);
+    cursor: pointer;
+}
+html body.ds.ws-dev :is(.app-dev-modal, .kb-drawer) label { color: var(--ds-text-2); }
+
+html body.ds.ws-dev .kaman-attachment {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-r-md);
+    background: var(--ds-surface);
+    color: var(--ds-text);
+    text-decoration: none;
+    transition: background-color var(--ds-t-hover) var(--ds-ease);
+}
+html[data-theme="dark"] body.ds.ws-dev .kaman-attachment { background: var(--ds-surface-2); }
+html body.ds.ws-dev .kaman-attachment:hover { background: var(--ds-hover); }
+html body.ds.ws-dev .kaman-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 8px;
+    border: 0 !important;
+    border-radius: 999px;
+    background: var(--ds-surface-2) !important;
+    color: var(--ds-text-2) !important;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Older Tailwind colour utilities in these templates were written for the cream theme. */
+html body.ds.ws-dev :is([class*="text-[#2b1e11]"], [class*="text-[#30271f]"]) { color: var(--ds-text) !important; }
+html body.ds.ws-dev :is([class*="text-[#7c6a56]"], [class*="text-[#a78a6c]"], [class*="text-[#9b8876]"]) { color: var(--ds-text-2) !important; }
+html body.ds.ws-dev :is([class*="border-[#f1dfc5]"], [class*="border-[#eadfce]"], [class*="border-[#e"]) { border-color: var(--ds-border) !important; }
+html body.ds.ws-dev :is([class*="bg-[#fff"], [class*="bg-white"]):not(.kaman-avatar) { background-color: var(--ds-surface) !important; }
+html[data-theme="dark"] body.ds.ws-dev :is([class*="bg-[#fff"], [class*="bg-white"]):not(.kaman-avatar) { background-color: var(--ds-surface-2) !important; }
+html body.ds.ws-dev .bg-amber-50 { background: var(--ds-amber-soft) !important; border-color: transparent !important; color: var(--ds-amber) !important; }
+
+/* ================================================================ task panel (drawer content) */
+
+html body.ds.ws-dev .ti { gap: 0; }
+html body.ds.ws-dev .ti-main { padding: 20px 22px; }
+html body.ds.ws-dev .ti-title { color: var(--ds-text); font: 650 20px/1.3 var(--ds-font-display); letter-spacing: -0.02em; }
+html body.ds.ws-dev .ti-desc { color: var(--ds-text-2); font-size: 14px; line-height: 1.6; }
+html body.ds.ws-dev .task-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 9px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ds-surface-2);
+    color: var(--ds-text-2);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+}
+html body.ds.ws-dev .task-meta-pill.ticket { background: var(--ds-accent-soft); color: var(--ds-accent-text); }
+html body.ds.ws-dev :is(.ti-block, .task-section) { border-color: var(--ds-divider); }
+html body.ds.ws-dev :is(.ti-block, .task-section) h3 { color: var(--ds-text-3); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+html[lang="ar"] body.ds.ws-dev :is(.ti-block, .task-section) h3,
+html[lang="he"] body.ds.ws-dev :is(.ti-block, .task-section) h3 { font-size: 12px; letter-spacing: 0; }
+html body.ds.ws-dev .mini-avatar { background: var(--ds-accent-soft); color: var(--ds-accent-text); }
+html body.ds.ws-dev .task-comment-name { color: var(--ds-text); }
+html body.ds.ws-dev .task-comment-date { color: var(--ds-text-3); }
+html body.ds.ws-dev .ti-note { color: var(--ds-text); }
+html body.ds.ws-dev .task-file { border-color: var(--ds-border); border-radius: var(--ds-r); background: var(--ds-surface-2); color: var(--ds-text); }
+html body.ds.ws-dev :is(.ti-aside, .task-modal-aside) {
+    border: 0;
+    border-inline-start: 1px solid var(--ds-divider);
+    background: color-mix(in srgb, var(--ds-surface-2) 45%, transparent);
+}
+html body.ds.ws-dev .ti-field > span,
+html body.ds.ws-dev .ti-field label { color: var(--ds-text-2); font-size: 12px; font-weight: 500; }
+
+/* ================================================================ reports */
+
+html body.ds.ws-dev .report-header h1 { font: 650 22px/1.25 var(--ds-font-display); letter-spacing: -0.02em; }
+html body.ds.ws-dev :is(.report-metric, .report-panel) {
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-r-lg);
+    background: var(--ds-surface);
+    box-shadow: none;
+}
+html body.ds.ws-dev :is(.report-metric, .report-panel):hover { border-color: var(--ds-border); box-shadow: none; transform: none; }
+html body.ds.ws-dev .report-metric .metric-top span { color: var(--ds-text-2); font-size: 12px; font-weight: 500; }
+html body.ds.ws-dev .report-metric strong { font: 650 26px/1.15 var(--ds-font-display); letter-spacing: -0.025em; }
+html body.ds.ws-dev .metric-delta { border-radius: 999px; background: var(--ds-surface-2); color: var(--ds-text-2); font-size: 11px; font-weight: 600; }
+html body.ds.ws-dev .metric-delta.positive { background: var(--ds-green-soft); color: var(--ds-green); }
+html body.ds.ws-dev .report-panel-head h2 { font-size: 14px; font-weight: 600; }
+html body.ds.ws-dev .report-period {
+    height: var(--ds-h);
+    border: 1px solid var(--ds-border-strong);
+    border-radius: var(--ds-r);
+    background: var(--ds-surface);
+    color: var(--ds-text);
+    font: 500 13px var(--ds-font);
+}
+html[data-theme="dark"] body.ds.ws-dev .report-period { background: var(--ds-surface-2); }
+html body.ds.ws-dev .report-bar.done { background: var(--ds-accent); }
+html body.ds.ws-dev .report-bar.created { background: color-mix(in srgb, var(--ds-text) 22%, transparent); }
+html body.ds.ws-dev .legend-dot.completed { background: var(--ds-accent); }
+html body.ds.ws-dev .legend-dot.created { background: color-mix(in srgb, var(--ds-text) 30%, transparent); }
+html body.ds.ws-dev .report-chart-group small { color: var(--ds-text-3); }
+html body.ds.ws-dev .report-donut-center { background: var(--ds-surface); }
+html body.ds.ws-dev .report-workload-track { border-radius: 999px; background: var(--ds-surface-2); }
+html body.ds.ws-dev .report-workload-fill { border-radius: 999px; background: var(--ds-accent); }
+html body.ds.ws-dev .report-activity-item { border-color: var(--ds-divider); }
+html body.ds.ws-dev .report-activity-item small,
+html body.ds.ws-dev .report-activity-item p { color: var(--ds-text-3); }
+
+/* ================================================================ releases + team (ds markup) */
+
+html body.ds.ws-dev .dv-release { display: flex; align-items: center; gap: 14px; }
+html body.ds.ws-dev .dv-release__icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: var(--ds-r-md);
+    background: var(--ds-surface-2);
+    color: var(--ds-text-2);
+}
+html body.ds.ws-dev .dv-release__icon .kaman-icon { width: 17px; height: 17px; }
+html body.ds.ws-dev .dv-team-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+html body.ds.ws-dev .dv-team-form .ds-input { width: 150px; }
+html body.ds.ws-dev .dv-team-form .ds-switch { gap: 8px; color: var(--ds-text-2); font-size: 12px; }
+
+@media (max-width: 760px) {
+    html body.ds.ws-dev .kb-filters .dv-filter,
+    html body.ds.ws-dev .kb-filters .kb-text { flex: 1 1 calc(50% - 4px); width: auto; min-width: 0; }
+}
+
+
+}
+
+/* Task drawer aside details */
+html body.ds.ws-dev .task-priority { height: 24px; padding: 0 9px; border: 0; border-radius: 999px; background: var(--ds-surface-2); color: var(--ds-text); font-size: 12px; font-weight: 500; }
+html body.ds.ws-dev :is(.ti-start, .task-timer) {
+    width: 100%;
+    height: var(--ds-h);
+    border: 1px solid var(--ds-border-strong);
+    border-radius: var(--ds-r);
+    background: var(--ds-surface);
+    color: var(--ds-text);
+    font: 500 13px var(--ds-font);
+    box-shadow: var(--ds-shadow-sm);
+    transition: background-color var(--ds-t-hover) var(--ds-ease);
+}
+html[data-theme="dark"] body.ds.ws-dev :is(.ti-start, .task-timer) { background: var(--ds-surface-2); box-shadow: none; }
+html body.ds.ws-dev :is(.ti-start, .task-timer):hover { background: var(--ds-hover); }
+html body.ds.ws-dev .task-timer.running { border-color: transparent; background: var(--ds-accent); color: var(--ds-on-accent); }
+html body.ds.ws-dev .ti-time { color: var(--ds-text-2); }
+html body.ds.ws-dev .ti-time strong { color: var(--ds-text); font-variant-numeric: tabular-nums; }
+html body.ds.ws-dev .kb-fold > summary { color: var(--ds-text-2); font-size: 13px; font-weight: 500; cursor: pointer; transition: color var(--ds-t-hover) var(--ds-ease); }
+html body.ds.ws-dev .kb-fold > summary:hover,
+html body.ds.ws-dev .kb-fold[open] > summary { color: var(--ds-text); }
+html body.ds.ws-dev .ti-field .ds-select { width: 100%; }
+
+/* Ticket panel (inside the modal) */
+html body.ds.ws-dev .dv-ticket { display: grid; gap: 20px; }
+html body.ds.ws-dev .dv-ticket__head h3 { margin: 0; font: 650 19px/1.35 var(--ds-font-display); letter-spacing: -0.015em; }
+html body.ds.ws-dev .dv-ticket__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 6px; color: var(--ds-text-2); font-size: 12px; }
+html body.ds.ws-dev .dv-ticket__desc { margin: 0; padding: 14px 16px; border-radius: var(--ds-r-md); background: var(--ds-surface-2); color: var(--ds-text); font-size: 14px; line-height: 1.65; white-space: pre-wrap; }
+html body.ds.ws-dev .dv-ticket__alert { margin: 0; padding: 10px 12px; border-radius: var(--ds-r); background: var(--ds-amber-soft); color: var(--ds-amber); font-size: 13px; white-space: pre-wrap; }
+html body.ds.ws-dev .dv-ticket__section { padding-top: 18px; border-top: 1px solid var(--ds-divider); }
+html body.ds.ws-dev .dv-ticket__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px 16px; }
+html body.ds.ws-dev .dv-ticket__inline { display: flex; gap: 8px; }
+html body.ds.ws-dev .dv-ticket__inline > :first-child { flex: 1; min-width: 0; }
+html body.ds.ws-dev .dv-ticket__files { display: grid; gap: 6px; margin-bottom: 10px; }
+html body.ds.ws-dev .dv-ticket__foot { display: flex; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--ds-divider); }
+@media (max-width: 640px) {
+    html body.ds.ws-dev .dv-ticket__grid { grid-template-columns: 1fr; }
+}

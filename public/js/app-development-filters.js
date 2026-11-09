@@ -16,7 +16,7 @@
         }
     }
 
-    root.querySelectorAll('select').forEach(function (select) {
+    root.querySelectorAll('select:not([data-ds-select])').forEach(function (select) {
         var wrap = document.createElement('span');
         wrap.className = 'filter-select';
         select.parentNode.insertBefore(wrap, select);

@@ -156,10 +156,13 @@ class TaskTimerController extends Controller
 
         $task->loadMissing('ticket');
 
-        $redirect = redirect()->route('app-development.tickets.show', [
-            'ticket' => $task->ticket ?? $task->ticket_id,
-            'task' => $task->id,
-        ]);
+        // A task without a ticket has no ticket page: go back to where the timer was used.
+        $redirect = $task->ticket_id === null
+            ? back()
+            : redirect()->route('app-development.tickets.show', [
+                'ticket' => $task->ticket ?? $task->ticket_id,
+                'task' => $task->id,
+            ]);
 
         if (! $ok) {
             return $redirect->with('error', $message);

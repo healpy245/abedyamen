@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="{{ asset('css/workspace-shell.css') }}?v={{ filemtime(public_path('css/workspace-shell.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/design-modern-light.css') }}?v={{ filemtime(public_path('css/design-modern-light.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/workspace-frame.css') }}?v={{ @filemtime(public_path('css/workspace-frame.css')) }}">
+    @include('partials.workspace-ui')
 </head>
 <body class="hub ws-page">
     <x-workspace.shell door="overview">
@@ -65,7 +66,7 @@
             </x-workspace.portal>
 
             <x-workspace.portal
-                :href="route('workspace.placeholder', 'finance')"
+                :href="route('workspace.finance.dashboard')"
                 index="04"
                 :name="__('app.hub_finance')"
                 :description="__('app.hub_finance_desc')"

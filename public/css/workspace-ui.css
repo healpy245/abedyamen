@@ -1,0 +1,470 @@
+/*
+ * Workspace UI — one design and motion layer for every Kaman workspace door
+ * (Overview, Customer Support, Development, Sales Agents, Finance).
+ *
+ * Loaded last on every door, so it only sets what should be the same everywhere:
+ * motion timing, hover/press/focus feedback, menu and dialog entrances, input focus,
+ * and which cards may look clickable. Colours stay with each door's own tokens.
+ */
+
+:root {
+    --ui-ease: cubic-bezier(.22, 1, .36, 1);
+    --ui-hover: 180ms;
+    --ui-press: 120ms;
+    --ui-card: 230ms;
+    --ui-menu: 190ms;
+    --ui-modal: 260ms;
+    --ui-leave: 170ms;
+
+    --ui-radius-sm: 9px;
+    --ui-radius: 11px;
+    --ui-radius-md: 14px;
+    --ui-radius-lg: 18px;
+
+    --ui-accent: var(--ws-orange, #f58220);
+    --ui-shadow-sm: 0 1px 2px #5a36150a, 0 3px 8px #5a36150d;
+    --ui-shadow-md: 0 8px 22px #5a361517;
+    --ui-shadow-accent: 0 8px 20px #f5822038;
+    --ui-shadow-pop: 0 18px 44px #2a160824, 0 2px 8px #2a160810;
+    --ui-ring: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 20%, transparent);
+}
+
+html[data-theme="dark"] {
+    --ui-shadow-sm: 0 1px 2px #0000004d, 0 3px 8px #00000040;
+    --ui-shadow-md: 0 10px 26px #00000070;
+    --ui-shadow-accent: 0 8px 22px #f582204d;
+    --ui-shadow-pop: 0 20px 48px #000000a0, 0 2px 8px #00000060;
+}
+
+/* ------------------------------------------------------------------ keyframes */
+
+@keyframes ui-pop {
+    from { opacity: 0; transform: translateY(-6px) scale(.98); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes ui-pop-out {
+    to { opacity: 0; transform: translateY(-4px) scale(.98); }
+}
+@keyframes ui-modal-in {
+    from { opacity: 0; transform: translateY(12px) scale(.98); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes ui-modal-out {
+    to { opacity: 0; transform: translateY(8px) scale(.985); }
+}
+@keyframes ui-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes ui-rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes ui-spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes ui-bar {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+}
+
+/* ------------------------------------------------------------------ shared sizes */
+
+/* Page titles: one size and weight on every door. */
+body.ws-page .ws-content h1:not(.sup-sr):not(.sr-only):not(.ds-h1) {
+    font-family: "Plus Jakarta Sans", "DM Sans", Almarai, Heebo, sans-serif;
+    font-size: 23px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+}
+
+/* Action buttons: 38px tall, 10px corners, 13px bold text. */
+body.ws-page :is(
+    .tk-new, .kb-new, .dev-btn, .kb-apply, .sales-btn, .rm-btn, .fin-btn:not(.fin-btn--sm),
+    .rest-add, .ag-btn, .sup-primary, .sup-apply, .tk-view, .report-export
+) {
+    min-height: 38px;
+    height: 38px;
+    padding-block: 0;
+    padding-inline: 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Filters and search pills: 40px, 9px corners, 13px text — the Development board look. */
+body.ws-page :is(
+    .kb-filters select, .kb-filters .kb-text, .sales-filters select, .directory-controls select,
+    .ag-toolbar select, .fin-select select, .report-period
+) {
+    height: 40px;
+    padding-block: 0;
+    border-radius: 9px;
+    font-size: 13px;
+}
+body.ws-page .kb-filters .kb-apply {
+    width: 40px;
+    height: 40px;
+    padding-inline: 0;
+}
+body.ws-page :is(.sales-search, .fin-search, .sup-inv__search) {
+    height: 40px;
+    border-radius: 9px;
+    font-size: 13px;
+}
+body.ws-page :is(.sales-search, .fin-search, .sup-inv__search) input {
+    font-size: 13px;
+}
+
+/* Table headers. */
+body.ws-page :is(.tk-table, .fin-table, .ag-table, .kb-table) th {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+/* Number cards share one corner radius. */
+body.ws-page :is(.tk-stat, .fin-kpi, .report-metric, .overview-stats article) {
+    border-radius: 16px;
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+/* Every clickable control: same timing, same lift, same press, same focus ring. */
+body.ws-page :is(
+    .tk-new, .kb-new, .dev-btn, .kb-apply, .sales-btn, .rm-btn, .fin-btn, .rest-add, .cycle-browse,
+    .ag-btn, .sup-primary, .sup-apply, .sup-text-btn, .sup-inv__btn, .sup-inv__apply, .sup-pop2__btn,
+    .sup-multi__button, .tk-view, .tk-act, .report-export, .wa-notify__send, .portal-go
+) {
+    transition:
+        transform var(--ui-hover) var(--ui-ease),
+        box-shadow var(--ui-hover) var(--ui-ease),
+        background-color var(--ui-hover) var(--ui-ease),
+        border-color var(--ui-hover) var(--ui-ease),
+        color var(--ui-hover) var(--ui-ease),
+        filter var(--ui-hover) var(--ui-ease),
+        opacity var(--ui-hover) var(--ui-ease);
+}
+
+body.ws-page :is(
+    .tk-new, .kb-new, .dev-btn, .kb-apply, .sales-btn, .rm-btn, .fin-btn, .rest-add, .cycle-browse,
+    .ag-btn, .sup-primary, .sup-apply, .sup-text-btn, .sup-inv__btn, .sup-inv__apply, .sup-pop2__btn,
+    .sup-multi__button, .tk-view, .tk-act, .report-export, .wa-notify__send, .portal-go
+):not(:disabled):not([aria-disabled="true"]):hover {
+    transform: translateY(-1px);
+}
+
+/* Filled (primary) buttons glow in the brand colour; outlined ones get a quiet shadow. */
+body.ws-page :is(
+    .tk-new, .kb-new, .dev-btn--primary, .sales-btn--primary, .rm-btn--primary, .fin-btn--primary,
+    .rest-add, .sup-primary, .sup-apply, .sup-inv__apply, .wa-notify__send
+):not(:disabled):hover {
+    box-shadow: var(--ui-shadow-accent);
+}
+body.ws-page :is(
+    .dev-btn:not(.dev-btn--primary), .kb-apply, .sales-btn:not(.sales-btn--primary), .rm-btn--ghost,
+    .fin-btn--ghost, .ag-btn.ghost, .tk-view, .report-export, .sup-inv__btn, .sup-pop2__btn, .sup-multi__button
+):not(:disabled):hover {
+    box-shadow: var(--ui-shadow-sm);
+}
+
+body.ws-page :is(
+    .tk-new, .kb-new, .dev-btn, .kb-apply, .sales-btn, .rm-btn, .fin-btn, .rest-add, .cycle-browse,
+    .ag-btn, .sup-primary, .sup-apply, .sup-text-btn, .sup-inv__btn, .sup-inv__apply, .sup-pop2__btn,
+    .sup-multi__button, .tk-view, .tk-act, .report-export, .wa-notify__send, .portal-go
+):not(:disabled):active {
+    transform: translateY(0) scale(.98);
+    box-shadow: none;
+    transition-duration: var(--ui-press);
+}
+
+/* Icon buttons: the topbar icons, toolbar icons and row actions. */
+body.ws-page :is(
+    .ws-icon, .kb-icon-btn, .fin-icon-btn, .ag-icon-btn, .wa-notify__toggle, .fin-wa__btn,
+    .kaman-theme-toggle, .ws-lang summary, .sup-prow__actions button, .sup-pactions button
+) {
+    transition:
+        transform var(--ui-hover) var(--ui-ease),
+        background-color var(--ui-hover) var(--ui-ease),
+        border-color var(--ui-hover) var(--ui-ease),
+        color var(--ui-hover) var(--ui-ease),
+        box-shadow var(--ui-hover) var(--ui-ease);
+}
+body.ws-page :is(
+    .ws-icon, .kb-icon-btn, .fin-icon-btn, .ag-icon-btn, .kaman-theme-toggle, .ws-lang summary
+):not(:disabled):hover {
+    transform: translateY(-1px);
+}
+body.ws-page :is(
+    .ws-icon, .kb-icon-btn, .fin-icon-btn, .ag-icon-btn, .wa-notify__toggle, .fin-wa__btn,
+    .kaman-theme-toggle, .ws-lang summary, .sup-prow__actions button, .sup-pactions button
+):not(:disabled):active {
+    transform: scale(.93);
+    transition-duration: var(--ui-press);
+}
+
+/* Close buttons all turn the same way. */
+body.ws-page :is(.ag-x, .rm-x, .fcm__x, .sup-x, .tk-assure__x, .sales-modal-close) {
+    cursor: pointer;
+    transition:
+        transform var(--ui-card) var(--ui-ease),
+        background-color var(--ui-hover) var(--ui-ease),
+        color var(--ui-hover) var(--ui-ease);
+}
+body.ws-page :is(.ag-x, .rm-x, .fcm__x, .sup-x, .tk-assure__x, .sales-modal-close):hover {
+    transform: rotate(90deg);
+}
+body.ws-page :is(.ag-x, .rm-x, .fcm__x, .sup-x, .tk-assure__x, .sales-modal-close):active {
+    transform: rotate(90deg) scale(.9);
+    transition-duration: var(--ui-press);
+}
+
+/* One focus ring for keyboard users everywhere. */
+body.ws-page :is(a, button, summary, [role="tab"], [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+}
+
+body.ws-page :is(button, .fin-btn, .ag-btn, .sales-btn, .dev-btn, .rm-btn):is(:disabled, [aria-disabled="true"]) {
+    opacity: .5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Set by workspace-shell.js while a form is on its way to the server. */
+body.ws-page .is-loading {
+    pointer-events: none;
+    cursor: progress;
+}
+body.ws-page :is(button, a).is-loading::after {
+    content: "";
+    display: inline-block;
+    flex: none;
+    width: 13px;
+    height: 13px;
+    margin-inline-start: 6px;
+    border: 2px solid currentColor;
+    border-inline-end-color: transparent;
+    border-radius: 50%;
+    vertical-align: -2px;
+    animation: ui-spin .7s linear infinite;
+}
+
+/* ------------------------------------------------------------------ cards */
+
+/* Cards that open something: lift, border warms up, press settles back. */
+body.ws-page :is(
+    .rest-card, .sales-card, a.fin-kpi, .fin-doc, .cycle-link, .hub-card:is(a, button),
+    .restaurant-row, .ag-card:is(a, button), .sup-card:is(a, button), .sup-map__card:is(a, button)
+) {
+    transition:
+        transform var(--ui-card) var(--ui-ease),
+        box-shadow var(--ui-card) var(--ui-ease),
+        border-color var(--ui-card) var(--ui-ease),
+        background-color var(--ui-card) var(--ui-ease);
+}
+body.ws-page :is(
+    .rest-card, .sales-card, a.fin-kpi, .hub-card:is(a, button), .ag-card:is(a, button),
+    .sup-card:is(a, button), .sup-map__card:is(a, button)
+):hover {
+    transform: translateY(-3px);
+    box-shadow: var(--ui-shadow-md);
+}
+body.ws-page :is(
+    .rest-card, .sales-card, a.fin-kpi, .hub-card:is(a, button), .ag-card:is(a, button),
+    .sup-card:is(a, button), .sup-map__card:is(a, button)
+):active {
+    transform: translateY(-1px) scale(.99);
+    transition-duration: var(--ui-press);
+}
+body.ws-page .kb-card:not(.kb-card--drag):not(.kb-card--ghost):not(.kb-card--chosen) {
+    transition:
+        transform var(--ui-card) var(--ui-ease),
+        box-shadow var(--ui-card) var(--ui-ease),
+        border-color var(--ui-card) var(--ui-ease);
+}
+
+/* Cards that only show numbers stay still, so nothing pretends to be clickable. */
+body.ws-page :is(.tk-stat, .report-metric, .report-panel, .overview-stats article) {
+    box-shadow: var(--ui-shadow-sm);
+}
+body.ws-page :is(.tk-stat, article.fin-kpi:not(.fin-kpi--hero), .report-metric, .report-panel, .overview-stats article):hover {
+    transform: none;
+    box-shadow: var(--ui-shadow-sm);
+}
+body.ws-page :is(.report-metric, .report-panel):hover {
+    border-color: var(--dev-line, var(--ws-line));
+}
+body.ws-page article.fin-kpi--hero:hover {
+    transform: none;
+}
+
+/* ------------------------------------------------------------------ navigation */
+
+body.ws-page .ws-navitem {
+    position: relative;
+}
+body.ws-page .ws-navitem svg {
+    transition: transform var(--ui-hover) var(--ui-ease), color var(--ui-hover) var(--ui-ease);
+}
+body.ws-page .ws-navitem:hover svg {
+    transform: scale(1.08);
+}
+body.ws-page .ws-navitem:active {
+    transform: scale(.98);
+    transition-duration: var(--ui-press);
+}
+body.ws-page .ws-navitem.is-active::before {
+    content: "";
+    position: absolute;
+    top: 11px;
+    bottom: 11px;
+    inset-inline-start: 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--ui-accent);
+    transform-origin: center;
+    animation: ui-bar var(--ui-modal) var(--ui-ease);
+}
+html[dir="rtl"] body.ws-page .ws-navitem.is-active::before {
+    border-radius: 3px 0 0 3px;
+}
+
+/* Tabs and segmented switches share one feel. */
+body.ws-page :is(
+    .ws-float a, .kb-tabs a, .kb-switch a, .sup-seg > *, .sup-tabs > *, .rm-tabs button, .fcm__tabs button,
+    .ag-tabs button, .ag-cal-switch button, .sup-inv__seg button, .sup-inv__tabs > *, .wa-notify__kinds span,
+    .fcm-types span, .fin-chip-toggle span
+) {
+    transition:
+        background-color var(--ui-hover) var(--ui-ease),
+        color var(--ui-hover) var(--ui-ease),
+        box-shadow var(--ui-hover) var(--ui-ease),
+        border-color var(--ui-hover) var(--ui-ease),
+        transform var(--ui-hover) var(--ui-ease);
+}
+body.ws-page :is(
+    .kb-tabs a, .kb-switch a, .sup-seg > *, .sup-tabs > *, .rm-tabs button, .fcm__tabs button,
+    .ag-tabs button, .ag-cal-switch button, .sup-inv__seg button, .sup-inv__tabs > *
+):active {
+    transform: scale(.97);
+    transition-duration: var(--ui-press);
+}
+
+/* ------------------------------------------------------------------ menus & dropdowns */
+
+body.ws-page :is(
+    .ws-lang__menu, .ws-bell__panel, .app-dev-bell-panel:not(.hidden), .kb-pop__panel, .sup-pop2__menu,
+    .sup-multi__menu, .sup-inv__menu, .fin-wa__menu, .wa-notify__panel, .ag-bell-panel:not([hidden]), .ag-user form
+) {
+    box-shadow: var(--ui-shadow-pop);
+    animation: ui-pop var(--ui-menu) var(--ui-ease);
+}
+body.ws-page :is(
+    .ws-lang__menu, .ws-bell__panel, .app-dev-bell-panel, .kb-pop__panel, .sup-pop2__menu,
+    .sup-multi__menu, .sup-inv__menu, .fin-wa__menu, .wa-notify__panel, .ag-bell-panel
+).is-leaving {
+    animation: ui-pop-out var(--ui-leave) var(--ui-ease) forwards;
+}
+body.ws-page :is(
+    .ws-lang__menu, .ws-bell__panel, .app-dev-bell-panel, .kb-pop__panel, .sup-pop2__menu,
+    .sup-multi__menu, .sup-inv__menu, .ag-bell-panel, .ag-user form
+) :is(a, button, label) {
+    transition: background-color 150ms var(--ui-ease), color 150ms var(--ui-ease), transform 150ms var(--ui-ease);
+}
+
+/* ------------------------------------------------------------------ dialogs */
+
+/* Centre dialogs rise in; side drawers keep their own slide. */
+body.ws-page dialog[open]:not(.kb-drawer) {
+    animation: ui-modal-in var(--ui-modal) var(--ui-ease);
+}
+body.ws-page dialog[open]::backdrop {
+    background: var(--ws-backdrop, rgba(34, 22, 12, .46));
+    backdrop-filter: blur(4px);
+    animation: ui-fade var(--ui-modal) var(--ui-ease);
+}
+body.ws-page dialog.is-leaving:not(.kb-drawer) {
+    animation: ui-modal-out var(--ui-leave) var(--ui-ease) forwards !important;
+}
+body.ws-page dialog.is-leaving::backdrop {
+    animation: ui-fade var(--ui-leave) var(--ui-ease) reverse forwards;
+}
+body.ws-page .sup-modal:not([hidden]) .sup-modal__panel {
+    animation: ui-modal-in var(--ui-modal) var(--ui-ease);
+}
+
+/* ------------------------------------------------------------------ forms */
+
+body.ws-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), select, textarea) {
+    transition:
+        border-color var(--ui-hover) var(--ui-ease),
+        box-shadow var(--ui-hover) var(--ui-ease),
+        background-color var(--ui-hover) var(--ui-ease);
+}
+body.ws-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), select, textarea):focus-visible {
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: var(--ui-ring);
+}
+/* Inputs that sit inside a search pill: the pill shows the focus, not the bare input. */
+body.ws-page :is(.ws-search, .sales-search, .fin-search, .sup-inv__search, .ag-search, .kb-search) :is(input, select):focus-visible {
+    box-shadow: none;
+}
+body.ws-page :is(.ws-search, .sales-search, .fin-search, .sup-inv__search, .ag-search):focus-within {
+    border-color: var(--ui-accent);
+    box-shadow: var(--ui-ring);
+}
+body.ws-page :is(input[type="checkbox"], input[type="radio"]) {
+    accent-color: var(--ui-accent);
+}
+body.ws-page :is(input, select, textarea):disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+body.ws-page :is(input, select, textarea)[aria-invalid="true"],
+body.ws-page :is(input, select, textarea).is-invalid {
+    border-color: #d93f43;
+}
+
+/* ------------------------------------------------------------------ tables & rows */
+
+body.ws-page :is(.tk-table, .fin-table, .ag-table, .kb-table) :is(td, th) {
+    transition: background-color var(--ui-hover) var(--ui-ease), color var(--ui-hover) var(--ui-ease);
+}
+body.ws-page :is(.ag-pager button, .kb-pages a, .kb-pages span) {
+    transition: background-color var(--ui-hover) var(--ui-ease), color var(--ui-hover) var(--ui-ease), transform var(--ui-hover) var(--ui-ease);
+}
+body.ws-page :is(.ag-pager button, .kb-pages a):active {
+    transform: scale(.94);
+}
+
+/* ------------------------------------------------------------------ notifications */
+
+body.ws-page :is(.sup-toast, .ag-toast, .fin-toast, .kb-toast) {
+    border-radius: var(--ui-radius-md);
+    box-shadow: var(--ui-shadow-pop);
+}
+body.ws-page .sup-toast {
+    animation: ui-rise var(--ui-modal) var(--ui-ease);
+}
+
+/* ------------------------------------------------------------------ reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+    body.ws-page *,
+    body.ws-page *::before,
+    body.ws-page *::after,
+    body.ws-page dialog::backdrop {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+        scroll-behavior: auto !important;
+    }
+    body.ws-page :is(*, *::before, *::after):hover {
+        transform: none !important;
+    }
+}

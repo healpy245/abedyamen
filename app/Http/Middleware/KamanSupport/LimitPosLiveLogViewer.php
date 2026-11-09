@@ -22,12 +22,21 @@ class LimitPosLiveLogViewer
     {
         $user = $request->user();
 
+        // Someone limited to one product cannot open another product's ticket or device by its address.
+        if ($user instanceof User && $user->supportProduct() !== null) {
+            foreach (['ticket', 'device'] as $name) {
+                $record = $request->route($name);
+                abort_if(is_object($record) && ! $record->isVisibleTo($user), 404);
+            }
+        }
+
         if (! $user instanceof User || ! $user->limitedSupportConsole()) {
             return $next($request);
         }
 
         $allowed = $request->routeIs(
             'kaman-support.index',
+            'kaman-support.board.feed',
             'kaman-support.logos',
             'kaman-support.live',
             'kaman-support.liveview',

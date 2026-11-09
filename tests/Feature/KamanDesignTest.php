@@ -2,10 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\AiChatbot\ChatbotInstance;
 use App\Models\User;
-use Database\Seeders\KamanWhatsappChatbotInstanceSeeder;
-use Database\Seeders\SallyMalanChatbotInstanceSeeder;
 use Database\Seeders\WorkspaceUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -34,22 +31,12 @@ class KamanDesignTest extends TestCase
 
         $this->seed([
             WorkspaceUserSeeder::class,
-            SallyMalanChatbotInstanceSeeder::class,
-            KamanWhatsappChatbotInstanceSeeder::class,
         ]);
     }
 
     private function admin(): User
     {
         return User::where('email', 'yamen@kaman.rest')->firstOrFail();
-    }
-
-    private function chatbotInstance(): ChatbotInstance
-    {
-        return ChatbotInstance::query()
-            ->where('user_id', $this->admin()->id)
-            ->oldest('id')
-            ->firstOrFail();
     }
 
     public function test_login_page_renders_in_kaman_design(): void
@@ -70,7 +57,6 @@ class KamanDesignTest extends TestCase
     {
         return [
             'form' => ['form.index'],
-            'chatbot settings' => ['ai-chatbot.admin.settings.edit'],
             'app development' => ['app-development.index'],
             'kaman support' => ['kaman-support.index'],
             'kaman support live' => ['kaman-support.live'],
@@ -113,46 +99,20 @@ class KamanDesignTest extends TestCase
             ->assertDontSee(self::DARK_THEME_MARKER);
     }
 
-    public function test_ai_chatbot_studio_pages_render_in_kaman_design(): void
-    {
-        $instance = $this->chatbotInstance();
-
-        $instance->forceFill(['stores_members' => true])->save();
-
-        $pages = [
-            route('ai-chatbot.index'),
-            route('ai-chatbot.instances.show', $instance),
-            route('ai-chatbot.instances.edit', $instance),
-            route('ai-chatbot.instances.members.index', $instance),
-        ];
-
-        foreach ($pages as $url) {
-            $this->actingAs($this->admin())
-                ->get($url)
-                ->assertOk()
-                ->assertSee(self::KAMAN_STYLESHEET)
-                ->assertDontSee(self::DARK_THEME_MARKER);
-        }
-    }
-
     public function test_topbar_only_offers_projects_the_user_can_open(): void
     {
         $ahmad = User::where('email', 'ahmad@kaman.rest')->firstOrFail();
 
         $this->actingAs($ahmad)->get(route('form.index'))
             ->assertOk()
-            ->assertDontSee(__('projects.ai-chatbot.label'));
+            ->assertDontSee('AI Chatbot');
 
         $mohamed = User::where('email', 'mohamed@kaman.rest')->firstOrFail();
 
-        $this->actingAs($mohamed)->get(route('ai-chatbot.index'))
-            ->assertOk()
-            ->assertSee(__('chatbot.choose.title'));
         $this->actingAs($mohamed)->get(route('form.index'))
             ->assertOk()
             ->assertSee('kaman-sidebar', false)
             ->assertSee(__('projects.form.label'))
-            ->assertSee(__('projects.ai-chatbot.label'))
             ->assertSee(__('app.download_pos_android'), false)
             ->assertSee(__('app.download_pos_windows'), false)
             ->assertSee(__('app.download_support_android'), false)
@@ -164,8 +124,6 @@ class KamanDesignTest extends TestCase
     {
         $pages = [
             route('form.index'),
-            route('ai-chatbot.index'),
-            route('ai-chatbot.instances.show', $this->chatbotInstance()),
             route('app-development.index'),
             route('kaman-support.index'),
         ];
@@ -176,17 +134,5 @@ class KamanDesignTest extends TestCase
                 ->assertSuccessful()
                 ->assertSee(route('logout'), false);
         }
-    }
-
-    public function test_studio_does_not_offer_manual_instance_creation(): void
-    {
-        $instance = $this->chatbotInstance();
-
-        $this->actingAs($this->admin())
-            ->get(route('ai-chatbot.instances.show', $instance))
-            ->assertOk()
-            ->assertDontSee(__('chatbot.new_instance'))
-            ->assertSee(SallyMalanChatbotInstanceSeeder::INSTANCE_NAME)
-            ->assertSee(KamanWhatsappChatbotInstanceSeeder::INSTANCE_NAME);
     }
 }

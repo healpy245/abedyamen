@@ -15,6 +15,7 @@
         ? mb_strtoupper(mb_substr(trim($person->name), 0, 1))
         : '';
     $info = __('app-development.board.task_info');
+    $editId = 'ti-edit-'.$task->id;
     if ($ticket) {
         $info .= ' '.$ticket->ticket_number;
     }
@@ -22,11 +23,28 @@
 
 <div data-modal-title="{{ $info }}" data-modal-variant="view" class="ti task-modal-layout">
     <div class="ti-main task-modal-main">
-        <h2 class="ti-title" id="modalTaskTitle">{{ $task->title }}</h2>
+        @can('update', $task)
+            {{-- Edit in place: title and description here, assignee/priority/due in the side column (form="..."). --}}
+            <form id="{{ $editId }}" method="post" action="{{ route('app-development.tasks.update', $task) }}" class="ti-edit" data-ti-edit>
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="status" value="{{ $task->status->value }}">
+                <h2 class="ti-title" id="modalTaskTitle">
+                    <input type="text" name="title" value="{{ old('title', $task->title) }}" required maxlength="255" class="ti-title-input" aria-label="{{ __('app-development.tasks.title_label') }}">
+                </h2>
+                <textarea name="description" rows="2" class="ti-desc-input task-description" placeholder="{{ __('app-development.tasks.description') }}" aria-label="{{ __('app-development.tasks.description') }}">{{ old('description', $task->description) }}</textarea>
+                <div class="ti-edit-bar" data-ti-edit-bar hidden>
+                    <button type="button" class="dev-btn" data-ti-edit-reset>{{ __('app.cancel') }}</button>
+                    <button type="submit" class="dev-btn dev-btn--primary">{{ __('app-development.save') }}</button>
+                </div>
+            </form>
+        @else
+            <h2 class="ti-title" id="modalTaskTitle">{{ $task->title }}</h2>
 
-        @if(filled($task->description))
-            <p class="ti-desc task-description">{{ $task->description }}</p>
-        @endif
+            @if(filled($task->description))
+                <p class="ti-desc task-description">{{ $task->description }}</p>
+            @endif
+        @endcan
 
         @if($ticket)
             <div class="ti-meta task-metadata">
@@ -93,54 +111,6 @@
             </section>
         @endif
 
-        @can('update', $task)
-            <details class="kb-fold ti-block">
-                <summary>{{ __('app.edit') }}</summary>
-                <form method="post" action="{{ route('app-development.tasks.update', $task) }}" class="mt-3 space-y-3">
-                    @csrf
-                    @method('PUT')
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.title_label') }}</label>
-                        <input type="text" name="title" value="{{ old('title', $task->title) }}" required class="kaman-input w-full">
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.description') }}</label>
-                        <textarea name="description" rows="3" class="kaman-input w-full">{{ old('description', $task->description) }}</textarea>
-                    </div>
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.assignee') }}</label>
-                            <select name="assignee_id" class="kaman-input w-full">
-                                <option value="">{{ __('app-development.tickets.none') }}</option>
-                                @foreach($developers as $developer)
-                                    <option value="{{ $developer->id }}" @selected((string) old('assignee_id', $task->assignee_id) === (string) $developer->id)>{{ $developer->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tickets.priority') }}</label>
-                            <select name="priority" class="kaman-input w-full">
-                                @foreach(\App\Enums\AppDevelopmentTicketPriority::cases() as $priority)
-                                    <option value="{{ $priority->value }}" @selected(old('priority', $task->priority->value) === $priority->value)>{{ $priority->label() }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <input type="hidden" name="status" value="{{ $task->status->value }}">
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-[#2b1e11]">{{ __('app-development.tasks.due_at') }}</label>
-                        <input type="datetime-local"
-                               name="due_at"
-                               value="{{ old('due_at', $task->due_at?->format('Y-m-d\TH:i')) }}"
-                               class="kaman-input w-full">
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="kaman-button kaman-button--sm">{{ __('app-development.save') }}</button>
-                    </div>
-                </form>
-            </details>
-        @endcan
-
         @if($task->timeEntries->isNotEmpty())
             <details class="kb-fold ti-block">
                 <summary>{{ __('app-development.tasks.time_entries') }}</summary>
@@ -170,19 +140,31 @@
     </div>
 
     <aside class="ti-side task-modal-aside">
-        <div class="ti-person">
-            @if($initial !== '')
-                <span class="tc-avatar" title="{{ $person->name }}">{{ $initial }}</span>
-                <span>{{ $person->name }}</span>
-            @else
-                <span>{{ __('app-development.tickets.unassigned') }}</span>
-            @endif
-        </div>
+        @can('update', $task)
+            <label class="ti-field">
+                <span class="task-detail-label">{{ __('app-development.tasks.assignee') }}</span>
+                <select name="assignee_id" form="{{ $editId }}" data-ds-select>
+                    <option value="">{{ __('app-development.tickets.unassigned') }}</option>
+                    @foreach($developers as $developer)
+                        <option value="{{ $developer->id }}" @selected((string) old('assignee_id', $task->assignee_id) === (string) $developer->id)>{{ $developer->name }}</option>
+                    @endforeach
+                </select>
+            </label>
+        @else
+            <div class="ti-person">
+                @if($initial !== '')
+                    <span class="tc-avatar" title="{{ $person->name }}">{{ $initial }}</span>
+                    <span>{{ $person->name }}</span>
+                @else
+                    <span>{{ __('app-development.tickets.unassigned') }}</span>
+                @endif
+            </div>
+        @endcan
 
         @can('update', $task)
             <label class="ti-field">
                 <span class="task-detail-label">{{ __('app-development.tasks.status') }}</span>
-                <select data-kb-status-select data-status-url="{{ route('app-development.tasks.status', $task) }}" data-current="{{ $task->status->value }}">
+                <select data-kb-status-select data-ds-select data-status-url="{{ route('app-development.tasks.status', $task) }}" data-current="{{ $task->status->value }}">
                     @foreach(\App\Enums\AppDevelopmentTaskStatus::cases() as $status)
                         <option value="{{ $status->value }}" @selected($task->status === $status)>{{ $status->label() }}</option>
                     @endforeach
@@ -192,26 +174,30 @@
             <p class="ti-field"><span>{{ __('app-development.tasks.status') }}</span><b>{{ $task->status->label() }}</b></p>
         @endcan
 
-        <p class="ti-field">
-            <span class="task-detail-label">{{ __('app-development.tickets.priority') }}</span>
-            <b class="task-priority">{{ $task->priority->label() }}</b>
-        </p>
-
-        @if($task->due_at)
+        @can('update', $task)
+            <label class="ti-field">
+                <span class="task-detail-label">{{ __('app-development.tickets.priority') }}</span>
+                <select name="priority" form="{{ $editId }}" data-ds-select>
+                    @foreach(\App\Enums\AppDevelopmentTicketPriority::cases() as $priority)
+                        <option value="{{ $priority->value }}" @selected(old('priority', $task->priority->value) === $priority->value)>{{ $priority->label() }}</option>
+                    @endforeach
+                </select>
+            </label>
+        @else
             <p class="ti-field">
-                <span>{{ __('app-development.tasks.due_at') }}</span>
-                <b><bdi dir="ltr">{{ $task->due_at->format('Y-m-d H:i') }}</bdi></b>
+                <span class="task-detail-label">{{ __('app-development.tickets.priority') }}</span>
+                <b class="task-priority">{{ $task->priority->label() }}</b>
             </p>
-        @endif
+        @endcan
 
         @if($canTimer && ! $task->isCompleted())
             @if($activeEntry)
-                <form method="post" action="{{ route('app-development.tasks.timer.pause', $task) }}">
+                <form method="post" action="{{ route('app-development.tasks.timer.pause', $task) }}" data-ajax-submit>
                     @csrf
                     <button type="submit" class="ti-start task-timer running">{{ __('app-development.tasks.pause_timer') }}</button>
                 </form>
             @else
-                <form method="post" action="{{ route('app-development.tasks.timer.start', $task) }}">
+                <form method="post" action="{{ route('app-development.tasks.timer.start', $task) }}" data-ajax-submit>
                     @csrf
                     <button type="submit" class="ti-start task-timer">{{ __('app-development.tasks.start_timer') }}</button>
                 </form>

@@ -17,7 +17,9 @@ class SignIn
 
     public function attempt(Request $request, bool $rotateSession = true, string $gate = 'kaman'): RedirectResponse
     {
-        $loginRoute = $gate === 'chatbots' ? 'chatbots.login' : 'login';
+        unset($gate);
+
+        $loginRoute = 'login';
 
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email'],
@@ -31,26 +33,16 @@ class SignIn
                 ->onlyInput('email');
         }
 
-        if (Auth::attempt($validator->validated(), $request->boolean('remember'))) {
+        if (Auth::attemptWhen($validator->validated(), static fn (User $user): bool => ! $user->isTurnedOff(), $request->boolean('remember'))) {
             /** @var User|null $user */
             $user = Auth::user();
-            $chatbotOnly = $user?->isChatbotOnly() ?? false;
 
-            if ($gate === 'kaman' && $chatbotOnly) {
-                Auth::logout();
-
-                return redirect()
-                    ->route('chatbots.login')
-                    ->withErrors(['email' => __('auth.use_chatbot_login')])
-                    ->onlyInput('email');
-            }
-
-            if ($gate === 'chatbots' && ! $chatbotOnly) {
+            if ($user?->isChatbotOnly()) {
                 Auth::logout();
 
                 return redirect()
                     ->route('login')
-                    ->withErrors(['email' => __('auth.use_kaman_login')])
+                    ->withErrors(['email' => __('auth.failed')])
                     ->onlyInput('email');
             }
 

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Enums\Door;
 use App\Enums\Project;
+use App\Support\LockedDoor;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,7 +42,7 @@ class EnsureUserCanAccessProject
         }
 
         if (!$user->canAccessProject($resolved)) {
-            abort(403, __('app.no_access', ['project' => $resolved->label()]));
+            return LockedDoor::response($request, Door::forProject($resolved));
         }
 
         return $next($request);

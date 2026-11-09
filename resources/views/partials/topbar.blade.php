@@ -19,7 +19,7 @@
     {{-- max-w matches .page-container so the logo lines up with page content. --}}
     <div class="mx-auto flex w-full items-center justify-between gap-3 py-2 {{ $boardWorkspace ? 'kaman-topbar__inner--board px-3 sm:px-4' : 'max-w-[90rem] px-4 sm:px-6' }}">
         <div class="flex items-center gap-3 min-w-0">
-            @if($navUser && ! $navUser->isMowahada() && ! $boardWorkspace)
+            @if($navUser && ! $boardWorkspace)
                 <button type="button"
                         class="kaman-sidebar-open kaman-button-ghost kaman-button--sm lg:!hidden"
                         data-kaman-sidebar-open

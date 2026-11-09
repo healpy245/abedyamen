@@ -62,10 +62,11 @@ class DesignConceptTest extends TestCase
         $this->actingAs($yamen)->get(route('workspace.agents', ['page' => 'clients']))
             ->assertRedirect(route('workspace.overview', ['page' => 'restaurants']));
 
-        $this->actingAs($yamen)->get(route('workspace.placeholder', 'finance'))
+        Http::fake(['https://kaman.rest/*' => Http::response(['data' => ['companies' => [], 'areas' => []]])]);
+        $this->actingAs($yamen)->get(route('workspace.finance.dashboard'))
             ->assertOk()
-            ->assertSee(__('app.hub_finance'))
-            ->assertSee(__('app.hub_closed'));
+            ->assertSee(__('finance.title'))
+            ->assertDontSee(__('app.hub_closed'));
 
         $this->actingAs($yamen)->get(route('today'))
             ->assertRedirect(route('design.modern-light'));
@@ -73,7 +74,11 @@ class DesignConceptTest extends TestCase
 
     public function test_a_chatbot_account_does_not_open_the_previews(): void
     {
-        $malan = User::query()->where('email', 'malan@kaman.rest')->firstOrFail();
+        $malan = User::factory()->create([
+            'email' => 'malan@kaman.rest',
+            'is_admin' => false,
+            'projects' => ['ai-chatbot'],
+        ]);
 
         $this->actingAs($malan)
             ->get(route('design.index'))

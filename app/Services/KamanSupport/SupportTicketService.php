@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -140,7 +141,7 @@ class SupportTicketService
         $limit = max(1, min(100, $limit));
         $page = max(1, $page);
 
-        $query = SupportTicket::query()->orderByDesc('id');
+        $query = SupportTicket::query()->visibleTo(auth()->user())->orderByDesc('id');
 
         if ($status !== null && $status !== '') {
             $resolved = SupportTicketStatus::tryFrom($status);
@@ -240,6 +241,51 @@ class SupportTicketService
         ?string $actorName,
     ): SupportTicketEvent {
         return $this->recordEvent($ticket, $type, $message, $data, $actorType, $actorName);
+    }
+
+    public function attachMedia(SupportTicket $ticket, ?UploadedFile $audio, ?UploadedFile $screen): SupportTicket
+    {
+        $id = preg_replace('/[^A-Za-z0-9_-]/', '', $ticket->public_id) ?: 'ticket';
+        $dir = 'kaman-support/'.$id;
+        $extra = is_array($ticket->extra) ? $ticket->extra : [];
+
+        if ($audio !== null) {
+            $ext = strtolower($audio->getClientOriginalExtension() ?: 'wav');
+            if (! in_array($ext, ['wav', 'm4a', 'aac', 'mp3', 'ogg'], true)) {
+                $ext = 'wav';
+            }
+            $stored = $audio->storeAs($dir, 'voice.'.$ext, 'local');
+            if (! is_string($stored) || $stored === '') {
+                throw new \RuntimeException('Could not store the voice recording.');
+            }
+            $extra['audioPath'] = $stored;
+        }
+
+        if ($screen !== null) {
+            $stored = $screen->storeAs($dir, 'screen.kscr', 'local');
+            if (! is_string($stored) || $stored === '') {
+                throw new \RuntimeException('Could not store the screen recording.');
+            }
+            $extra['screenPath'] = $stored;
+        }
+
+        $ticket->extra = $extra;
+        $ticket->save();
+        $ticket->refresh();
+
+        $this->addNamedEvent(
+            $ticket,
+            SupportTicketEventType::Note,
+            'recordings attached',
+            [
+                'voice' => $ticket->hasVoice(),
+                'screen' => $ticket->hasScreen(),
+            ],
+            'pos',
+            $ticket->cashier_name,
+        );
+
+        return $ticket;
     }
 
     public function touchDevice(SupportTicket $ticket): void

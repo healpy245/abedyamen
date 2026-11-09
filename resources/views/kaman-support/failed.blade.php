@@ -42,7 +42,7 @@
             <form method="get" data-clean-get class="kaman-card kaman-card--compact flex flex-wrap items-end gap-2">
                 <label class="flex w-64 flex-col gap-1 text-xs font-medium text-[#7c6a56]">
                     {{ __('kaman-support.filter_restaurant') }}
-                    <select name="restaurant" data-failed-restaurant class="kaman-input">
+                    <select name="restaurant" data-failed-restaurant class="kaman-input" data-ds-select>
                         <option value="">{{ __('kaman-support.all_restaurants') }}</option>
                         @foreach($restaurants as $restaurant)
                             <option value="{{ $restaurant['value'] }}" @selected($filters['restaurant'] === $restaurant['value'])>{{ $restaurant['label'] }}</option>

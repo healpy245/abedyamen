@@ -43,7 +43,9 @@ class SupportDeviceSessionService
             'cashier_email' => $this->nullableString($payload['cashierEmail'] ?? $payload['cashier_email'] ?? null),
             'role' => $this->nullableString($payload['role'] ?? null, 64),
             'platform' => $this->nullableString($payload['platform'] ?? null, 64),
-            'app_version' => $this->nullableString($payload['appVersion'] ?? $payload['app_version'] ?? null, 64),
+            // Smaller heartbeats, like a printer update, leave the version out.
+            'app_version' => $this->nullableString($payload['appVersion'] ?? $payload['app_version'] ?? null, 64) ?? $device->app_version,
+            'product' => $this->product($payload['product'] ?? null) ?? $device->product,
             'hostname' => $this->nullableString($payload['hostname'] ?? $payload['deviceName'] ?? null),
             'locale' => $this->nullableString($payload['locale'] ?? null, 16),
             'session_id' => $this->nullableString($payload['sessionId'] ?? $payload['session_id'] ?? $device->session_id, 64),
@@ -66,8 +68,6 @@ class SupportDeviceSessionService
         $logs = $payload['logs'] ?? null;
         if (is_array($logs) && $logs !== []) {
             $this->ingestLogs($device, $logs);
-        } else {
-            $this->pruneLogs((int) $device->id);
         }
 
         return $device->fresh() ?? $device;
@@ -251,9 +251,9 @@ class SupportDeviceSessionService
 
         $query = SupportDevice::query()
             ->where('app_state', '!=', 'closed')
-            ->where('last_seen_at', '>=', $since);
+            ->where('last_seen_at', '>=', $since)
+            ->visibleTo($this->viewer());
 
-        $this->applyViewerVersion($query);
         $this->applyRestaurant($query, $restaurant);
         $this->applyDeviceKind($query, $kind);
         $this->applyStableDeviceOrder($query);
@@ -270,9 +270,9 @@ class SupportDeviceSessionService
 
         $query = SupportDevice::query()
             ->where('last_seen_at', '>=', now()->subHours(max(1, $hours)))
-            ->when($liveIds !== [], static fn ($inner) => $inner->whereNotIn('id', $liveIds));
+            ->when($liveIds !== [], static fn ($inner) => $inner->whereNotIn('id', $liveIds))
+            ->visibleTo($this->viewer());
 
-        $this->applyViewerVersion($query);
         $this->applyRestaurant($query, $restaurant);
         $this->applyDeviceKind($query, $kind);
         $this->applyStableDeviceOrder($query);
@@ -288,8 +288,7 @@ class SupportDeviceSessionService
      */
     public function visibleDevices(?string $restaurant = null, ?string $kind = null, int $limit = 400): Collection
     {
-        $query = SupportDevice::query()->orderByDesc('last_seen_at');
-        $this->applyViewerVersion($query);
+        $query = SupportDevice::query()->visibleTo($this->viewer())->orderByDesc('last_seen_at');
         $this->applyRestaurant($query, $restaurant);
         $this->applyDeviceKind($query, $kind);
 
@@ -309,12 +308,13 @@ class SupportDeviceSessionService
         ?Carbon $to = null,
         int $limit = 80,
         ?array $restaurants = null,
+        ?string $lane = null,
     ): Collection {
         $query = SupportDeviceLog::query()
             ->with('device')
             ->orderByDesc('id');
 
-        $this->constrainLogsToViewerVersion($query);
+        $this->constrainLogsToViewer($query);
 
         $keys = array_values(array_filter(array_map(
             static fn ($value): string => trim((string) $value),
@@ -338,8 +338,37 @@ class SupportDeviceSessionService
 
         $this->applyLogFilters($query, $level, $source, $q);
         $this->applyTimeRange($query, $from, $to);
+        if ($lane === 'server' || $lane === 'device') {
+            $this->constrainPaymentServerLane($query, $lane);
+        }
 
         return $query->limit(max(1, min(200, $limit)))->get();
+    }
+
+    /**
+     * Card-terminal answers belong on the server log lane.
+     * Older tablets stored them as device API errors, so the message is checked too.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<SupportDeviceLog>  $query
+     */
+    public function constrainPaymentServerLane(mixed $query, string $lane): void
+    {
+        $paymentServer = function ($inner): void {
+            $inner->where('source', 'server')
+                ->orWhere('message', 'like', '%operation canceled by user%')
+                ->orWhere('message', 'like', '%operation cancelled by user%')
+                ->orWhere('message', 'like', '%transaction refused%');
+        };
+
+        if ($lane === 'server') {
+            $query->where($paymentServer);
+
+            return;
+        }
+
+        $query->where(function ($inner) use ($paymentServer): void {
+            $inner->whereNot($paymentServer);
+        });
     }
 
     /**
@@ -354,6 +383,7 @@ class SupportDeviceSessionService
 
         return match ($view) {
             'bugs' => ['level' => 'error', 'source' => null],
+            'failed' => ['level' => 'failed', 'source' => null],
             'api' => ['level' => 'error', 'source' => 'api'],
             'flutter' => ['level' => null, 'source' => 'flutter'],
             default => ['level' => null, 'source' => null],
@@ -367,7 +397,7 @@ class SupportDeviceSessionService
             return 'all';
         }
 
-        return in_array($view, ['devices', 'all', 'bugs', 'api', 'flutter'], true) ? $view : $default;
+        return in_array($view, ['devices', 'all', 'bugs', 'failed', 'api', 'flutter'], true) ? $view : $default;
     }
 
     /**
@@ -492,7 +522,7 @@ class SupportDeviceSessionService
             ->where('level', 'error')
             ->orderByDesc('id');
 
-        $this->constrainLogsToViewerVersion($query);
+        $this->constrainLogsToViewer($query);
 
         if ($restaurant !== null && $restaurant !== '') {
             $query->whereHas('device', function ($inner) use ($restaurant): void {
@@ -519,6 +549,7 @@ class SupportDeviceSessionService
         }
 
         $this->applyTimeRange($query, $from, $to);
+        $this->constrainPaymentServerLane($query, 'device');
 
         return $query->limit(max(1, min(300, $limit)))->get();
     }
@@ -543,9 +574,8 @@ class SupportDeviceSessionService
         $choices = [];
         $devices = SupportDevice::query()
             ->select('restaurant', 'restaurant_name', 'app_version')
-            ->where('restaurant', '!=', '');
-
-        $this->applyViewerVersion($devices);
+            ->where('restaurant', '!=', '')
+            ->visibleTo($this->viewer());
 
         $devices = $devices
             ->orderByRaw('COALESCE(NULLIF(restaurant_name, ""), restaurant)')
@@ -619,6 +649,7 @@ class SupportDeviceSessionService
             'platform' => $device->platform,
             'hostname' => $device->hostname,
             'appVersion' => $device->app_version,
+            'product' => $device->productKey(),
             'kind' => $device->deviceKind(),
             'online' => $device->isLive(),
             'appState' => $device->app_state,
@@ -637,6 +668,8 @@ class SupportDeviceSessionService
             'lan' => is_array($extra['lan'] ?? null) ? $extra['lan'] : ['nodes' => [], 'links' => []],
             'lanScan' => is_array($extra['lanScan'] ?? null) ? $extra['lanScan'] : ['running' => false, 'done' => 0, 'total' => 0],
             'pressure' => is_array($extra['pressure'] ?? null) ? $extra['pressure'] : ['running' => false, 'logs' => []],
+            'settings' => $this->storedSettings($extra),
+            'pizzaMeals' => $this->storedPizzaMeals($extra),
             'failedCount' => (int) ($failure['count'] ?? 0),
             'failedSource' => $failure['source'] ?? null,
             'failedMessage' => $failure['message'] ?? null,
@@ -663,6 +696,8 @@ class SupportDeviceSessionService
             'lan' => ['nodes' => [], 'links' => []],
             'lanScan' => ['running' => false, 'done' => 0, 'total' => 0],
             'pressure' => ['running' => false, 'logs' => []],
+            'settings' => null,
+            'pizzaMeals' => [],
             'failedCount' => 0,
             'failedSource' => null,
             'failedMessage' => null,
@@ -683,12 +718,103 @@ class SupportDeviceSessionService
                 $extra[$key === 'kitchen_types' ? 'kitchenTypes' : $key] = $payload[$key];
             }
         }
+        if (isset($payload['settings']) && is_array($payload['settings'])) {
+            $extra['settings'] = $this->normalizeSettings($payload['settings']);
+        }
+        if (isset($payload['pizzaMeals']) && is_array($payload['pizzaMeals'])) {
+            $extra['pizzaMeals'] = $this->storedPizzaMeals(['pizzaMeals' => $payload['pizzaMeals']]);
+        }
         if ($hadLayout) {
             $layout = $this->uniquePrinterLayout($extra);
             $extra['printers'] = $layout['printers'];
             $extra['discovered'] = $layout['discovered'];
         }
         $device->extra = $extra === [] ? null : $extra;
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>|null
+     */
+    private function storedSettings(array $extra): ?array
+    {
+        $raw = $extra['settings'] ?? null;
+
+        return is_array($raw) ? $this->normalizeSettings($raw) : null;
+    }
+
+    /**
+     * Keeps only the POS settings-page fields a support user is allowed to change.
+     *
+     * @param  array<string, mixed>  $raw
+     * @return array<string, mixed>
+     */
+    private function normalizeSettings(array $raw): array
+    {
+        $flags = [
+            'printKitchenCancel',
+            'localZReport',
+            'printReceiptOnReceive',
+            'allowKitchenReprint',
+            'autoPrintOnThisTablet',
+            'builtInKeyboard',
+            'pauseOrder',
+            'pizzaInterface',
+        ];
+        $out = [];
+        foreach ($flags as $flag) {
+            if (! array_key_exists($flag, $raw)) {
+                continue;
+            }
+            $out[$flag] = filter_var($raw[$flag], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (array_key_exists('kitchenReprintPassword', $raw)) {
+            $out['kitchenReprintPassword'] = mb_substr(trim((string) $raw['kitchenReprintPassword']), 0, 64);
+        }
+        if (isset($raw['pizzaMealIds']) && is_array($raw['pizzaMealIds'])) {
+            $ids = [];
+            foreach ($raw['pizzaMealIds'] as $id) {
+                $id = trim((string) $id);
+                if ($id === '' || in_array($id, $ids, true)) {
+                    continue;
+                }
+                $ids[] = mb_substr($id, 0, 64);
+                if (count($ids) >= 400) {
+                    break;
+                }
+            }
+            $out['pizzaMealIds'] = $ids;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return list<array{id: string, name: string}>
+     */
+    private function storedPizzaMeals(array $extra): array
+    {
+        $rows = [];
+        foreach (is_array($extra['pizzaMeals'] ?? null) ? $extra['pizzaMeals'] : [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '') {
+                continue;
+            }
+            $name = trim((string) ($row['name'] ?? ''));
+            $rows[] = [
+                'id' => mb_substr($id, 0, 64),
+                'name' => mb_substr($name !== '' ? $name : $id, 0, 80),
+            ];
+            if (count($rows) >= 300) {
+                break;
+            }
+        }
+
+        return $rows;
     }
 
     /**
@@ -913,6 +1039,7 @@ class SupportDeviceSessionService
                 $inner->whereIn('source', ['api', 'flutter'])
                     ->orWhere('message', 'like', 'API %');
             });
+        $this->constrainPaymentServerLane($base, 'device');
 
         $counts = (clone $base)
             ->select('support_device_id')
@@ -969,56 +1096,21 @@ class SupportDeviceSessionService
         }
     }
 
-    public function viewerCanSeeDevice(SupportDevice $device): bool
-    {
-        $prefix = $this->viewerVersionPrefix();
-        if ($prefix === null) {
-            return true;
-        }
-
-        $version = (string) $device->app_version;
-
-        return str_starts_with($version, $prefix)
-            || str_starts_with($version, 'v'.$prefix)
-            || str_starts_with($version, 'V'.$prefix);
-    }
-
-    private function viewerVersionPrefix(): ?string
+    private function viewer(): ?\App\Models\User
     {
         $user = auth()->user();
 
-        return $user instanceof \App\Models\User ? $user->posAppVersionPrefix() : null;
-    }
-
-    /**
-     * @param  \Illuminate\Database\Eloquent\Builder<SupportDevice>  $query
-     */
-    private function applyViewerVersion(mixed $query): void
-    {
-        $prefix = $this->viewerVersionPrefix();
-        if ($prefix === null) {
-            return;
-        }
-
-        $query->where(function ($inner) use ($prefix): void {
-            $inner->where('app_version', 'like', $prefix.'%')
-                ->orWhere('app_version', 'like', 'v'.$prefix.'%')
-                ->orWhere('app_version', 'like', 'V'.$prefix.'%');
-        });
+        return $user instanceof \App\Models\User ? $user : null;
     }
 
     /**
      * @param  \Illuminate\Database\Eloquent\Builder<SupportDeviceLog>  $query
      */
-    private function constrainLogsToViewerVersion(mixed $query): void
+    private function constrainLogsToViewer(mixed $query): void
     {
-        if ($this->viewerVersionPrefix() === null) {
-            return;
+        if ($this->viewer()?->supportProduct() !== null) {
+            $query->whereHas('device', fn ($device) => $device->visibleTo($this->viewer()));
         }
-
-        $query->whereHas('device', function ($inner): void {
-            $this->applyViewerVersion($inner);
-        });
     }
 
     /**
@@ -1076,7 +1168,18 @@ class SupportDeviceSessionService
      */
     private function applyLogFilters(mixed $query, ?string $level, ?string $source, ?string $q): void
     {
-        if ($level !== null && $level !== '') {
+        if ($level === 'failed') {
+            // Errors, and any request the server refused or failed, whatever level the device gave it.
+            $query->where(function ($inner): void {
+                $inner->where('level', 'error');
+                foreach (['4', '5'] as $band) {
+                    foreach (['-> ', ' /% '] as $before) {
+                        $inner->orWhere('message', 'like', "%{$before}{$band}__")
+                            ->orWhere('message', 'like', "%{$before}{$band}__ %");
+                    }
+                }
+            });
+        } elseif ($level !== null && $level !== '') {
             $query->where('level', $this->level($level));
         }
 
@@ -1129,6 +1232,13 @@ class SupportDeviceSessionService
         }
 
         return $extra === [] ? null : $extra;
+    }
+
+    private function product(mixed $value): ?string
+    {
+        $product = is_string($value) ? strtolower(trim($value)) : '';
+
+        return in_array($product, ['mall', 'lite'], true) ? $product : null;
     }
 
     private function appState(mixed $value): string

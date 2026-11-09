@@ -14,14 +14,6 @@ class DatabaseSeeder extends Seeder
         $this->call([
             WorkspaceUserSeeder::class,
             AppDevelopmentMemberSeeder::class,
-            SallyMalanChatbotInstanceSeeder::class,
-            SpeedcomChatbotInstanceSeeder::class,
-            KamanWhatsappChatbotInstanceSeeder::class,
-            MalanCompanyMemberSeeder::class,
-            KamanCompanyMemberSeeder::class,
-            SpeedcomCompanyMemberSeeder::class,
-            MowahadaViewerSeeder::class,
-            InvitationViewerSeeder::class,
             KamanSupportWorkerSeeder::class,
         ]);
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\KamanSupport;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePosTicketRequest extends FormRequest
 {
@@ -28,6 +29,7 @@ class StorePosTicketRequest extends FormRequest
             'cashierName' => ['nullable', 'string', 'max:191'],
             'deviceId' => ['nullable', 'string', 'max:191'],
             'locale' => ['nullable', 'string', 'max:16'],
+            'level' => ['nullable', 'string', Rule::in(['danger_now', 'issue', 'question'])],
             'conversation' => ['nullable', 'array'],
             'conversation.*' => ['nullable'],
             'diagnosis' => ['nullable', 'array'],

@@ -29,7 +29,7 @@ class ReportController extends Controller
 {
     public function index(Request $request): View
     {
-        abort_unless((bool) $request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canOpenSubDoor(\App\Enums\Door::Development, 'reports'), 403);
 
         [$from, $to, $preset] = $this->range($request);
 
@@ -43,7 +43,7 @@ class ReportController extends Controller
 
     public function exportSummary(Request $request): StreamedResponse
     {
-        abort_unless((bool) $request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canOpenSubDoor(\App\Enums\Door::Development, 'reports'), 403);
         [$from, $to, $preset] = $this->range($request);
         $dash = $this->dashboard($from, $to);
 
@@ -78,7 +78,7 @@ class ReportController extends Controller
 
     public function exportTickets(Request $request): StreamedResponse
     {
-        abort_unless((bool) $request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canOpenSubDoor(\App\Enums\Door::Development, 'reports'), 403);
         [$from, $to] = $this->range($request);
 
         $rows = AppDevelopmentTicket::query()
@@ -105,7 +105,7 @@ class ReportController extends Controller
 
     public function exportTasks(Request $request): StreamedResponse
     {
-        abort_unless((bool) $request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canOpenSubDoor(\App\Enums\Door::Development, 'reports'), 403);
         [$from, $to] = $this->range($request);
 
         if (! Schema::hasTable('app_development_tasks')) {
@@ -137,7 +137,7 @@ class ReportController extends Controller
 
     public function exportTime(Request $request): StreamedResponse
     {
-        abort_unless((bool) $request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canOpenSubDoor(\App\Enums\Door::Development, 'reports'), 403);
         [$from, $to] = $this->range($request);
 
         if (! Schema::hasTable('app_development_time_entries')) {
@@ -169,7 +169,7 @@ class ReportController extends Controller
     /**
      * @return array{0: Carbon, 1: Carbon, 2: string}
      */
-    private function range(Request $request): array
+    public function range(Request $request): array
     {
         $preset = (string) $request->query('preset', 'last_30');
         $now = Carbon::now()->endOfDay();
@@ -340,7 +340,7 @@ class ReportController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function dashboard(Carbon $from, Carbon $to): array
+    public function dashboard(Carbon $from, Carbon $to): array
     {
         $empty = [
             'available' => false,
@@ -530,7 +530,8 @@ class ReportController extends Controller
         $colors = [
             AppDevelopmentTaskStatus::Todo->value => '#528ef0',
             AppDevelopmentTaskStatus::InProgress->value => '#f58220',
-            AppDevelopmentTaskStatus::Paused->value => '#f3bd4e',
+            AppDevelopmentTaskStatus::QaTesting->value => '#f3bd4e',
+            AppDevelopmentTaskStatus::PushedToGit->value => '#8b7cf6',
             AppDevelopmentTaskStatus::Completed->value => '#21b58d',
         ];
 

@@ -39,7 +39,11 @@ class TodayPageTest extends TestCase
 
     public function test_a_chatbot_account_never_opens_the_kaman_today_page(): void
     {
-        $malan = User::query()->where('email', 'malan@kaman.rest')->firstOrFail();
+        $malan = User::factory()->create([
+            'email' => 'malan@kaman.rest',
+            'is_admin' => false,
+            'projects' => ['ai-chatbot'],
+        ]);
 
         $this->actingAs($malan)
             ->get(route('today'))

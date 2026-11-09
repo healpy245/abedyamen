@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Enums\AppDevelopmentTicketStatus;
 use App\Enums\KamanSupport\SupportTicketStatus;
+use App\Enums\Door;
 use App\Enums\Project;
 use App\Models\AppDevelopment\AppDevelopmentRelease;
 use App\Models\AppDevelopment\AppDevelopmentTicket;
@@ -40,14 +41,14 @@ class TodayService
     {
         $items = [];
 
-        if ($user->canAccessProject(Project::KamanSupport)) {
+        if ($user->canOpenSubDoor(Door::Support, 'live')) {
             $items = array_merge($items, $this->liveDevices($user));
-            if (! $user->limitedSupportConsole()) {
-                $items = array_merge($items, $this->supportTickets());
-            }
+        }
+        if ($user->canOpenSubDoor(Door::Support, 'tickets')) {
+            $items = array_merge($items, $this->supportTickets($user));
         }
 
-        if ($user->canAccessProject(Project::AppDevelopment)) {
+        if ($user->canOpenSubDoor(Door::Development, 'tickets')) {
             if ($user->isQa()) {
                 $items = array_merge($items, $this->releaseToCheck(), $this->qaTickets());
             }
@@ -64,10 +65,7 @@ class TodayService
      */
     private function doors(User $user): array
     {
-        return array_values(array_filter(
-            $user->accessibleProjects(),
-            fn (Project $project): bool => $project !== Project::AiChatbot,
-        ));
+        return $user->accessibleProjects();
     }
 
     /**
@@ -77,15 +75,11 @@ class TodayService
     {
         $window = max(15, (int) config('kaman-support.live_seen_seconds', 90));
         $query = SupportDevice::query()
+            ->visibleTo($user)
             ->where('last_seen_at', '>=', now()->subSeconds($window))
             ->where(function ($query): void {
                 $query->whereNull('app_state')->orWhere('app_state', '!=', 'closed');
             });
-
-        $prefix = $user->posAppVersionPrefix();
-        if ($prefix !== null) {
-            $query->where('app_version', 'like', $prefix.'%');
-        }
 
         $count = $query->count();
         if ($count === 0) {
@@ -103,9 +97,10 @@ class TodayService
     /**
      * @return list<array{label: string, title: string, detail: string, href: string}>
      */
-    private function supportTickets(): array
+    private function supportTickets(User $user): array
     {
         return SupportTicket::query()
+            ->visibleTo($user)
             ->whereIn('status', [SupportTicketStatus::Open, SupportTicketStatus::InProgress])
             ->orderByDesc('id')
             ->limit(3)
@@ -117,7 +112,7 @@ class TodayService
                     'label' => __('app.today_support_ticket'),
                     'title' => $name !== '' ? $name : $ticket->public_id,
                     'detail' => Str::limit(trim((string) $ticket->summary), 90),
-                    'href' => route('kaman-support.show', $ticket),
+                    'href' => route('kaman-support.inbox', ['ticket' => $ticket->public_id]),
                 ];
             })
             ->all();

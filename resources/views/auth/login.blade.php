@@ -61,9 +61,6 @@
             <p class="mt-6 text-center text-xs text-[#a78a6c]">
                 {{ __('auth.footer') }}
             </p>
-            <p class="mt-3 text-center text-xs">
-                <a href="{{ route('chatbots.login') }}" class="text-[#a78a6c] underline">{{ __('auth.chatbots_login_link') }}</a>
-            </p>
         </div>
     </div>
 @endsection

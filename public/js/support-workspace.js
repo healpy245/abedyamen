@@ -80,15 +80,7 @@
         });
     }
 
-    function productKey(version) {
-        var value = String(version || '').trim().replace(/^[vV]/, '');
-        if (/^1\.0(?:\.|$)/.test(value)) return 'mall';
-        if (/^1\.3(?:\.|$)/.test(value)) return 'lite';
-        return '';
-    }
-
-    function productLabel(version) {
-        var key = productKey(version);
+    function productLabel(key) {
         return key ? (boot.labels[key] || '') : '';
     }
 
@@ -97,8 +89,7 @@
         var source = online.length ? online : devices;
         var keys = {};
         source.forEach(function (device) {
-            var key = productKey(device.version || device.appVersion);
-            if (key) keys[key] = true;
+            if (device.product) keys[device.product] = true;
         });
         return ['mall', 'lite'].filter(function (key) { return keys[key]; }).map(function (key) {
             return boot.labels[key] || '';
@@ -106,7 +97,7 @@
     }
 
     function deviceLine(device) {
-        var product = productLabel(device.version || device.appVersion);
+        var product = productLabel(device.product);
         return '<div class="sup-device"><div><strong>' + esc(device.name) + '</strong><div class="sup-meta">'
             + esc(device.kind) + ' · ' + esc(device.platform)
             + (product ? ' · ' + esc(product) : '')
@@ -166,7 +157,7 @@
 
     function logVersion(log) {
         var version = log.device && log.device.version ? String(log.device.version) : '';
-        var product = productLabel(version);
+        var product = productLabel(log.device && log.device.product);
         return [product, version].filter(Boolean).join(' · ');
     }
 
@@ -225,7 +216,7 @@
                 + '<svg class="sup-logs-all__go" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>';
             body.innerHTML = allLogs + '<div class="sup-list" data-log-slot><div class="sup-skel"></div><div class="sup-skel"></div><div class="sup-skel"></div></div>';
             var slot = body.querySelector('[data-log-slot]');
-            fetch(boot.feed + '?restaurant=' + encodeURIComponent(current.id) + '&view=all&limit=200', { headers: { 'Accept': 'application/json' } })
+            fetch(boot.feed + '?restaurant=' + encodeURIComponent(current.id) + '&view=failed&hours=48&limit=200', { headers: { 'Accept': 'application/json' } })
                 .then(function (res) { return res.json(); })
                 .then(function (payload) {
                     var logs = (payload && payload.logs) || [];
@@ -247,7 +238,7 @@
             + '</p><p class="sup-meta">' + esc(boot.labels.last) + ': ' + esc(current.lastSeen || boot.labels.never) + '</p>'
             + (current.error ? '<p class="sup-error">' + esc(current.error) + '</p>' : '')
             + devices.map(function (device) {
-                var product = productLabel(device.version) || device.kind || '';
+                var product = productLabel(device.product) || device.kind || '';
                 return '<div class="sup-device is-hit" role="button" tabindex="0" data-printers="' + esc(device.id) + '">'
                     + '<div class="sup-device__top"><div><strong>' + esc(device.name) + '</strong>'
                     + '<div class="sup-meta"><span dir="ltr">' + esc(product) + (device.version ? ' · ' + esc(device.version) : '') + '</span></div></div>'
@@ -297,15 +288,25 @@
 
     grid.addEventListener('click', function (event) {
         var card = event.target.closest('[data-open]');
-        if (card) openModal(card.getAttribute('data-open'));
+        // A real restaurant opens the shared restaurant modal (data-act); only the login-page card uses this one.
+        if (card && !card.hasAttribute('data-act')) openModal(card.getAttribute('data-open'));
     });
     var printerModal = document.getElementById('sup-printers');
+    var printerLayer = document.querySelector('[data-sup-printer-layer]');
+    if (printerLayer) {
+        printerLayer.addEventListener('cancel', function (event) {
+            event.preventDefault();
+            closePrinters();
+        });
+    }
     var printerBody = document.getElementById('sup-printer-body');
     var printerTitle = document.getElementById('sup-printer-title');
     var printerDevice = null;
     var printerTimer = 0;
     var printerView = 'printers';
     var printerNote = '';
+    var pendingSettings = null;
+    var pizzaQuery = '';
     var printerPayload = null;
     var printerSig = '';
     var showChecks = false;
@@ -337,7 +338,10 @@
         stopSearch(false);
         stopSearch(true);
         printerModal.classList.remove('is-open');
-        window.setTimeout(function () { printerModal.hidden = true; }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180);
+        window.setTimeout(function () {
+            printerModal.hidden = true;
+            if (printerLayer && printerLayer.open) printerLayer.close();
+        }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180);
     }
 
     function icon(name) {
@@ -468,6 +472,114 @@
             + (pressure.issue ? '<p class="sup-alert">' + esc(boot.labels.pressureIssue) + '</p>' : '')
             + (logs ? '<div class="sup-plog"><div class="sup-plog__head"><strong>' + esc(boot.labels.pressureLog) + '</strong><button type="button" class="sup-ghost" data-pressure-clear>' + esc(boot.labels.pressureClear) + '</button></div><p class="sup-meta">' + esc(stats) + '</p><div class="sup-plog__body">' + logs + '</div></div>' : '')
             + '</div>';
+    }
+
+    function settingOn(value) {
+        return value === true || value === 1 || value === '1' || value === 'true';
+    }
+
+    function settingEqual(live, pending) {
+        if (Array.isArray(pending)) {
+            var left = (Array.isArray(live) ? live : []).map(String).sort();
+            var right = pending.map(String).sort();
+            return JSON.stringify(left) === JSON.stringify(right);
+        }
+        if (typeof pending === 'boolean') return settingOn(live) === pending;
+        return String(live == null ? '' : live) === String(pending);
+    }
+
+    function reconcileSettings(device) {
+        if (!pendingSettings || !device || !device.settings) return;
+        var live = device.settings;
+        Object.keys(pendingSettings).forEach(function (key) {
+            if (settingEqual(live[key], pendingSettings[key])) delete pendingSettings[key];
+        });
+        if (!Object.keys(pendingSettings).length) pendingSettings = null;
+    }
+
+    function shownSettings(device) {
+        var base = {
+            printKitchenCancel: false,
+            localZReport: false,
+            printReceiptOnReceive: true,
+            allowKitchenReprint: false,
+            kitchenReprintPassword: '',
+            autoPrintOnThisTablet: false,
+            builtInKeyboard: true,
+            pauseOrder: false,
+            pizzaInterface: false,
+            pizzaMealIds: []
+        };
+        var live = (device && device.settings) || {};
+        Object.keys(base).forEach(function (key) {
+            if (Object.prototype.hasOwnProperty.call(live, key)) base[key] = live[key];
+        });
+        if (pendingSettings) {
+            Object.keys(pendingSettings).forEach(function (key) {
+                base[key] = pendingSettings[key];
+            });
+        }
+        if (!Array.isArray(base.pizzaMealIds)) base.pizzaMealIds = [];
+        return base;
+    }
+
+    function settingRow(key, title, hint, on) {
+        return '<label class="sup-set"><span><strong>' + esc(title) + '</strong>'
+            + (hint ? '<small>' + esc(hint) + '</small>' : '')
+            + '</span><input type="checkbox" data-setting="' + esc(key) + '"' + (on ? ' checked' : '') + '></label>';
+    }
+
+    function settingsHtml(device) {
+        var values = shownSettings(device);
+        var waiter = String((device && device.role) || (printerDevice && printerDevice.role) || '').toLowerCase() === 'waiter';
+        var meals = (device && device.pizzaMeals) || [];
+        var selected = {};
+        values.pizzaMealIds.forEach(function (id) { selected[String(id)] = true; });
+        var known = {};
+        var mealRows = meals.map(function (meal) {
+            var id = String(meal.id || '');
+            if (!id) return '';
+            known[id] = true;
+            var name = meal.name || id;
+            return '<label class="sup-meal" data-pizza-row data-name="' + esc(name) + '"><input type="checkbox" data-pizza-meal value="' + esc(id) + '"' + (selected[id] ? ' checked' : '') + '><span>' + esc(name) + '</span></label>';
+        }).join('');
+        Object.keys(selected).forEach(function (id) {
+            if (known[id]) return;
+            mealRows += '<label class="sup-meal" data-pizza-row data-name="' + esc(id) + '"><input type="checkbox" data-pizza-meal value="' + esc(id) + '" checked><span dir="ltr">' + esc(id) + '</span></label>';
+        });
+        var html = '<p class="sup-settings-note">' + esc(device && device.settings ? boot.labels.settingsWait : boot.labels.settingsUnreported) + '</p>';
+        html += settingRow('printKitchenCancel', boot.labels.printKitchenCancel, boot.labels.printKitchenCancelHint, settingOn(values.printKitchenCancel));
+        if (!waiter) html += settingRow('localZReport', boot.labels.localZ, boot.labels.localZHint, settingOn(values.localZReport));
+        html += settingRow('printReceiptOnReceive', boot.labels.printReceipt, '', settingOn(values.printReceiptOnReceive));
+        html += '<label class="sup-set"><span><strong>' + esc(boot.labels.kitchenReprint) + '</strong><small>' + esc(boot.labels.kitchenReprintHint) + '</small></span>'
+            + '<input class="sup-set__pin" data-reprint-pin type="text" inputmode="numeric" autocomplete="off" maxlength="64" aria-label="' + esc(boot.labels.reprintPin) + '" value="' + esc(values.kitchenReprintPassword || '') + '">'
+            + '<input type="checkbox" data-setting="allowKitchenReprint"' + (settingOn(values.allowKitchenReprint) ? ' checked' : '') + '></label>';
+        if (!waiter) html += settingRow('autoPrintOnThisTablet', boot.labels.autoPrint, boot.labels.autoPrintHint, settingOn(values.autoPrintOnThisTablet));
+        html += settingRow('builtInKeyboard', boot.labels.builtinKeyboard, boot.labels.builtinKeyboardHint, settingOn(values.builtInKeyboard));
+        html += settingRow('pauseOrder', boot.labels.pauseOrder, boot.labels.pauseOrderHint, settingOn(values.pauseOrder));
+        html += settingRow('pizzaInterface', boot.labels.pizza, boot.labels.pizzaHint, settingOn(values.pizzaInterface));
+        if (settingOn(values.pizzaInterface)) {
+            html += '<h3>' + esc(boot.labels.pizzaMeals) + '</h3>';
+            html += '<input class="sup-pizza-search" data-pizza-search type="search" value="' + esc(pizzaQuery) + '" placeholder="' + esc(boot.labels.pizzaSearch) + '" aria-label="' + esc(boot.labels.pizzaSearch) + '">';
+            html += mealRows ? '<div class="sup-meals">' + mealRows + '</div>' : '<p class="sup-empty">' + esc(boot.labels.pizzaMealsEmpty) + '</p>';
+        }
+        html += '<button type="button" class="sup-set sup-set--link" data-show-printers><span><strong>' + esc(boot.labels.printers) + '</strong></span></button>';
+        if (printerNote) html += '<p class="sup-meta">' + esc(printerNote) + '</p>';
+        return html;
+    }
+
+    function filterMeals() {
+        if (!printerBody) return;
+        var query = pizzaQuery.trim().toLowerCase();
+        printerBody.querySelectorAll('[data-pizza-row]').forEach(function (row) {
+            var name = String(row.getAttribute('data-name') || '').toLowerCase();
+            row.hidden = query !== '' && name.indexOf(query) === -1;
+        });
+    }
+
+    function queueSettings(patch) {
+        pendingSettings = Object.assign({}, pendingSettings || {}, patch);
+        sendCommand('apply_settings', patch);
     }
 
     function printersHtml(device) {
@@ -927,13 +1039,21 @@
     function syncPrinterChrome() {
         if (!printerModal) return;
         var mapButton = printerModal.querySelector('[data-show-map]');
+        var settingsButton = printerModal.querySelector('[data-show-settings]');
         var backButton = printerModal.querySelector('[data-show-printers]');
-        if (mapButton) mapButton.hidden = printerView === 'map';
+        if (mapButton) mapButton.hidden = printerView !== 'printers';
+        if (settingsButton) settingsButton.hidden = printerView !== 'printers';
         if (backButton) {
-            backButton.hidden = printerView !== 'map';
+            backButton.hidden = printerView === 'printers';
             backButton.innerHTML = icon('back') + esc(boot.labels.back);
         }
-        if (printerTitle) printerTitle.textContent = printerView === 'map' ? boot.labels.lanTitle : ((printerDevice && printerDevice.name) || boot.labels.printers);
+        if (printerTitle) {
+            printerTitle.textContent = printerView === 'map'
+                ? boot.labels.lanTitle
+                : printerView === 'settings'
+                    ? (boot.labels.settings || boot.labels.printers)
+                    : ((printerDevice && printerDevice.name) || boot.labels.printers);
+        }
         var panel = printerModal.querySelector('.sup-modal__panel');
         if (panel) panel.classList.toggle('is-map', printerView === 'map');
     }
@@ -1040,20 +1160,26 @@
         watchUserSearch(payload);
         printerPayload = payload;
         var device = (payload && payload.device) || {};
+        reconcileSettings(device);
         syncPrinterChrome();
-        var sig = (scanWait ? '1' : '0') + '|' + (mapWait ? '1' : '0') + '|' + printerView + '|' + printerNote + '|' + (showChecks ? '1' : '0') + '|' + mapPick + '|' + JSON.stringify({
+        var typing = printerView === 'settings' && printerBody && document.activeElement && printerBody.contains(document.activeElement) && document.activeElement.matches('[data-reprint-pin], [data-pizza-search]');
+        if (typing) return;
+        var sig = (scanWait ? '1' : '0') + '|' + (mapWait ? '1' : '0') + '|' + printerView + '|' + printerNote + '|' + (showChecks ? '1' : '0') + '|' + mapPick + '|' + pizzaQuery + '|' + JSON.stringify({
             printers: device.printers || [],
             discovered: device.discovered || [],
             scan: device.scan || null,
             kitchens: device.kitchenTypes || device.kitchen_types || [],
             lan: printerView === 'map' ? (device.lan || null) : null,
             lanScan: device.lanScan || null,
-            pressure: showChecks ? (device.pressure || null) : null
+            pressure: showChecks ? (device.pressure || null) : null,
+            settings: printerView === 'settings' ? shownSettings(device) : (device.settings || null),
+            pending: pendingSettings
         });
         if (sig === printerSig && printerBody && printerBody.childElementCount) return;
         printerSig = sig;
-        if (printerBody) printerBody.innerHTML = printerView === 'map' ? mapHtml(device) : printersHtml(device);
+        if (printerBody) printerBody.innerHTML = printerView === 'map' ? mapHtml(device) : printerView === 'settings' ? settingsHtml(device) : printersHtml(device);
         if (printerView === 'map') bindMap();
+        if (printerView === 'settings') filterMeals();
     }
 
     function loadPrinters() {
@@ -1093,6 +1219,8 @@
         printerDevice = (current && current.devices || []).filter(function (device) { return String(device.id) === String(id); })[0] || { id: id, name: id };
         printerView = 'printers';
         printerNote = '';
+        pendingSettings = null;
+        pizzaQuery = '';
         printerPayload = null;
         printerSig = '';
         stopSearch(false);
@@ -1101,6 +1229,8 @@
         pressureTargets = null;
         mapPick = '';
         if (!printerModal) return;
+        // Above the restaurant modal, which sits in the top layer.
+        if (printerLayer && !printerLayer.open) printerLayer.showModal();
         syncPrinterChrome();
         if (printerBody) printerBody.innerHTML = '<div class="sup-skel"></div><div class="sup-skel"></div>';
         printerModal.hidden = false;
@@ -1111,9 +1241,41 @@
     }
 
     if (printerModal) {
+        printerModal.addEventListener('input', function (event) {
+            if (event.target.matches('[data-pizza-search]')) {
+                pizzaQuery = event.target.value;
+                filterMeals();
+            }
+        });
+        printerModal.addEventListener('change', function (event) {
+            var pin = event.target.closest('[data-reprint-pin]');
+            if (pin) {
+                queueSettings({ kitchenReprintPassword: pin.value });
+                return;
+            }
+            var setting = event.target.closest('[data-setting]');
+            if (setting) {
+                var patch = {};
+                patch[setting.getAttribute('data-setting')] = !!setting.checked;
+                queueSettings(patch);
+                return;
+            }
+            if (!event.target.closest('[data-pizza-meal]') || !printerBody) return;
+            var ids = [];
+            printerBody.querySelectorAll('[data-pizza-meal]').forEach(function (box) {
+                if (box.checked) ids.push(box.value);
+            });
+            queueSettings({ pizzaMealIds: ids });
+        });
         printerModal.addEventListener('click', function (event) {
             if (event.target === printerModal || event.target.closest('[data-printer-close]')) {
                 closePrinters();
+                return;
+            }
+            if (event.target.closest('[data-show-settings]')) {
+                printerView = 'settings';
+                printerSig = '';
+                if (printerPayload) paintPrinters(printerPayload);
                 return;
             }
             if (event.target.closest('[data-show-map]')) {
@@ -1305,6 +1467,16 @@
     apply();
     if (boot.open) openModal(boot.open);
 
+    // The shared restaurant modal opens a device's printer tools from its Support section.
+    window.SupportBoard = {
+        openPrinters: function (restaurant, deviceId) {
+            current = byId[restaurant] || current;
+            openPrinters(deviceId);
+        }
+    };
+    // A restaurant modal already open (from ?open=) redraws so its devices open their printer tools.
+    if (window.KamanAgents && window.KamanAgents.refresh) window.KamanAgents.refresh();
+
     function cardNode(id) {
         var safe = window.CSS && CSS.escape ? CSS.escape(id) : id;
         return grid.querySelector('[data-open="' + safe + '"]');
@@ -1489,12 +1661,13 @@
                             var message = String(next.failedMessage || '');
                             var printerish = !!next.online && (source === 'flutter' || source === 'printer' || /print/i.test(message));
                             var status = next.online ? (printerish ? 'warning' : 'online') : (next.lastSeenAt ? 'offline' : 'unknown');
-                            if (device.online !== !!next.online || device.status !== status || device.version !== (next.appVersion || device.version)) {
+                            if (device.online !== !!next.online || device.status !== status || device.version !== (next.appVersion || device.version) || device.product !== (next.product || device.product)) {
                                 touched = true;
                             }
                             device.online = !!next.online;
                             device.status = status;
                             device.version = next.appVersion || device.version;
+                            device.product = next.product || device.product;
                             device.lastSeen = next.lastSeen || device.lastSeen;
                             device.lastSeenAt = next.lastSeenAt || device.lastSeenAt;
                             device.error = printerish ? message : null;

@@ -1,0 +1,143 @@
+/*
+ * Customer Support door on the design system.
+ * Most Support colours already come from ds tokens (support-workspace.css / support-logs.css use
+ * var(--ds-*, <old hex>)). This file restyles the older shared pieces those pages still use.
+ */
+
+/* Inbox */
+body.ds.sup-page .sp-status { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+body.ds.sup-page .sp-ticket-rest { display: flex; align-items: center; gap: 10px; min-width: 0; text-align: start; }
+body.ds.sup-page .sp-ticket-rest > span:last-child { display: grid; gap: 2px; min-width: 0; }
+body.ds.sup-page .sp-inbox .sup-inv__logo,
+body.ds.sup-page .tk-assure__head .sup-inv__logo {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--ds-surface-2);
+    color: var(--ds-text-2);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+}
+body.ds.sup-page .sup-inv__logo img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #fff;
+}
+body.ds.sup-page dialog.tk-assure.tk-assure--view { width: min(720px, calc(100vw - 32px)); }
+body.ds.sup-page .tk-assure__media { display: grid; gap: 12px; padding: 0 20px 8px; }
+body.ds.sup-page .tk-assure__media[hidden] { display: none; }
+body.ds.sup-page .tk-assure__media p { margin: 0; color: var(--ds-text-2); font-size: 12px; font-weight: 650; }
+body.ds.sup-page .tk-assure__media audio,
+body.ds.sup-page .tk-assure__media canvas { width: 100%; border-radius: 12px; background: #111; }
+
+/* View / escalate / close dialogs */
+body.ds.sup-page dialog.tk-assure {
+    width: min(480px, calc(100vw - 32px));
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+body.ds.sup-page dialog.tk-assure::backdrop { background: var(--ds-backdrop); backdrop-filter: blur(3px); }
+body.ds.sup-page .tk-assure form,
+body.ds.sup-page .tk-assure__sheet {
+    border: 0;
+    border-radius: var(--ds-r-xl);
+    background: var(--ds-overlay);
+    color: var(--ds-text);
+    box-shadow: var(--ds-shadow-lg);
+}
+body.ds.sup-page .tk-assure__head { align-items: center; padding: 18px 20px; border-bottom: 1px solid var(--ds-divider); }
+body.ds.sup-page .tk-assure__icon { width: 34px; height: 34px; border-radius: 50%; background: var(--ds-surface-2); color: var(--ds-text-2); }
+body.ds.sup-page .tk-assure__head h2 { font: 650 16px/1.3 var(--ds-font-display); }
+body.ds.sup-page .tk-assure__head p { color: var(--ds-text-2); }
+body.ds.sup-page .tk-assure__x { width: var(--ds-h-sm); height: var(--ds-h-sm); border: 0; background: transparent; }
+body.ds.sup-page .tk-assure__body { gap: 14px; padding: 18px 20px 6px; }
+body.ds.sup-page .tk-assure__body dt,
+body.ds.sup-page .tk-assure label { color: var(--ds-text-2); font-size: 12px; font-weight: 500; }
+body.ds.sup-page .tk-assure__body dd { color: var(--ds-text); }
+body.ds.sup-page .tk-assure label { padding: 18px 20px 0; }
+body.ds.sup-page .tk-assure__foot { gap: 8px; padding: 16px 20px; }
+body.ds.sup-page .tk-assure__done { padding: 18px 20px 4px; color: var(--ds-text); }
+
+/* Live hero: a quiet page header instead of a warm gradient banner. */
+body.ds.sup-page .hero-panel {
+    border: 1px solid var(--ds-border) !important;
+    border-radius: var(--ds-r-lg) !important;
+    background: var(--ds-surface) !important;
+    color: var(--ds-text) !important;
+    box-shadow: none !important;
+}
+body.ds.sup-page .hero-panel::before,
+body.ds.sup-page .hero-panel::after { display: none !important; }
+body.ds.sup-page .hero-panel :is(h1, h2) { color: var(--ds-text) !important; font-family: var(--ds-font-display); font-weight: 650; letter-spacing: -0.02em; }
+body.ds.sup-page .hero-panel p { color: var(--ds-text-2) !important; }
+
+/* Buttons and cards from the older shared stylesheet. */
+body.ds.sup-page :is(.kaman-button, .sup-primary, .sup-apply) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: var(--ds-h);
+    padding: 0 14px;
+    border: 0 !important;
+    border-radius: var(--ds-r) !important;
+    background: var(--ds-accent) !important;
+    background-image: none !important;
+    color: var(--ds-on-accent) !important;
+    font: 500 13px/1 var(--ds-font);
+    box-shadow: var(--ds-shadow-sm) !important;
+    transform: none;
+    transition: background-color var(--ds-t-hover) var(--ds-ease), transform var(--ds-t-press) var(--ds-ease);
+}
+body.ds.sup-page :is(.kaman-button, .sup-primary, .sup-apply):hover { background: var(--ds-accent-hover) !important; transform: none; }
+body.ds.sup-page :is(.kaman-button, .sup-primary, .sup-apply):active { transform: scale(.98); }
+body.ds.sup-page :is(.kaman-button-ghost, .sup-text-btn, .sup-pop2__btn, .sup-multi__button, .sup-inv__btn) {
+    border-color: var(--ds-border-strong) !important;
+    border-radius: var(--ds-r) !important;
+    background: var(--ds-surface) !important;
+    color: var(--ds-text) !important;
+    box-shadow: var(--ds-shadow-sm);
+    transform: none;
+}
+html[data-theme="dark"] body.ds.sup-page :is(.kaman-button-ghost, .sup-text-btn, .sup-pop2__btn, .sup-multi__button, .sup-inv__btn) { background: var(--ds-surface-2) !important; box-shadow: none; }
+body.ds.sup-page :is(.kaman-button-ghost, .sup-text-btn, .sup-pop2__btn, .sup-multi__button, .sup-inv__btn):hover { background: var(--ds-hover) !important; transform: none; }
+body.ds.sup-page .kaman-card {
+    border: 1px solid var(--ds-border) !important;
+    border-radius: var(--ds-r-lg) !important;
+    background: var(--ds-surface) !important;
+    color: var(--ds-text);
+    box-shadow: none !important;
+}
+body.ds.sup-page :is(.kaman-input, .sup-field input, .sup-field select, .sup-field textarea) {
+    border: 1px solid var(--ds-border-strong) !important;
+    border-radius: var(--ds-r) !important;
+    background: var(--ds-surface) !important;
+    color: var(--ds-text) !important;
+    font: 400 13px/1.4 var(--ds-font);
+    box-shadow: var(--ds-shadow-sm);
+}
+html[data-theme="dark"] body.ds.sup-page :is(.kaman-input, .sup-field input, .sup-field select, .sup-field textarea) { background: var(--ds-surface-2) !important; box-shadow: none; color-scheme: dark; }
+body.ds.sup-page :is(.kaman-input, .sup-field input, .sup-field select, .sup-field textarea):focus { outline: none; border-color: var(--ds-accent) !important; box-shadow: var(--ds-ring) !important; }
+
+/* Page titles inside Support use the ds heading. */
+body.ds.sup-page .ws-content :is(.sup-title h1, .sup-head h1, .sup-page-head h1, .sup-inv__title-row h1) {
+    font: 650 22px/1.25 var(--ds-font-display);
+    letter-spacing: -0.02em;
+}
+
+/* Older Tailwind colour utilities written for the cream theme. */
+body.ds.sup-page :is([class*="text-[#2b1e11]"], [class*="text-[#30271f]"]) { color: var(--ds-text) !important; }
+body.ds.sup-page :is([class*="text-[#7c6a56]"], [class*="text-[#a78a6c]"], [class*="text-[#9b8876]"]) { color: var(--ds-text-2) !important; }
+body.ds.sup-page :is([class*="border-[#f1dfc5]"], [class*="border-[#eadfce]"]) { border-color: var(--ds-border) !important; }
+body.ds.sup-page :is([class*="bg-[#fff"], [class*="bg-white"]) { background-color: var(--ds-surface) !important; }
+html[data-theme="dark"] body.ds.sup-page :is([class*="bg-[#fff"], [class*="bg-white"]) { background-color: var(--ds-surface-2) !important; }

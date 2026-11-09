@@ -10,6 +10,8 @@ return [
     'agents_desc' => 'Leads & calendar',
     'finance_desc' => 'Finance & invoices',
     'open' => 'Open',
+    'orbit_center' => 'One connected workspace',
+    'orbit_hint' => 'Hover or tap a door to open it.',
     'restaurants_lead' => 'Manage and browse your connected restaurants.',
     'all_statuses' => 'All statuses',
 ];

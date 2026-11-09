@@ -45,8 +45,11 @@
                     };
                 }
                 $productLabels = array_values(array_filter($productLabels));
+                $restaurantKey = in_array($card['id'] ?? '', ['_pending', 'unknown'], true)
+                    ? ''
+                    : app(\App\Services\KamanSupport\RestaurantSupport::class)->keyFor(auth()->user(), (string) $card['id']);
             @endphp
-            <button type="button" class="sup-card" data-status="{{ $card['status'] }}" data-recent="{{ $recent ? '1' : '0' }}" data-name="{{ $card['name'] }}" data-seen="{{ $card['lastSeenAt'] }}" data-open="{{ $card['id'] }}" data-online="{{ $card['online'] }}" data-total="{{ $card['total'] }}" @if(! $recent) hidden @endif>
+            <button type="button" class="sup-card" data-status="{{ $card['status'] }}" data-recent="{{ $recent ? '1' : '0' }}" data-name="{{ $card['name'] }}" data-seen="{{ $card['lastSeenAt'] }}" data-open="{{ $card['id'] }}" @if($restaurantKey !== '') data-act="open-support" data-id="{{ $restaurantKey }}" @endif data-online="{{ $card['online'] }}" data-total="{{ $card['total'] }}" @if(! $recent) hidden @endif>
                 <div class="sup-card__top">
                     <span class="sup-mark" data-logo>
                         @if($card['logo'])
@@ -88,11 +91,14 @@
         </div>
     </div>
 
+    {{-- A dialog so the printer tools open above the restaurant modal. --}}
+    <dialog class="sup-printer-layer" data-sup-printer-layer>
     <div class="sup-modal" id="sup-printers" hidden>
         <div class="sup-modal__panel" role="dialog" aria-modal="true" aria-labelledby="sup-printer-title">
             <div class="sup-modal__head">
                 <button type="button" class="sup-back" data-show-printers hidden>{{ __('kaman-support.ws_back') }}</button>
                 <h2 id="sup-printer-title"></h2>
+                <button type="button" class="sup-ghost" data-show-settings>{{ __('kaman-support.ws_settings') }}</button>
                 <button type="button" class="sup-ghost" data-show-map>{{ __('kaman-support.ws_lan_map') }}</button>
                 <button type="button" class="sup-x" data-printer-close aria-label="{{ __('kaman-support.ws_close') }}">×</button>
             </div>
@@ -109,10 +115,20 @@
         </div>
     </div>
 
+    </dialog>
+
+    @php
+        $openSlug = request()->query('open');
+        $openKey = is_string($openSlug) && ! in_array($openSlug, ['_pending', 'unknown'], true)
+            ? app(\App\Services\KamanSupport\RestaurantSupport::class)->keyFor(auth()->user(), $openSlug)
+            : '';
+    @endphp
+    @include('workspace.partials.restaurant-modal', ['surface' => 'support', 'open' => $openKey !== '' ? ['id' => $openKey, 'tab' => 'support'] : null])
+
     <script type="application/json" id="sup-restaurants">@json($restaurants)</script>
     <script>
         window.SUP_BOARD = {
-            open: @json(request()->query('open')),
+            open: @json(($openKey ?? '') === '' ? request()->query('open') : null),
             feed: @json($feedUrl),
             logos: @json(route('kaman-support.logos')),
             logs: @json(route('kaman-support.logs')),
@@ -135,6 +151,28 @@
                 mall: @json(__('kaman-support.ws_cashier_mall')),
                 lite: @json(__('kaman-support.ws_lite')),
                 printers: @json(__('kaman-support.printers')),
+                settings: @json(__('kaman-support.ws_settings')),
+                settingsWait: @json(__('kaman-support.ws_settings_wait')),
+                settingsUnreported: @json(__('kaman-support.ws_settings_unreported')),
+                printKitchenCancel: @json(__('kaman-support.ws_print_kitchen_cancel')),
+                printKitchenCancelHint: @json(__('kaman-support.ws_print_kitchen_cancel_hint')),
+                localZ: @json(__('kaman-support.ws_local_z')),
+                localZHint: @json(__('kaman-support.ws_local_z_hint')),
+                printReceipt: @json(__('kaman-support.ws_print_receipt')),
+                kitchenReprint: @json(__('kaman-support.ws_kitchen_reprint')),
+                kitchenReprintHint: @json(__('kaman-support.ws_kitchen_reprint_hint')),
+                reprintPin: @json(__('kaman-support.ws_reprint_pin')),
+                autoPrint: @json(__('kaman-support.ws_auto_print')),
+                autoPrintHint: @json(__('kaman-support.ws_auto_print_hint')),
+                pauseOrder: @json(__('kaman-support.ws_pause_order')),
+                pauseOrderHint: @json(__('kaman-support.ws_pause_order_hint')),
+                builtinKeyboard: @json(__('kaman-support.ws_builtin_keyboard')),
+                builtinKeyboardHint: @json(__('kaman-support.ws_builtin_keyboard_hint')),
+                pizza: @json(__('kaman-support.ws_pizza')),
+                pizzaHint: @json(__('kaman-support.ws_pizza_hint')),
+                pizzaMeals: @json(__('kaman-support.ws_pizza_meals')),
+                pizzaMealsEmpty: @json(__('kaman-support.ws_pizza_meals_empty')),
+                pizzaSearch: @json(__('kaman-support.ws_pizza_search')),
                 findPrinters: @json(__('kaman-support.ws_find_printers')),
                 lookingPrinters: @json(__('kaman-support.ws_looking_printers')),
                 loadKitchens: @json(__('kaman-support.ws_load_kitchens')),

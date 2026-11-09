@@ -3828,9 +3828,14 @@
                 return meta ? meta.getAttribute('content') : '';
             }
 
+            // A message can carry its own login: {name}.kaman.rest, an email, and a password.
+            function messageHasLogin(text) {
+                return /[a-z0-9-]+\.kaman\.(rest|dev)/i.test(text) && /\S+@\S+\.\S+\s*[,;:|\/\s]\s*\S+/.test(text);
+            }
+
             function setComposerEnabled(on) {
-                inputEl.disabled = !on || sending;
-                sendBtn.disabled = !on || sending;
+                inputEl.disabled = sending;
+                sendBtn.disabled = !(on || messageHasLogin(inputEl.value)) || sending;
                 filesEl.disabled = !on || sending;
                 if (mealFilesEl) {
                     mealFilesEl.disabled = !on || sending;
@@ -4024,7 +4029,7 @@
 
             formEl.addEventListener('submit', async (event) => {
                 event.preventDefault();
-                if (sending || !window.__kamanRestaurantAuthenticated) {
+                if (sending || !(window.__kamanRestaurantAuthenticated || messageHasLogin(inputEl.value))) {
                     return;
                 }
                 const entries = pendingFiles.slice();
@@ -4044,8 +4049,17 @@
                 sendBtn.disabled = true;
                 inputEl.disabled = true;
 
-                appendBubble('user', text, files);
-                history.push({ role: 'user', content: text });
+                const userBubble = appendBubble('user', text, files);
+                const userIndex = history.push({ role: 'user', content: text }) - 1;
+                const hidePassword = (safe) => {
+                    if (typeof safe !== 'string' || safe === '') {
+                        return;
+                    }
+                    history[userIndex].content = safe;
+                    if (userBubble && userBubble.firstChild) {
+                        userBubble.firstChild.textContent = safe;
+                    }
+                };
                 inputEl.value = '';
                 pendingFiles = [];
                 renderPending();
@@ -4079,12 +4093,17 @@
                     const ct = (res.headers.get('content-type') || '').toLowerCase();
                     if (res.status === 401) {
                         const data = await res.json().catch(() => ({}));
+                        hidePassword(data.redacted_message);
                         statusEl.remove();
                         assistantText = friendlyAgentText(data.error || data.message || i18n.error);
                         appendBubble('assistant', assistantText);
                     } else if (ct.includes('text/event-stream') && res.body) {
                         let sawMessage = false;
                         await readSse(res, (ev) => {
+                            if (ev.event === 'user_message_redacted') {
+                                hidePassword(ev.content);
+                                return;
+                            }
                             pipeAgentDebug(ev);
                             if (ev.event === 'status' && ev.message) {
                                 statusEl.textContent = ev.message;
@@ -4145,6 +4164,7 @@
             });
 
             window.addEventListener('kaman-auth-changed', syncAuth);
+            inputEl.addEventListener('input', syncAuth);
             syncAuth();
             window.__formMenuAgent = {
                 restoreConversation: restoreConversation,

@@ -1,25 +1,15 @@
 <?php
 
-use App\Http\Controllers\AiChatbot\KamanIgnoredPhoneController;
 use App\Http\Controllers\Api\KamanApp\ApkDownloadController;
 use App\Http\Controllers\Api\KamanApp\SharedCartController;
 use App\Http\Controllers\Api\KamanSupport\DeviceSessionController;
 use App\Http\Controllers\Api\KamanSupport\HealthController as KamanSupportHealthController;
 use App\Http\Controllers\Api\KamanSupport\TicketController as KamanSupportTicketController;
-use App\Http\Controllers\Api\Voice\TelnyxHealthController;
-use App\Http\Controllers\Api\Voice\TelnyxWebhookController;
 use App\Http\Middleware\KamanSupport\AuthenticateSupportKey;
 use App\Http\Middleware\KamanSupport\HandleSupportCors;
+use App\Http\Middleware\KamanSupport\LimitSupportMedia;
 use App\Http\Middleware\KamanSupport\LimitSupportPayload;
 use Illuminate\Support\Facades\Route;
-
-Route::prefix('voice/telnyx')->name('voice.telnyx.')->group(function () {
-    Route::get('/health', TelnyxHealthController::class)->name('health');
-    Route::post('/webhook', [TelnyxWebhookController::class, 'handle'])->name('webhook');
-});
-
-Route::post('/kaman-whatsapp/ignored-phones/483275634', [KamanIgnoredPhoneController::class, 'store'])
-    ->name('api.kaman-whatsapp.ignored-phones.store');
 
 Route::get('/kaman-app/v1/version', function () {
     return response()->json([
@@ -52,6 +42,10 @@ Route::prefix('kaman-support/v1')
         Route::middleware([LimitSupportPayload::class, AuthenticateSupportKey::class, 'throttle:kaman-support-tickets'])
             ->post('/tickets', [KamanSupportTicketController::class, 'store'])
             ->name('tickets.store');
+
+        Route::middleware([LimitSupportMedia::class, AuthenticateSupportKey::class, 'throttle:kaman-support-tickets'])
+            ->post('/tickets/{ticket}/media', [KamanSupportTicketController::class, 'storeMedia'])
+            ->name('tickets.media');
 
         Route::middleware([LimitSupportPayload::class, AuthenticateSupportKey::class, 'throttle:kaman-support-live'])
             ->group(function (): void {

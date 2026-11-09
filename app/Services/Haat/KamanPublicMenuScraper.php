@@ -9,6 +9,58 @@ use Illuminate\Support\Facades\Http;
 final class KamanPublicMenuScraper
 {
     /**
+     * What a customer sees on /menu. The empty-state paragraph is always in the HTML and is
+     * hidden with d-none, so its text alone says nothing: only its class does.
+     *
+     * @return array{chips: list<string>, empty_visible: bool, dishes: array<string, array{name: string, price: string, image: string, category: string}>}
+     */
+    public function inspect(string $html): array
+    {
+        $document = new \DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML('<?xml encoding="UTF-8">'.$html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xpath = new \DOMXPath($document);
+
+        $chips = [];
+        foreach ($xpath->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' menu-chip ')][@data-target]") ?: [] as $chip) {
+            // The first chip is "all" and is always there, so it proves nothing.
+            if ($chip instanceof \DOMElement && str_starts_with($chip->getAttribute('data-target'), 'section-')) {
+                $chips[] = substr($chip->getAttribute('data-target'), strlen('section-'));
+            }
+        }
+
+        $emptyVisible = false;
+        foreach ($xpath->query("//*[@id='menu-no-results']") ?: [] as $empty) {
+            if ($empty instanceof \DOMElement
+                && ! in_array('d-none', preg_split('/\s+/', trim($empty->getAttribute('class'))) ?: [], true)) {
+                $emptyVisible = true;
+            }
+        }
+
+        $dishes = [];
+        foreach ($xpath->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' showItem ')][@data-id]") ?: [] as $item) {
+            if (! $item instanceof \DOMElement || isset($dishes[$item->getAttribute('data-id')])) {
+                continue;
+            }
+            $row = $item->parentNode;
+            $dishes[$item->getAttribute('data-id')] = [
+                'name' => trim($item->getAttribute('data-name')),
+                'price' => trim($item->getAttribute('data-price')),
+                'image' => trim($item->getAttribute('data-image')),
+                'category' => $row instanceof \DOMElement ? trim($row->getAttribute('data-cat')) : '',
+            ];
+        }
+
+        return [
+            'chips' => array_values(array_unique($chips)),
+            'empty_visible' => $emptyVisible,
+            'dishes' => $dishes,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function scrape(string $menuUrl): array

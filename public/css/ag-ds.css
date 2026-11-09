@@ -1,0 +1,61 @@
+/*
+ * Sales Agents + Overview on the design system.
+ * Colours come from the ds tokens (agents-workspace.css and workspace-hub.css use var(--ds-*, <old hex>)
+ * and --sales-* now points at the ds palette). This file only aligns a few patterns with the other doors.
+ */
+
+/* Pipeline lanes: a status dot in the header instead of a coloured top border (same as the Development board). */
+body.ds.ag .sales-lane {
+    border: 0;
+    border-radius: var(--ds-r-lg);
+    background: color-mix(in srgb, var(--ds-surface-2) 55%, transparent);
+}
+html[data-theme="dark"] body.ds.ag .sales-lane { background: color-mix(in srgb, var(--ds-surface) 80%, transparent); }
+body.ds.ag .sales-lane-head { gap: 8px; justify-content: flex-start; padding: 4px 4px 12px; font-size: 13px; font-weight: 600; }
+body.ds.ag .sales-lane-head span { display: inline-flex; align-items: center; gap: 8px; flex: 1; }
+body.ds.ag .sales-lane-head span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--lane-color, var(--ds-text-3)); }
+body.ds.ag .sales-lane-head small { padding: 2px 7px; border: 0; border-radius: 999px; background: var(--ds-border); color: var(--ds-text-2); font-size: 11px; font-weight: 600; }
+body.ds.ag .sales-card {
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-r-md);
+    background: var(--ds-surface);
+    box-shadow: var(--ds-shadow-sm);
+}
+html[data-theme="dark"] body.ds.ag .sales-card { background: var(--ds-surface-2); box-shadow: none; }
+body.ds.ag .sales-card:hover { border-color: var(--ds-border-strong); box-shadow: var(--ds-shadow-md); }
+
+/* Page titles and primary buttons match the ds versions. */
+body.ds.ag :is(.sales-head h1, .rest-head h1, .overview-heading h1) { font: 650 22px/1.25 var(--ds-font-display); letter-spacing: -0.02em; }
+body.ds.ag :is(.sales-btn--primary, .rest-add, .cycle-browse) {
+    border-color: transparent;
+    border-radius: var(--ds-r);
+    background: var(--ds-accent);
+    background-image: none;
+    color: var(--ds-on-accent);
+    font-weight: 500;
+    box-shadow: var(--ds-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, .16);
+}
+body.ds.ag :is(.sales-btn--primary, .rest-add, .cycle-browse):hover { background: var(--ds-accent-hover); filter: none; }
+
+/* Restaurant modal, Finance tab: same quiet summary as the Finance client modal. */
+body.ds.ag .rm-fin .rm-fin__main {
+    border: 1px solid var(--ds-border);
+    background: var(--ds-surface);
+    background-image: none;
+    color: var(--ds-text);
+}
+html[data-theme="dark"] body.ds.ag .rm-fin .rm-fin__main { background: var(--ds-surface-2); }
+body.ds.ag .rm-fin .rm-fin__main :is(span, small) { color: var(--ds-text-2); }
+body.ds.ag .rm-fin .rm-fin__main strong { color: var(--ds-text); font-size: 24px; }
+
+/* Restaurant directory: status as plain text with a dot, like the Finance clients table. */
+body.ds.ag .rest-card__status { display: inline-flex; align-items: center; gap: 6px; padding: 0; background: none; color: var(--ds-text-2); font-weight: 500; }
+body.ds.ag .rest-card__status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ds-green); }
+body.ds.ag .rest-card__status.is-pending::before { background: var(--ds-amber); }
+
+/* Restaurant modal header: logo, then the name with its status on one line, below the photo. */
+body.ds.ag .rm-head { align-items: center; margin-top: 0; padding-top: 16px; }
+body.ds.ag .rm-head .ag-logo { width: 52px; height: 52px; border: 0; border-radius: var(--ds-r-md); box-shadow: 0 0 0 1px var(--ds-border); }
+body.ds.ag .rm-title__row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+body.ds.ag .rm-title__row h2 { margin: 0; overflow: hidden; color: var(--ds-text); font: 650 20px/1.25 var(--ds-font-display); letter-spacing: -0.02em; text-overflow: ellipsis; white-space: nowrap; }
+body.ds.ag .rm-meta { margin-top: 4px; }

@@ -80,6 +80,19 @@ class AppDevelopmentMember extends Model
     }
 
     /**
+     * Every team member with a saved phone, whatever their role.
+     *
+     * @return Builder<static>
+     */
+    public static function selectableTeam(): Builder
+    {
+        return static::query()
+            ->with('user:id,name,email')
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '');
+    }
+
+    /**
      * @return Builder<static>
      */
     public static function selectableTesters(): Builder

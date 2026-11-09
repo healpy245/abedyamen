@@ -72,7 +72,9 @@ final class MenuAgentWorkflow extends AbstractFormWorkflow
         ]);
 
         $reply = (string) ($result['reply'] ?? '');
-        $ok = $reply !== '' && ! str_starts_with($reply, 'The menu link could not');
+        $ok = $reply !== ''
+            && empty($result['failed'])
+            && ! str_starts_with($reply, 'The menu link could not');
         $messages = $history;
         if ($reply !== '') {
             $messages[] = ['role' => 'assistant', 'content' => $reply];

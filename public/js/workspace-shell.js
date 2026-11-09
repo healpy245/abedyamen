@@ -106,6 +106,45 @@
         window.kamanCloseDialog(event.target);
     }, true);
 
+    // A form that really leaves the page shows a spinner on its button and ignores a second click.
+    // Runs after every other submit handler, so forms sent with fetch (defaultPrevented) are left alone.
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!(form instanceof HTMLFormElement) || form.method === 'dialog' || form.hasAttribute('data-no-loading')) return;
+        if (form.target && form.target !== '_self') return;
+        if (form.dataset.submitting === '1') {
+            event.preventDefault();
+            return;
+        }
+        window.setTimeout(function () {
+            if (event.defaultPrevented) return;
+            form.dataset.submitting = '1';
+            var button = event.submitter || form.querySelector('button[type="submit"], button:not([type])');
+            if (button) {
+                button.classList.add('is-loading');
+                button.setAttribute('aria-busy', 'true');
+            }
+            // If the response turns out to be a download and the page stays, give the form back.
+            window.setTimeout(function () {
+                form.dataset.submitting = '';
+                if (button) {
+                    button.classList.remove('is-loading');
+                    button.removeAttribute('aria-busy');
+                }
+            }, 12000);
+        }, 0);
+    });
+
+    // Coming back with the browser's back button restores the page as it was; clear the spinners.
+    window.addEventListener('pageshow', function (event) {
+        if (!event.persisted) return;
+        document.querySelectorAll('form[data-submitting="1"]').forEach(function (form) { form.dataset.submitting = ''; });
+        document.querySelectorAll('.is-loading[aria-busy="true"]').forEach(function (button) {
+            button.classList.remove('is-loading');
+            button.removeAttribute('aria-busy');
+        });
+    });
+
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape') return;
         if (document.querySelector('dialog[open]')) return;
