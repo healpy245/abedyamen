@@ -5,13 +5,13 @@ declare(strict_types=1);
 return [
     // The Kaman Workspace phone app, published by hand like the other private APKs.
     'apk_path' => storage_path('app/private/kaman-workspace.apk'),
-    'version_name' => '2.0.3',
-    'download_name' => 'KamanWorkspace-2.0.3.apk',
+    'version_name' => '2.0.4',
+    'download_name' => 'KamanWorkspace-2.0.4.apk',
 
     // The public POS files in public/downloads. Android and Windows can move
     // separately. The sign-in page reads each file's own ?v= stamp.
-    'pos_version' => '1.3.84',
-    'pos_build' => '108',
-    'pos_windows_version' => '1.3.84',
-    'pos_windows_build' => '108',
+    'pos_version' => '1.3.86',
+    'pos_build' => '110',
+    'pos_windows_version' => '1.3.86',
+    'pos_windows_build' => '110',
 ];

@@ -197,6 +197,8 @@
                 lanScanning: @json(__('kaman-support.ws_lan_scanning')),
                 back: @json(__('kaman-support.ws_back')),
                 syncApi: @json(__('kaman-support.ws_sync_api')),
+                restartApp: @json(__('kaman-support.ws_restart_app')),
+                restartConfirm: @json(__('kaman-support.ws_restart_confirm')),
                 moreChecks: @json(__('kaman-support.ws_more_checks')),
                 pressureTest: @json(__('kaman-support.ws_pressure_test')),
                 pressureHint: @json(__('kaman-support.ws_pressure_hint')),

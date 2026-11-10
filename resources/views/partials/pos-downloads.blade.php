@@ -26,7 +26,7 @@
             <span class="text-[11px] font-medium opacity-80">{{ __('app.pos_windows_meta') }}</span>
         </a>
         <a href="{{ asset('downloads/kaman-pos-windows.zip') }}?v=1.3.61.84" hidden></a>
-        <a href="{{ asset('downloads/kaman-pos-previous.apk') }}?v=1.3.80.104" hidden></a>
-        <a href="{{ asset('downloads/kaman-pos-previous-setup.exe') }}?v=1.3.83.107" hidden></a>
+        <a href="{{ asset('downloads/kaman-pos-previous.apk') }}?v=1.3.85.109" hidden></a>
+        <a href="{{ asset('downloads/kaman-pos-previous-setup.exe') }}?v=1.3.85.109" hidden></a>
     </div>
 </section>

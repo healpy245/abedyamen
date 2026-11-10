@@ -118,6 +118,9 @@ class SupportDeviceSessionService
 
                 if ($created->wasRecentlyCreated) {
                     $accepted++;
+                    if ($created->source === 'printer') {
+                        $this->recordPrinterIssue($device, $created);
+                    }
                 }
             }
 
@@ -131,6 +134,20 @@ class SupportDeviceSessionService
         });
 
         return ['accepted' => $accepted, 'device' => $device->fresh() ?? $device];
+    }
+
+    /**
+     * Kitchen-print logs become printer issues. A malformed log must never
+     * stop the rest of the batch from being stored.
+     */
+    private function recordPrinterIssue(SupportDevice $device, SupportDeviceLog $log): void
+    {
+        try {
+            // Savepoint: a failure here rolls back only this issue row.
+            DB::transaction(fn () => app(PrinterIssueRecorder::class)->record($device, $log));
+        } catch (\Throwable $error) {
+            report($error);
+        }
     }
 
     /**

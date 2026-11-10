@@ -8,6 +8,7 @@
     <a href="{{ route('kaman-support.live') }}" class="kaman-button-ghost kaman-button--sm {{ $nav === 'live' ? 'ring-1 ring-[#e8b086]' : '' }}">{{ auth()->user()?->supportConnectionsOnly() ? __('kaman-support.connections_title') : __('kaman-support.nav.live') }}</a>
     @unless(auth()->user()?->limitedSupportConsole())
         <a href="{{ route('kaman-support.failed') }}" class="kaman-button-ghost kaman-button--sm {{ $nav === 'failed' ? 'ring-1 ring-[#e8b086]' : '' }}">{{ __('kaman-support.nav.failed') }}</a>
+        <a href="{{ route('kaman-support.printer-issues') }}" class="kaman-button-ghost kaman-button--sm {{ $nav === 'printer-issues' ? 'ring-1 ring-[#e8b086]' : '' }}">{{ __('kaman-support.nav.printer_issues') }}</a>
     @endunless
     @unless(auth()->user()?->supportConnectionsOnly())
     <a href="{{ route('downloads.kaman-support') }}?v=1.0.11"

@@ -36,6 +36,8 @@ Route::middleware(['auth', 'project:kaman-support', 'pos-live-scope'])
         Route::get('/live/feed', [ConsoleController::class, 'liveFeed'])->name('live.feed');
         Route::get('/failed', [ConsoleController::class, 'failed'])->name('failed');
         Route::get('/failed/feed', [ConsoleController::class, 'failedFeed'])->name('failed.feed');
+        Route::get('/printer-issues', [ConsoleController::class, 'printerIssues'])->name('printer-issues');
+        Route::get('/printer-issues/feed', [ConsoleController::class, 'printerIssuesFeed'])->name('printer-issues.feed');
         Route::get('/live/{device}/feed', [ConsoleController::class, 'deviceFeed'])->name('device.feed');
         Route::get('/live/{device}', [ConsoleController::class, 'device'])->name('device');
         Route::get('/tickets/{ticket}', [ConsoleController::class, 'show'])->name('show');

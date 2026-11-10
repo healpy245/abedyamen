@@ -13,7 +13,9 @@ use App\Models\FormWorkflowRun;
 use App\Models\KamanSupport\MenuAgentChat;
 use App\Models\KamanSupport\SupportDevice;
 use App\Models\KamanSupport\SupportDeviceLog;
+use App\Models\KamanSupport\SupportPrinterIssue;
 use App\Models\KamanSupport\SupportTicket;
+use App\Models\User;
 use App\Services\KamanSupport\LogIssueGrouper;
 use App\Services\KamanSupport\RestaurantLogoResolver;
 use App\Services\KamanSupport\RestaurantSupport;
@@ -24,6 +26,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -739,6 +742,217 @@ class ConsoleController extends Controller
             ],
             'now' => now()->timezone($this->sessions->displayTimezone())->toIso8601String(),
         ]);
+    }
+
+    /**
+     * Kitchen tickets that did not print, one row per order and kitchen.
+     */
+    public function printerIssues(Request $request): View
+    {
+        return view('kaman-support.printer-issues', $this->printerIssuesData($request, 300) + [
+            'restaurants' => $this->sessions->restaurantChoices(),
+            'faults' => SupportPrinterIssue::FAULTS,
+            'sessions' => $this->sessions,
+        ]);
+    }
+
+    /**
+     * The printer issues page for the phone app: the same rows, with every word already translated.
+     */
+    public function printerIssuesFeed(Request $request): JsonResponse
+    {
+        $data = $this->printerIssuesData($request, 200);
+        $named = static function (string $group, ?string $value): string {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return '';
+            }
+            $key = 'kaman-support.printer_issues.'.$group.'.'.$value;
+            $label = __($key);
+
+            return $label === $key ? $value : (string) $label;
+        };
+        $attemptLabel = static function (string $attempt): string {
+            $key = 'kaman-support.printer_issues.attempt_'.$attempt;
+            $label = __($key);
+
+            return $label === $key ? $attempt : (string) $label;
+        };
+
+        $issues = [];
+        foreach ($data['issues'] as $issue) {
+            $device = $issue->device;
+            $timeline = [];
+            foreach (array_reverse(is_array($issue->attempts_log) ? $issue->attempts_log : []) as $step) {
+                if (! is_array($step)) {
+                    continue;
+                }
+                $at = null;
+                if (isset($step['at']) && is_string($step['at'])) {
+                    try {
+                        $at = Carbon::parse($step['at']);
+                    } catch (\Throwable) {
+                    }
+                }
+                $event = (string) ($step['event'] ?? 'failed');
+                $timeline[] = array_filter([
+                    'at' => $this->sessions->formatDisplayTime($at, 'm-d H:i:s'),
+                    'event' => $event,
+                    'eventLabel' => (string) __('kaman-support.printer_issues.event_'.$event),
+                    'attempt' => ! empty($step['attempt']) ? $attemptLabel((string) $step['attempt']) : null,
+                    'fault' => ! empty($step['fault']) ? $named('faults', (string) $step['fault']) : null,
+                    'mayHavePrinted' => ! empty($step['mayHavePrinted']) ? true : null,
+                    'printer' => isset($step['printer']) && is_scalar($step['printer']) ? (string) $step['printer'] : null,
+                    'seconds' => isset($step['elapsedMs']) && is_numeric($step['elapsedMs']) ? round(((int) $step['elapsedMs']) / 1000, 1) : null,
+                    'printedOn' => ! empty($step['printedOn']) && is_array($step['printedOn']) ? array_values($step['printedOn']) : null,
+                    'configuredPrinters' => ! empty($step['configuredPrinters']) && is_array($step['configuredPrinters']) ? array_values($step['configuredPrinters']) : null,
+                    'cashier' => isset($step['cashier']) && is_scalar($step['cashier']) ? (string) $step['cashier'] : null,
+                    'error' => isset($step['error']) && is_scalar($step['error']) ? (string) $step['error'] : null,
+                ], static fn ($value) => $value !== null && $value !== '');
+            }
+            $minutes = $issue->minutesToResolve();
+            $link = trim((string) $issue->printer_link);
+            $issues[] = [
+                'id' => $issue->id,
+                'open' => $issue->isOpen(),
+                'fault' => (string) $issue->fault,
+                'faultLabel' => $named('faults', $issue->fault),
+                'mayHavePrinted' => (bool) $issue->may_have_printed,
+                'station' => (string) ($issue->station ?? ''),
+                'orderNumber' => $issue->order_number,
+                'orderType' => $named('types', $issue->order_type),
+                'table' => (string) ($issue->order_table ?? ''),
+                'external' => (string) ($issue->external_order_id ?? ''),
+                'channel' => $named('channels', $issue->order_channel),
+                'where' => $named('classes', $issue->fault_class),
+                'restaurant' => $device?->displayRestaurant() ?? (string) $issue->restaurant,
+                'printerName' => (string) ($issue->printer_name ?? ''),
+                'printerAddress' => $issue->printerAddress(),
+                'printerLink' => $link !== '' && $link !== 'network' ? $named('links', $link) : '',
+                'printerMac' => (string) ($issue->printer_mac ?? ''),
+                'attempts' => (int) $issue->attempts,
+                'firstFailed' => $this->sessions->formatDisplayTime($issue->first_failed_at),
+                'lastFailed' => $this->sessions->formatDisplayTime($issue->last_failed_at),
+                'cashier' => (string) ($issue->cashier_name ?? ''),
+                'device' => $device ? ['id' => $device->id, 'name' => (string) ($device->hostname ?: $device->device_id)] : null,
+                'version' => (string) ($issue->app_version ?? ''),
+                'resolvedAt' => $this->sessions->formatDisplayTime($issue->resolved_at),
+                'resolution' => $issue->isOpen() ? '' : (string) ($issue->resolution === 'skipped'
+                    ? __('kaman-support.printer_issues.resolution_skipped')
+                    : __('kaman-support.printer_issues.resolution_printed')),
+                'took' => $minutes === null ? '' : (string) __('kaman-support.printer_issues.took', ['minutes' => $minutes]),
+                'dismissed' => $issue->dismissed_count > 0 ? (string) __('kaman-support.printer_issues.dismissed', ['count' => $issue->dismissed_count]) : '',
+                'reason' => (string) ($issue->reason ?? ''),
+                'error' => (string) ($issue->error_detail ?? ''),
+                'printedOn' => array_values(is_array($issue->printed_on) ? $issue->printed_on : []),
+                'configuredPrinters' => array_values(is_array($issue->configured_printers) ? $issue->configured_printers : []),
+                'meals' => array_values(array_map(static fn (array $meal): array => [
+                    'qty' => (int) ($meal['qty'] ?? 1),
+                    'name' => (string) ($meal['name'] ?? ($meal['line'] ?? '')),
+                    'note' => (string) ($meal['note'] ?? ''),
+                ], array_filter(is_array($issue->meals) ? $issue->meals : [], 'is_array'))),
+                'timeline' => $timeline,
+            ];
+        }
+
+        $labels = [];
+        foreach ([
+            'title', 'subtitle', 'status_open', 'status_resolved', 'status_all', 'all_faults', 'fault', 'empty',
+            'open_count', 'uncertain_count', 'resolved_week', 'kitchen', 'printer', 'order', 'table', 'channel',
+            'where', 'external', 'printed_on', 'configured_printers', 'no_kitchen_matched', 'device', 'cashier',
+            'version', 'attempts', 'first_failed', 'last_failed', 'resolved_at', 'may_have_printed', 'meals',
+            'timeline', 'reason', 'error',
+        ] as $key) {
+            $labels[$key] = (string) __('kaman-support.printer_issues.'.$key);
+        }
+        $labels['restaurant'] = (string) __('kaman-support.filter_restaurant');
+        $labels['allRestaurants'] = (string) __('kaman-support.all_restaurants');
+        $labels['search'] = (string) __('kaman-support.log_search');
+
+        return $this->utf8Json([
+            'ok' => true,
+            'filters' => $data['filters'],
+            'counts' => $data['counts'],
+            'faults' => array_map(static fn (string $code): array => ['value' => $code, 'label' => $named('faults', $code)], SupportPrinterIssue::FAULTS),
+            'choices' => $this->sessions->restaurantChoices(),
+            'issues' => $issues,
+            'labels' => $labels,
+        ]);
+    }
+
+    /**
+     * The filtered printer issues and the page counts, shared by the web page and the app feed.
+     *
+     * @return array{issues: \Illuminate\Support\Collection<int, SupportPrinterIssue>, filters: array<string, string>, counts: array<string, int>}
+     */
+    private function printerIssuesData(Request $request, int $limit): array
+    {
+        $status = $request->query('status');
+        $status = in_array($status, ['open', 'resolved', 'all'], true) ? $status : 'open';
+        $fault = $request->query('fault');
+        $fault = in_array($fault, SupportPrinterIssue::FAULTS, true) ? $fault : '';
+        $filters = $this->failedFilters($request) + ['status' => $status, 'fault' => $fault];
+        $from = $this->sessions->parseDisplayTime($filters['from']);
+        $to = $this->sessions->parseDisplayTime($filters['to'], true);
+
+        $scoped = function () use ($request, $filters) {
+            $query = SupportPrinterIssue::query();
+            $user = $request->user();
+            if ($user instanceof User && $user->supportProduct() !== null) {
+                $query->whereHas('device', fn ($device) => $device->visibleTo($user));
+            }
+            $restaurant = trim($filters['restaurant']);
+            if ($restaurant !== '') {
+                $query->where(function ($inner) use ($restaurant): void {
+                    $inner->where('restaurant', $restaurant)
+                        ->orWhereHas('device', fn ($device) => $device->where('restaurant_name', $restaurant));
+                });
+            }
+
+            return $query;
+        };
+
+        $query = $scoped()->with('device')->orderByDesc('last_failed_at')->orderByDesc('id');
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+        if ($fault !== '') {
+            $query->where('fault', $fault);
+        }
+        if ($from !== null) {
+            $query->where('last_failed_at', '>=', $from);
+        }
+        if ($to !== null) {
+            $query->where('first_failed_at', '<=', $to);
+        }
+        $term = trim($filters['q']);
+        if ($term !== '') {
+            $like = '%'.addcslashes($term, '%_\\').'%';
+            $query->where(function ($inner) use ($term, $like): void {
+                $inner->where('station', 'like', $like)
+                    ->orWhere('printer_ip', 'like', $like)
+                    ->orWhere('printer_name', 'like', $like)
+                    ->orWhere('order_id', 'like', $like)
+                    ->orWhere('external_order_id', 'like', $like)
+                    ->orWhere('cashier_name', 'like', $like)
+                    ->orWhere('reason', 'like', $like)
+                    ->orWhere('meals', 'like', $like);
+                if (ctype_digit($term)) {
+                    $inner->orWhere('order_number', (int) $term);
+                }
+            });
+        }
+
+        return [
+            'issues' => $query->limit($limit)->get(),
+            'filters' => $filters,
+            'counts' => [
+                'open' => $scoped()->where('status', SupportPrinterIssue::STATUS_OPEN)->count(),
+                'uncertain' => $scoped()->where('status', SupportPrinterIssue::STATUS_OPEN)->where('may_have_printed', true)->count(),
+                'resolvedWeek' => $scoped()->where('status', SupportPrinterIssue::STATUS_RESOLVED)
+                    ->where('resolved_at', '>=', now()->subDays(7))->count(),
+            ],
+        ];
     }
 
     public function failed(Request $request): View

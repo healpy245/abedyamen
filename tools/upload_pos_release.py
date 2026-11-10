@@ -16,16 +16,11 @@ LOCAL = Path(__file__).resolve().parents[1]
 REMOTE = "/home/tut8x1radmrp/webtimize"
 PUBLIC = "/home/tut8x1radmrp/public_html/kaman-workspace"
 SITE = "https://kaman-workspace.com"
-STAMP = "1.3.84.108"
+STAMP = "1.3.86.110"
 
 APP_FILES = [
     "config/kaman-workspace.php",
     "resources/views/partials/pos-downloads.blade.php",
-    "resources/views/partials/sidebar.blade.php",
-    "resources/views/kaman-support/logs.blade.php",
-    "app/Http/Controllers/KamanSupport/ConsoleController.php",
-    "app/Services/KamanSupport/SupportDeviceSessionService.php",
-    "public/js/support-logs.js",
 ]
 
 POS = Path(r"c:\Users\win\Documents\Flutter\Kaman Pos")
@@ -120,12 +115,15 @@ def main() -> int:
     if clear.returncode != 0:
         return clear.returncode
 
-    page = urllib.request.urlopen(f"{SITE}/login", timeout=60).read().decode("utf-8", "replace")
+    page = urllib.request.urlopen(
+        urllib.request.Request(f"{SITE}/login", headers={"User-Agent": "Mozilla/5.0 KamanRelease"}),
+        timeout=60,
+    ).read().decode("utf-8", "replace")
     for needle in (
         f"kaman-pos.apk?v={STAMP}",
         f"kaman-pos-setup.exe?v={STAMP}",
-        "kaman-pos-previous.apk?v=1.3.80.104",
-        "kaman-pos-previous-setup.exe?v=1.3.83.107",
+        "kaman-pos-previous.apk?v=1.3.85.109",
+        "kaman-pos-previous-setup.exe?v=1.3.85.109",
     ):
         print(("ok" if needle in page else "MISSING"), needle, flush=True)
         if needle not in page:

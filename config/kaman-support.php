@@ -27,6 +27,10 @@ return [
 
     'log_routine_days' => (int) env('KAMAN_SUPPORT_LOG_ROUTINE_DAYS', 1),
 
+    // Kitchen printer issues are their own records and outlive the device logs.
+    // Resolved issues older than this are deleted; open ones are always kept.
+    'printer_issue_days' => (int) env('KAMAN_SUPPORT_PRINTER_ISSUE_DAYS', 180),
+
     'apk_path' => storage_path('app/private/kaman-support.apk'),
 
     'max_log_batch' => (int) env('KAMAN_SUPPORT_MAX_LOG_BATCH', 120),
@@ -61,6 +65,7 @@ return [
         'remember_printer',
         'forget_printer',
         'sync_kitchen_api',
+        'restart_app',
     ],
 
 ];

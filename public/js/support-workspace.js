@@ -96,13 +96,20 @@
         }).filter(Boolean).join(' · ');
     }
 
+    function restartButton(id) {
+        if (!id) return '';
+        return '<button type="button" class="sup-ghost is-danger" data-restart-app="' + esc(id) + '">' + esc(boot.labels.restartApp || '') + '</button>';
+    }
+
     function deviceLine(device) {
         var product = productLabel(device.product);
         return '<div class="sup-device"><div><strong>' + esc(device.name) + '</strong><div class="sup-meta">'
             + esc(device.kind) + ' · ' + esc(device.platform)
             + (product ? ' · ' + esc(product) : '')
             + ' · <span dir="ltr">' + esc(device.version || device.appVersion || '') + '</span><br>'
-            + esc(device.deviceId) + ' · ' + esc(device.lastSeen || boot.labels.never) + '</div></div><span class="sup-badge is-' + esc(device.status) + '">'
+            + esc(device.deviceId) + ' · ' + esc(device.lastSeen || boot.labels.never) + '</div></div>'
+            + restartButton(device.id)
+            + '<span class="sup-badge is-' + esc(device.status) + '">'
             + esc(boot.labels[device.status] || device.status) + '</span></div>';
     }
 
@@ -242,6 +249,7 @@
                 return '<div class="sup-device is-hit" role="button" tabindex="0" data-printers="' + esc(device.id) + '">'
                     + '<div class="sup-device__top"><div><strong>' + esc(device.name) + '</strong>'
                     + '<div class="sup-meta"><span dir="ltr">' + esc(product) + (device.version ? ' · ' + esc(device.version) : '') + '</span></div></div>'
+                    + restartButton(device.id)
                     + '<span class="sup-badge is-' + esc(device.status) + '">' + esc(boot.labels[device.status] || device.status) + '</span></div>'
                     + '<div class="sup-device-logs" data-logs-for="' + esc(device.id) + '"><div class="sup-skel"></div></div>'
                     + '</div>';
@@ -588,7 +596,7 @@
         var saved = device.printers || [];
         var found = device.discovered || [];
         var types = device.kitchenTypes || device.kitchen_types || [];
-        var html = '<div class="sup-pactions"><button type="button" class="sup-primary" data-scan-printers' + (looking ? ' disabled' : '') + '>' + icon(looking ? 'sync' : 'search') + esc(looking ? boot.labels.lookingPrinters : boot.labels.findPrinters) + '</button><button type="button" class="sup-ghost" data-kitchens>' + icon('sync') + esc(boot.labels.syncApi) + '</button></div>';
+        var html = '<div class="sup-pactions"><button type="button" class="sup-primary" data-scan-printers' + (looking ? ' disabled' : '') + '>' + icon(looking ? 'sync' : 'search') + esc(looking ? boot.labels.lookingPrinters : boot.labels.findPrinters) + '</button><button type="button" class="sup-ghost" data-kitchens>' + icon('sync') + esc(boot.labels.syncApi) + '</button>' + (printerDevice ? restartButton(printerDevice.id) : '') + '</div>';
         if (looking) {
             if (scan.total) {
                 var width = Math.min(100, Math.round(((scan.done || 0) / scan.total) * 100));
@@ -1190,29 +1198,52 @@
             .catch(function () {});
     }
 
-    function sendCommand(name, args) {
-        if (!printerDevice || !boot.command) return;
+    function queueCommand(deviceId, name, args) {
+        if (!deviceId || !boot.command) return;
         var token = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-        printerNote = boot.labels.queued || '';
-        if (printerPayload) paintPrinters(printerPayload);
-        fetch(deviceUrl(boot.command, printerDevice.id), {
+        var mine = printerDevice && String(printerDevice.id) === String(deviceId);
+        if (mine) {
+            printerNote = boot.labels.queued || '';
+            if (printerPayload) paintPrinters(printerPayload);
+        }
+        fetch(deviceUrl(boot.command, deviceId), {
             method: 'POST',
             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
             body: JSON.stringify({ name: name, args: args || {} })
         }).then(function (res) { return res.json().then(function (json) { return { ok: res.ok, json: json }; }); })
             .then(function (result) {
+                if (!mine) {
+                    if (!result.ok) window.alert((result.json && result.json.message) || boot.labels.busy || '');
+                    return;
+                }
                 if (!result.ok) { stopSearch(false); stopSearch(true); }
                 printerNote = (result.json && result.json.message) || (result.ok ? boot.labels.queued : boot.labels.busy);
                 printerSig = '';
                 loadPrinters();
             })
             .catch(function () {
+                if (!mine) {
+                    window.alert(boot.labels.busy || '');
+                    return;
+                }
                 stopSearch(false);
                 stopSearch(true);
                 printerNote = boot.labels.busy || '';
                 printerSig = '';
                 if (printerPayload) paintPrinters(printerPayload);
             });
+    }
+
+    function sendCommand(name, args) {
+        if (!printerDevice) return;
+        queueCommand(printerDevice.id, name, args);
+    }
+
+    function askRestart(id) {
+        if (!id) return;
+        var question = boot.labels.restartConfirm || 'Quit Kaman on this tablet and open it again?';
+        if (!window.confirm(question)) return;
+        queueCommand(id, 'restart_app', {});
     }
 
     function openPrinters(id) {
@@ -1268,6 +1299,13 @@
             queueSettings({ pizzaMealIds: ids });
         });
         printerModal.addEventListener('click', function (event) {
+            var restart = event.target.closest('[data-restart-app]');
+            if (restart) {
+                event.preventDefault();
+                event.stopPropagation();
+                askRestart(restart.getAttribute('data-restart-app'));
+                return;
+            }
             if (event.target === printerModal || event.target.closest('[data-printer-close]')) {
                 closePrinters();
                 return;
@@ -1419,6 +1457,13 @@
     }
     if (modal) {
         modal.addEventListener('click', function (event) {
+            var restart = event.target.closest('[data-restart-app]');
+            if (restart) {
+                event.preventDefault();
+                event.stopPropagation();
+                askRestart(restart.getAttribute('data-restart-app'));
+                return;
+            }
             var printers = event.target.closest('[data-printers]');
             if (printers) {
                 event.stopPropagation();
@@ -1436,7 +1481,7 @@
         });
     }
     document.addEventListener('keydown', function (event) {
-        var hit = (event.key === 'Enter' || event.key === ' ') && event.target.closest && event.target.closest('.sup-device.is-hit');
+        var hit = (event.key === 'Enter' || event.key === ' ') && event.target.closest && event.target.closest('.sup-device.is-hit') && !(event.target.closest && event.target.closest('[data-restart-app]'));
         if (hit) {
             event.preventDefault();
             openPrinters(event.target.closest('.sup-device.is-hit').getAttribute('data-printers'));

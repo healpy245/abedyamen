@@ -787,4 +787,29 @@ class KamanSupportConsoleTest extends TestCase
         $this->assertTrue($devices['stale']['old']);
         $this->assertTrue($devices['never']['old']);
     }
+
+    public function test_a_tablet_can_be_told_to_quit_and_open_the_app_again(): void
+    {
+        $device = app(SupportDeviceSessionService::class)->heartbeat([
+            'deviceId' => 'tablet-restart',
+            'restaurant' => 'kaman',
+            'restaurantName' => 'Kaman',
+            'platform' => 'android',
+            'appState' => 'open',
+        ]);
+
+        $this->actingAs($this->yamen())
+            ->postJson(route('kaman-support.device.commands', $device), ['name' => 'restart_app'])
+            ->assertStatus(202)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('name', 'restart_app');
+
+        $this->assertSame('restart_app', $device->commands()->sole()->name->value);
+
+        $this->actingAs($this->yamen())
+            ->get(route('kaman-support.index'))
+            ->assertOk()
+            ->assertSee('restartApp:', false)
+            ->assertSee('restartConfirm:', false);
+    }
 }
