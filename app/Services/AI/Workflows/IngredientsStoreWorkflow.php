@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Workflows;
 
 use App\Support\KamanUrl;
+use App\Support\MenuNaming;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -187,6 +188,7 @@ Rules:
 - Use ingredient1, ingredient2, ingredient3... as keys.
 - Output ONLY the JSON object, no other text.
 PROMPT;
+        $systemPrompt .= "\n\n".MenuNaming::guide();
 
         $userPrompt = "Available ingredients categories (use id for category_id):\n{$categoryList}\n\nIngredients to parse:\n{$description}";
 

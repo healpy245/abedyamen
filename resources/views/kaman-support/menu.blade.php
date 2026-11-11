@@ -68,7 +68,7 @@
                 <div class="sup-agent__pending" data-menu-pending hidden></div>
                 <div class="sup-agent__row">
                     <label class="sup-ghost">
-                        <input type="file" data-menu-file accept="image/*,application/pdf,.json,.txt,.csv" multiple hidden>
+                        <input type="file" data-menu-file accept="image/*,.heic,.heif,.avif,application/pdf,.json,.txt,.csv,.tsv,.md,.html,.htm,.xml,.xlsx,.docx,.pptx,.ods,.odt" multiple hidden>
                         {{ __('kaman-support.ws_menu_attach') }}
                     </label>
                     <textarea data-menu-input rows="2" placeholder="{{ __('kaman-support.ws_menu_placeholder') }}" disabled></textarea>
@@ -146,30 +146,109 @@
                 loginForm.hidden = on || !restaurant;
             }
 
-            function bubble(role, text) {
+            var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var toolLabels = {
+                read_menu: 'Reading the menu…',
+                edit_menu: 'Updating the menu…',
+                read_item_options: 'Checking the meal options…',
+                edit_item_options: 'Updating the options…',
+                import_menu_url: 'Opening the menu link…',
+                assign_meal_photos: 'Matching the photos…',
+                kaman_request: 'Saving to Kaman…',
+                kaman_request_many: 'Saving to Kaman…'
+            };
+
+            // Safe light markdown: escape first, then **bold** and `code`.
+            function renderRich(node, text) {
+                var safe = String(text || '')
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                safe = safe.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/`([^`\n]+?)`/g, '<code>$1</code>')
+                    .replace(/\*\*/g, '');
+                node.innerHTML = '<span>' + safe + '</span>';
+            }
+
+            function nearBottom() {
+                return log.scrollHeight - log.scrollTop - log.clientHeight < 140;
+            }
+
+            function scrollToEnd(force) {
+                if (!force && !nearBottom()) return;
+                requestAnimationFrame(function () {
+                    if (log.scrollTo) log.scrollTo({ top: log.scrollHeight, behavior: calm ? 'auto' : 'smooth' });
+                    else log.scrollTop = log.scrollHeight;
+                });
+            }
+
+            function bubble(role, text, quiet) {
                 if (empty) empty.hidden = true;
                 var el = document.createElement('div');
-                el.className = 'sup-bubble is-' + role;
-                el.textContent = text;
+                el.className = 'sup-bubble is-' + role + (quiet ? '' : ' is-enter');
+                el.setAttribute('dir', 'auto');
+                if (role === 'assistant') renderRich(el, text); else el.textContent = text;
                 log.appendChild(el);
-                log.scrollTop = log.scrollHeight;
+                if (!quiet) {
+                    el.addEventListener('animationend', function () { el.classList.remove('is-enter'); }, { once: true });
+                }
+                scrollToEnd(true);
                 return el;
             }
 
             function thinking() {
                 var node = bubble('assistant', '');
                 node.classList.add('is-thinking');
-                node.innerHTML = '<span class="sup-ai" aria-hidden="true"><i></i><i></i><i></i></span><span class="sup-ai__label"></span>';
+                node.setAttribute('aria-live', 'polite');
+                node.innerHTML = '<span class="sup-ai" aria-hidden="true"><i></i><i></i><i></i></span><span class="sup-ai__label"></span><span class="sup-ai__steps"></span>';
                 node.querySelector('.sup-ai__label').textContent = boot.thinking || '';
+                node._steps = 0;
                 return node;
             }
 
-            function settle(node, text) {
-                if (!node || !text || text === boot.thinking) return;
+            // Progress keeps the dots and swaps the line with a short crossfade.
+            function progress(node, text, counted) {
+                if (!node || !text || !node.classList.contains('is-thinking')) return;
+                var label = node.querySelector('.sup-ai__label');
+                if (counted) {
+                    node._steps += 1;
+                    node.querySelector('.sup-ai__steps').textContent = node._steps + (node._steps === 1 ? ' step done' : ' steps done');
+                }
+                if (label.textContent === text) return;
+                if (calm) { label.textContent = text; return; }
+                label.classList.add('is-swapping');
+                clearTimeout(node._swap);
+                node._swap = setTimeout(function () {
+                    label.textContent = text;
+                    label.classList.remove('is-swapping');
+                }, 160);
+                scrollToEnd(false);
+            }
+
+            // The working bubble grows (or shrinks) into the reply instead of jumping.
+            function settle(node, text, failed) {
+                if (!node || !text) return;
+                clearTimeout(node._swap);
+                var from = node.getBoundingClientRect().height;
                 node.classList.remove('is-thinking');
                 node.classList.add('is-reply');
-                node.textContent = text;
-                log.scrollTop = log.scrollHeight;
+                node.classList.toggle('is-failed', !!failed);
+                node.removeAttribute('aria-live');
+                node._raw = text;
+                renderRich(node, text);
+                if (!calm) {
+                    var to = node.getBoundingClientRect().height;
+                    node.style.height = from + 'px';
+                    node.classList.add('is-growing');
+                    requestAnimationFrame(function () {
+                        node.style.height = to + 'px';
+                    });
+                    var done = function () {
+                        node.classList.remove('is-growing');
+                        node.style.height = '';
+                    };
+                    node.addEventListener('transitionend', done, { once: true });
+                    setTimeout(done, 450);
+                }
+                scrollToEnd(true);
             }
 
             function resetLog(text) {
@@ -374,7 +453,8 @@
                         chatId = chat.id;
                         history = (chat.messages || []).slice();
                         resetLog(boot.wait);
-                        history.forEach(function (row) { bubble(row.role, row.content); });
+                        history.forEach(function (row) { bubble(row.role, row.content, true); });
+                        scrollToEnd(true);
                         renderChats();
                         // Reopening a chat reconnects to the restaurant it was about.
                         if (chat.subdomain !== restaurant) choose(chat.subdomain, true);
@@ -383,11 +463,29 @@
 
             document.querySelector('[data-menu-new]').addEventListener('click', startNewChat);
 
+            function renderPending() {
+                pending.innerHTML = '';
+                pending.hidden = files.length === 0;
+                files.forEach(function (file) {
+                    var chip = document.createElement('span');
+                    chip.className = 'sup-file-chip';
+                    chip.textContent = file.name;
+                    chip.title = file.name;
+                    pending.appendChild(chip);
+                });
+            }
+
             document.querySelector('[data-menu-file]').addEventListener('change', function (event) {
                 files = Array.prototype.slice.call(event.target.files || []);
-                pending.hidden = files.length === 0;
-                pending.textContent = files.map(function (file) { return file.name; }).join(' · ');
+                event.target.value = '';
+                renderPending();
             });
+
+            function fitInput() {
+                input.style.height = 'auto';
+                input.style.height = Math.min(input.scrollHeight, 180) + 'px';
+            }
+            input.addEventListener('input', fitInput);
 
             input.addEventListener('keydown', function (event) {
                 if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
@@ -404,10 +502,14 @@
                 setReady(true);
                 var agent = document.querySelector('.sup-agent');
                 if (agent) agent.classList.add('is-busy');
-                bubble('user', text || files.map(function (file) { return file.name; }).join(', '));
+                var userBubble = bubble('user', text || files.map(function (file) { return file.name; }).join(', '));
+                var userIndex = history.length;
                 history.push({ role: 'user', content: text });
                 input.value = '';
+                fitInput();
                 var status = thinking();
+                var finalReply = '';
+                var failed = false;
                 var body = new FormData();
                 history.forEach(function (row, index) {
                     body.append('messages[' + index + '][role]', row.role);
@@ -418,7 +520,35 @@
                     body.append('attachment_roles[]', 'menu');
                 });
                 files = [];
-                pending.hidden = true;
+                renderPending();
+
+                function finish(text, isError) {
+                    if (!text) return;
+                    finalReply = text;
+                    failed = !!isError;
+                    settle(status, text, failed);
+                }
+
+                // The server swaps a typed password for dots; keep only the redacted text here too.
+                function redact(content) {
+                    if (typeof content !== 'string' || !history[userIndex]) return;
+                    history[userIndex].content = content;
+                    userBubble.textContent = content;
+                }
+
+                function handle(ev) {
+                    switch (ev.event) {
+                        case 'user_message_redacted': redact(ev.content); break;
+                        case 'status': progress(status, ev.message, false); break;
+                        case 'step': break; // debugger copy of status / tool events
+                        case 'tool_start': progress(status, toolLabels[ev.tool] || boot.thinking, false); break;
+                        case 'tool_result': progress(status, ev.summary || '', true); break;
+                        case 'message': if (ev.reply) finish(ev.reply, false); break;
+                        case 'error': finish(ev.message, true); break;
+                        case 'done': if (!finalReply && ev.reply) finish(ev.reply, ev.success === false); break;
+                    }
+                }
+
                 fetch(boot.chat, {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -428,7 +558,8 @@
                     var type = (res.headers.get('content-type') || '').toLowerCase();
                     if (!type.includes('text/event-stream') || !res.body) {
                         return res.json().then(function (data) {
-                            settle(status, (data && (data.error || data.message)) || boot.need);
+                            if (data && data.redacted_message) redact(data.redacted_message);
+                            finish((data && (data.error || data.message)) || boot.need, true);
                         });
                     }
                     var reader = res.body.getReader();
@@ -443,22 +574,18 @@
                             parts.forEach(function (part) {
                                 var match = part.match(/^data:\s*(.+)$/m);
                                 if (!match) return;
-                                try {
-                                    var ev = JSON.parse(match[1]);
-                                    if (ev.event === 'message' && ev.reply) settle(status, ev.reply);
-                                    else if (ev.message) settle(status, ev.message);
-                                    else if (ev.summary) settle(status, ev.summary);
-                                } catch (e) {}
+                                try { handle(JSON.parse(match[1])); } catch (e) {}
                             });
                             return pump();
                         });
                     }
                     return pump();
                 }).catch(function () {
-                    settle(status, boot.need);
+                    finish(boot.need, true);
                 }).then(function () {
-                    if (status.textContent && status.textContent !== boot.thinking && !status.classList.contains('is-thinking')) {
-                        history.push({ role: 'assistant', content: status.textContent });
+                    if (!finalReply) finish('The connection closed before a reply. Open this chat again in a minute to see the result.', true);
+                    if (finalReply) {
+                        history.push({ role: 'assistant', content: finalReply });
                     }
                     sending = false;
                     if (agent) agent.classList.remove('is-busy');

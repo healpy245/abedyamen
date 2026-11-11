@@ -1137,3 +1137,73 @@ html[data-theme="dark"] #sup-menu .sup-ghost:hover {
 /* Holds the printer tools in the top layer, so they open above the shared restaurant modal. */
 dialog.sup-printer-layer { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: visible; }
 dialog.sup-printer-layer::backdrop { background: transparent; }
+
+/* AI Menu chat motion: bubbles rise in, the working bubble keeps its dots while the
+   status line crossfades, and the final reply grows to its height instead of jumping. */
+#sup-menu .sup-agent__log { scroll-behavior: smooth; overscroll-behavior: contain; }
+#sup-menu .sup-bubble { unicode-bidi: plaintext; text-align: start; transform-origin: bottom left; }
+#sup-menu .sup-bubble.is-user { transform-origin: bottom right; }
+#sup-menu .sup-bubble.is-enter { animation: sup-chat-in 320ms cubic-bezier(.2, .8, .2, 1) both; }
+#sup-menu .sup-bubble.is-growing { overflow: hidden; transition: height 360ms cubic-bezier(.2, .8, .2, 1); }
+#sup-menu .sup-bubble.is-reply > * { animation: sup-chat-fade 360ms ease both; }
+#sup-menu .sup-bubble strong { font-weight: 700; }
+#sup-menu .sup-bubble code {
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--ws-surface-2, var(--ds-surface-2, #fff1e6));
+    font-size: 0.92em;
+}
+#sup-menu .sup-ai__label {
+    display: inline-block;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+#sup-menu .sup-ai__label.is-swapping { opacity: 0; transform: translateY(3px); }
+#sup-menu .sup-ai__steps {
+    position: relative;
+    z-index: 1;
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--ws-muted, var(--ds-text-2, #8a6244));
+    opacity: 0.85;
+}
+#sup-menu .sup-bubble.is-failed { border-color: color-mix(in srgb, #dc2626 45%, var(--ws-line, #f1dfc5)); }
+#sup-menu .sup-agent__pending {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+#sup-menu .sup-agent__pending[hidden] { display: none; }
+#sup-menu .sup-file-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 220px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--ws-line, var(--ds-border-strong, #f1dfc5));
+    background: var(--ws-surface, var(--ds-surface, #fff));
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: sup-chat-in 240ms cubic-bezier(.2, .8, .2, 1) both;
+}
+#sup-menu .sup-agent__row textarea { transition: height 140ms ease; max-height: 180px; overflow-y: auto; }
+@keyframes sup-chat-in {
+    from { opacity: 0; transform: translateY(10px) scale(.98); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes sup-chat-fade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #sup-menu .sup-agent__log { scroll-behavior: auto; }
+    #sup-menu .sup-bubble.is-enter,
+    #sup-menu .sup-bubble.is-reply > *,
+    #sup-menu .sup-file-chip { animation: none; }
+    #sup-menu .sup-bubble.is-growing,
+    #sup-menu .sup-ai__label,
+    #sup-menu .sup-agent__row textarea { transition: none; }
+}

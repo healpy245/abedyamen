@@ -628,6 +628,7 @@ Rules:
 - Keep names short and natural for a menu.
 - Output ONLY valid JSON, no markdown. Example: {"Hot Beverages":{"name_en":"Hot Beverages","name_ar":"مشروبات ساخنة","name_he":"משקאות חמים"}}
 PROMPT;
+        $systemPrompt .= "\n\n".\App\Support\MenuNaming::guide();
 
         $userPrompt = "Names to translate (one per line):\n" . implode("\n", array_slice($names, 0, 80));
 

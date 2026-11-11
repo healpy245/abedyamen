@@ -9,6 +9,7 @@ use App\Services\Haat\KamanHttp;
 use App\Services\Haat\KamanMenuWriter;
 use App\Services\Haat\KamanPublicMenuScraper;
 use App\Support\KamanUrl;
+use App\Support\MenuNaming;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -20,6 +21,11 @@ final class FormMenuAgentService
     public const MAX_BATCH_REQUESTS = 80;
 
     public const MAX_ATTACHMENTS = 50;
+
+    public const MAX_OPTION_WRITES = 200;
+
+    /** Pages read from one PDF menu. */
+    public const MAX_PDF_PAGES = 12;
 
     private const TRANSLATION_RULES = <<<'RULES'
 Translate each restaurant menu row into Arabic, Hebrew, and English. Return only JSON {"rows":[{"id":"","name_ar":"","name_en":"","name_he":"","description_ar":"","description_en":"","description_he":""}]}. Keep the source text in its own language. Arabic must use Arabic letters. Hebrew must use Hebrew letters. English must use Latin letters. Do not copy one language into the other fields. A brand written in Latin letters is spelled out in Hebrew and Arabic letters in those fields.
@@ -1245,7 +1251,7 @@ RULES;
 
         try {
             $choice = $this->chatCompletions(trim((string) config('openai.api_key')), [
-                ['role' => 'system', 'content' => self::TRANSLATION_RULES],
+                ['role' => 'system', 'content' => self::TRANSLATION_RULES."\n".MenuNaming::guide()],
                 ['role' => 'user', 'content' => $this->jsonForModel(['rows' => $rows], 20000)],
             ], null, [
                 'temperature' => 0.2,
@@ -1610,7 +1616,12 @@ RULES;
 
             $id = (string) ($candidate['id'] ?? '');
             if ($id !== '') {
-                $sent = $this->uploadMealPhoto($candidate, (string) $photo['path'], $token, $baseUrl);
+                $uploadPath = (string) $photo['path'];
+                if (! $this->isVisionReady($uploadPath) || $this->needsUpright($uploadPath)) {
+                    // HEIC / BMP / sideways phone photos: Kaman gets an upright JPEG.
+                    $uploadPath = $this->prepareVisionImage($uploadPath);
+                }
+                $sent = $this->uploadMealPhoto($candidate, $uploadPath, $token, $baseUrl);
                 $this->trackHttp($emit, $toolCalls, 'PUT', '/items/'.$id, $sent, true);
                 if (! $sent['ok']) {
                     $line = $line.' (upload failed, HTTP '.$sent['status'].')';
@@ -2161,6 +2172,8 @@ RULES;
             ."- Hebrew fields may contain Hebrew letters only (no Arabic).\n"
             ."description_* should follow the user instructions when given; otherwise a short accurate line.\n"
             ."price is a numeric string like \"80.00\" without currency symbols.\n"
+            ."Ignore handwriting that is crossed out, and do not invent meals that are not on the page.\n"
+            .MenuNaming::guide()."\n"
             ."Return ONLY JSON:\n"
             ."{\"categories\":[{\"name_en\":\"\",\"name_ar\":\"\",\"name_he\":\"\",\"meals\":[{\"name_en\":\"\",\"name_ar\":\"\",\"name_he\":\"\",\"price\":\"0.00\",\"description_en\":\"\",\"description_ar\":\"\",\"description_he\":\"\"}]}]}\n";
         if ($instructions !== '') {
@@ -3015,10 +3028,26 @@ RULES;
                 continue;
             }
 
-            if (str_contains($mime, 'json') || str_ends_with(strtolower($name), '.json')
-                || str_starts_with($mime, 'text/') || str_ends_with(strtolower($name), '.txt')
-                || str_ends_with(strtolower($name), '.csv')) {
-                $raw = (string) file_get_contents($path);
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+            // Spreadsheets and documents: read the text inside instead of skipping the file.
+            $document = $this->documentText($path, $ext, $mime);
+            if ($document !== null) {
+                $blocks[] = [
+                    'type' => 'text',
+                    'text' => $document === ''
+                        ? "File {$name} has no readable text."
+                        : "File {$name}:\n".$this->truncate($document, 60000),
+                ];
+                continue;
+            }
+
+            if (str_contains($mime, 'json') || str_starts_with($mime, 'text/')
+                || in_array($ext, ['json', 'txt', 'csv', 'tsv', 'md', 'xml', 'html', 'htm'], true)) {
+                $raw = $this->utf8String((string) file_get_contents($path));
+                if (in_array($ext, ['html', 'htm'], true) || str_contains($mime, 'html')) {
+                    $raw = $this->htmlToText($raw);
+                }
                 $blocks[] = [
                     'type' => 'text',
                     'text' => "File {$name}:\n".$this->truncate($raw, 60000),
@@ -3026,33 +3055,233 @@ RULES;
                 continue;
             }
 
-            $imagePath = $path;
-            if ($mime === 'application/pdf' || str_ends_with(strtolower($name), '.pdf')) {
-                $converted = $this->pdfFirstPageToImage($path);
-                if ($converted === null) {
+            if ($mime === 'application/pdf' || $ext === 'pdf') {
+                $pages = $this->pdfPagesToImages($path);
+                $pdfText = $this->pdfText($path);
+                if ($pdfText !== '') {
                     $blocks[] = [
                         'type' => 'text',
-                        'text' => "PDF {$name} could not be previewed.",
+                        'text' => "Text layer of PDF {$name} (use it to check spelling and prices):\n".$this->truncate($pdfText, 40000),
                     ];
-                    continue;
                 }
-                $imagePath = $converted;
-                $mime = 'image/png';
+                if ($pages === [] && $pdfText === '') {
+                    $blocks[] = [
+                        'type' => 'text',
+                        'text' => "PDF {$name} could not be read on this server. Ask for photos or screenshots of the pages.",
+                    ];
+                }
+                foreach ($pages as $page) {
+                    $imageCount++;
+                    if ($imageCount > 30) {
+                        break;
+                    }
+                    $blocks[] = $this->toVisionInput($this->prepareVisionImage($page));
+                }
+                continue;
             }
 
-            if (! str_starts_with($mime, 'image/') && ! $this->looksLikeImage($imagePath)) {
+            if (! str_starts_with($mime, 'image/') && ! $this->looksLikeImage($path)) {
+                $blocks[] = [
+                    'type' => 'text',
+                    'text' => "File {$name} is not a type I can read. Send photos, PDF, Excel, Word, CSV or text.",
+                ];
                 continue;
             }
 
             $imageCount++;
-            if ($imageCount > 15) {
+            if ($imageCount > 30) {
                 continue;
             }
 
-            $blocks[] = $this->toVisionInput($this->prepareVisionImage($imagePath));
+            $prepared = $this->prepareVisionImage($path);
+            if (! $this->isVisionReady($prepared)) {
+                $blocks[] = [
+                    'type' => 'text',
+                    'text' => "Image {$name} is in a format this server cannot convert (".($ext ?: $mime)."). Ask for a JPG or PNG.",
+                ];
+                continue;
+            }
+            $blocks[] = $this->toVisionInput($prepared);
         }
 
         return $blocks;
+    }
+
+    /**
+     * Text from Excel / Word / OpenDocument / PowerPoint files, or null when the file is not one of them.
+     */
+    private function documentText(string $path, string $ext, string $mime): ?string
+    {
+        $kind = match (true) {
+            $ext === 'xlsx' || str_contains($mime, 'spreadsheetml') => 'xlsx',
+            $ext === 'docx' || str_contains($mime, 'wordprocessingml') => 'docx',
+            $ext === 'pptx' || str_contains($mime, 'presentationml') => 'pptx',
+            in_array($ext, ['ods', 'odt', 'odp'], true) || str_contains($mime, 'opendocument') => 'odf',
+            default => null,
+        };
+        if ($kind === null) {
+            return null;
+        }
+        if (! class_exists(\ZipArchive::class)) {
+            return '';
+        }
+
+        $zip = new \ZipArchive;
+        if ($zip->open($path) !== true) {
+            return '';
+        }
+
+        try {
+            return match ($kind) {
+                'xlsx' => $this->xlsxText($zip),
+                'docx' => $this->xmlText((string) $zip->getFromName('word/document.xml'), ['</w:p>' => "\n", '<w:tab/>' => "\t", '<w:br/>' => "\n"]),
+                'pptx' => $this->pptxText($zip),
+                default => $this->xmlText((string) $zip->getFromName('content.xml'), [
+                    '</text:p>' => "\n",
+                    '</text:h>' => "\n",
+                    '</table:table-cell>' => "\t",
+                    '</table:table-row>' => "\n",
+                    '<text:tab/>' => "\t",
+                ]),
+            };
+        } catch (\Throwable $e) {
+            Log::warning('Menu agent could not read document', ['error' => $e->getMessage()]);
+
+            return '';
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * Every sheet as tab-separated rows, so prices stay next to their names.
+     */
+    private function xlsxText(\ZipArchive $zip): string
+    {
+        $shared = [];
+        $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+        if (is_string($sharedXml) && $sharedXml !== '') {
+            $doc = @simplexml_load_string($sharedXml);
+            if ($doc !== false) {
+                foreach ($doc->si as $si) {
+                    $text = '';
+                    if (isset($si->t)) {
+                        $text = (string) $si->t;
+                    }
+                    foreach ($si->r as $run) {
+                        $text .= (string) $run->t;
+                    }
+                    $shared[] = $text;
+                }
+            }
+        }
+
+        $sheets = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = (string) $zip->getNameIndex($i);
+            if (preg_match('#^xl/worksheets/sheet(\d+)\.xml$#', $entry, $m) === 1) {
+                $sheets[(int) $m[1]] = $entry;
+            }
+        }
+        ksort($sheets);
+
+        $out = [];
+        foreach ($sheets as $number => $entry) {
+            $doc = @simplexml_load_string((string) $zip->getFromName($entry));
+            if ($doc === false || ! isset($doc->sheetData)) {
+                continue;
+            }
+            $rows = [];
+            foreach ($doc->sheetData->row as $row) {
+                $cells = [];
+                foreach ($row->c as $cell) {
+                    $type = (string) $cell['t'];
+                    $value = $type === 'inlineStr' ? (string) $cell->is->t : (string) $cell->v;
+                    if ($type === 's') {
+                        $value = $shared[(int) $value] ?? '';
+                    }
+                    $cells[] = trim($value);
+                }
+                if (array_filter($cells, static fn (string $v): bool => $v !== '') !== []) {
+                    $rows[] = implode("\t", $cells);
+                }
+            }
+            if ($rows !== []) {
+                $out[] = 'Sheet '.$number.":\n".implode("\n", $rows);
+            }
+        }
+
+        return implode("\n\n", $out);
+    }
+
+    private function pptxText(\ZipArchive $zip): string
+    {
+        $slides = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = (string) $zip->getNameIndex($i);
+            if (preg_match('#^ppt/slides/slide(\d+)\.xml$#', $entry, $m) === 1) {
+                $slides[(int) $m[1]] = $this->xmlText((string) $zip->getFromName($entry), ['</a:p>' => "\n"]);
+            }
+        }
+        ksort($slides);
+
+        return trim(implode("\n\n", array_filter($slides)));
+    }
+
+    /**
+     * @param  array<string, string>  $breaks  closing tags that become separators
+     */
+    private function xmlText(string $xml, array $breaks): string
+    {
+        if ($xml === '') {
+            return '';
+        }
+        $xml = str_replace(array_keys($breaks), array_values($breaks), $xml);
+        $text = html_entity_decode(strip_tags($xml), ENT_QUOTES | ENT_XML1, 'UTF-8');
+        $text = preg_replace("/[ \t]+\n/u", "\n", $text) ?? $text;
+        $text = preg_replace("/\n{3,}/u", "\n\n", $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function htmlToText(string $html): string
+    {
+        $html = preg_replace('#<(script|style)\b[^>]*>.*?</\1>#is', '', $html) ?? $html;
+        $html = preg_replace('#<(br|/p|/div|/li|/tr|/h\d)\b[^>]*>#i', "\n", $html) ?? $html;
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace("/[ \t]+/u", ' ', $text) ?? $text;
+        $text = preg_replace("/\n\s*\n+/u", "\n", $text) ?? $text;
+
+        return trim($text);
+    }
+
+    /**
+     * The PDF text layer when the server has pdftotext. Scanned PDFs have none; their pages go in as images.
+     */
+    private function pdfText(string $path): string
+    {
+        if (! function_exists('shell_exec') || ! function_exists('escapeshellarg')) {
+            return '';
+        }
+        $binary = PHP_OS_FAMILY === 'Windows' ? 'pdftotext.exe' : 'pdftotext';
+        $finder = PHP_OS_FAMILY === 'Windows' ? 'where '.$binary.' 2>NUL' : 'command -v '.$binary.' 2>/dev/null';
+        $found = trim((string) @shell_exec($finder));
+        if ($found === '') {
+            return '';
+        }
+        $text = (string) @shell_exec($binary.' -layout -enc UTF-8 -l '.self::MAX_PDF_PAGES.' '.escapeshellarg($path).' - 2>'.(PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null'));
+
+        return trim($this->utf8String($text));
+    }
+
+    /**
+     * OpenAI vision takes JPEG, PNG, WEBP and GIF.
+     */
+    private function isVisionReady(string $path): bool
+    {
+        $mime = strtolower((string) (@mime_content_type($path) ?: ''));
+
+        return in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true);
     }
 
     private function looksLikeImage(string $path): bool
@@ -3062,19 +3291,26 @@ RULES;
         return str_starts_with($mime, 'image/');
     }
 
+    /**
+     * A JPEG/PNG/WEBP the vision model accepts: iPhone HEIC, AVIF, BMP, TIFF and GIF are converted,
+     * sideways phone photos are turned upright, and big photos are scaled to 1024px.
+     */
     private function prepareVisionImage(string $path): string
     {
-        if (! function_exists('imagecreatetruecolor')) {
-            return $path;
-        }
         $info = @getimagesize($path);
         if (! is_array($info)) {
+            // HEIC / TIFF and anything GD cannot open: Imagick when the server has it.
+            return $this->convertWithImagick($path) ?? $path;
+        }
+        if (! function_exists('imagecreatetruecolor')) {
             return $path;
         }
         [$width, $height, $type] = $info;
         $max = 1024;
         $bytes = (int) (@filesize($path) ?: 0);
-        if ($width <= $max && $height <= $max && $bytes > 0 && $bytes < 400_000) {
+        $orientation = $this->exifOrientation($path, $type);
+        $native = in_array($type, [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true);
+        if ($native && $orientation === 1 && $width <= $max && $height <= $max && $bytes > 0 && $bytes < 400_000) {
             return $path;
         }
 
@@ -3082,11 +3318,24 @@ RULES;
             IMAGETYPE_JPEG => @imagecreatefromjpeg($path),
             IMAGETYPE_PNG => @imagecreatefrompng($path),
             IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
-            default => false,
+            IMAGETYPE_GIF => @imagecreatefromgif($path),
+            IMAGETYPE_BMP => function_exists('imagecreatefrombmp') ? @imagecreatefrombmp($path) : false,
+            default => (defined('IMAGETYPE_AVIF') && $type === IMAGETYPE_AVIF && function_exists('imagecreatefromavif'))
+                ? @imagecreatefromavif($path)
+                : false,
         };
         if ($src === false) {
-            return $path;
+            return $this->convertWithImagick($path) ?? $path;
         }
+
+        $src = match ($orientation) {
+            3 => imagerotate($src, 180, 0) ?: $src,
+            6 => imagerotate($src, -90, 0) ?: $src,
+            8 => imagerotate($src, 90, 0) ?: $src,
+            default => $src,
+        };
+        $width = imagesx($src);
+        $height = imagesy($src);
 
         $scale = min($max / max(1, $width), $max / max(1, $height), 1);
         $newW = max(1, (int) round($width * $scale));
@@ -3097,16 +3346,72 @@ RULES;
 
             return $path;
         }
+        // Transparent PNG/GIF menus would turn black in JPEG; paint white underneath.
+        imagefill($dst, 0, 0, (int) imagecolorallocate($dst, 255, 255, 255));
         imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $width, $height);
-        $temp = storage_path('app/menu-agent-temp/'.Str::uuid().'.jpg');
-        if (! is_dir(dirname($temp))) {
-            mkdir(dirname($temp), 0755, true);
-        }
-        imagejpeg($dst, $temp, 72);
+        $temp = $this->visionTempPath('jpg');
+        imagejpeg($dst, $temp, 80);
         imagedestroy($src);
         imagedestroy($dst);
 
         return is_file($temp) ? $temp : $path;
+    }
+
+    private function needsUpright(string $path): bool
+    {
+        $info = @getimagesize($path);
+
+        return is_array($info) && $this->exifOrientation($path, (int) $info[2]) !== 1;
+    }
+
+    private function exifOrientation(string $path, int $type): int
+    {
+        if ($type !== IMAGETYPE_JPEG || ! function_exists('exif_read_data')) {
+            return 1;
+        }
+        $exif = @exif_read_data($path);
+        $orientation = is_array($exif) ? (int) ($exif['Orientation'] ?? 1) : 1;
+
+        return in_array($orientation, [3, 6, 8], true) ? $orientation : 1;
+    }
+
+    private function convertWithImagick(string $path): ?string
+    {
+        if (! class_exists(\Imagick::class)) {
+            return null;
+        }
+
+        try {
+            $imagick = new \Imagick;
+            $imagick->readImage($path.'[0]');
+            if (method_exists($imagick, 'autoOrient')) {
+                $imagick->autoOrient();
+            }
+            $imagick->setImageBackgroundColor('white');
+            $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+            $imagick->thumbnailImage(1024, 1024, true);
+            $imagick->setImageFormat('jpeg');
+            $imagick->setImageCompressionQuality(80);
+            $temp = $this->visionTempPath('jpg');
+            $imagick->writeImage($temp);
+            $imagick->clear();
+
+            return is_file($temp) ? $temp : null;
+        } catch (\Throwable $e) {
+            Log::info('Menu agent could not convert image', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    private function visionTempPath(string $extension): string
+    {
+        $dir = storage_path('app/menu-agent-temp');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        return $dir.'/'.Str::uuid().'.'.$extension;
     }
 
     /**
@@ -3126,30 +3431,54 @@ RULES;
         ];
     }
 
-    private function pdfFirstPageToImage(string $path): ?string
+    /**
+     * Every page of a PDF menu (up to MAX_PDF_PAGES) as images: Imagick first, then pdftoppm.
+     *
+     * @return list<string>
+     */
+    private function pdfPagesToImages(string $path): array
     {
-        if (! class_exists(\Imagick::class)) {
-            return null;
-        }
-
-        try {
-            $imagick = new \Imagick;
-            $imagick->setResolution(200, 200);
-            $imagick->readImage($path.'[0]');
-            $imagick->setImageFormat('png');
-            $tempDir = storage_path('app/menu-agent-temp');
-            if (! is_dir($tempDir)) {
-                mkdir($tempDir, 0755, true);
+        $pages = [];
+        if (class_exists(\Imagick::class)) {
+            try {
+                $probe = new \Imagick;
+                $probe->pingImage($path);
+                $count = min(max(1, $probe->getNumberImages()), self::MAX_PDF_PAGES);
+                $probe->clear();
+                for ($page = 0; $page < $count; $page++) {
+                    $imagick = new \Imagick;
+                    $imagick->setResolution(150, 150);
+                    $imagick->readImage($path.'['.$page.']');
+                    $imagick->setImageBackgroundColor('white');
+                    $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                    $imagick->setImageFormat('png');
+                    $temp = $this->visionTempPath('png');
+                    $imagick->writeImage($temp);
+                    $imagick->clear();
+                    if (is_file($temp)) {
+                        $pages[] = $temp;
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::info('Menu agent Imagick PDF read failed', ['error' => $e->getMessage()]);
             }
-            $tempPath = $tempDir.'/'.Str::uuid().'.png';
-            $imagick->writeImage($tempPath);
-            $imagick->clear();
-            $imagick->destroy();
-
-            return $tempPath;
-        } catch (\Throwable) {
-            return null;
         }
+        if ($pages !== [] || ! function_exists('shell_exec')) {
+            return $pages;
+        }
+
+        // Shared hosts often have poppler without the Imagick PHP extension.
+        $binary = PHP_OS_FAMILY === 'Windows' ? 'pdftoppm.exe' : 'pdftoppm';
+        $finder = PHP_OS_FAMILY === 'Windows' ? 'where '.$binary.' 2>NUL' : 'command -v '.$binary.' 2>/dev/null';
+        if (trim((string) @shell_exec($finder)) === '') {
+            return [];
+        }
+        $prefix = substr($this->visionTempPath('pdf'), 0, -4);
+        @shell_exec($binary.' -r 150 -png -l '.self::MAX_PDF_PAGES.' '.escapeshellarg($path).' '.escapeshellarg($prefix));
+        $found = glob($prefix.'-*.png') ?: [];
+        natsort($found);
+
+        return array_values($found);
     }
 
     /**
@@ -3166,6 +3495,7 @@ RULES;
         $draftLine = $draft === null
             ? 'No extracted menu draft yet.'
             : 'A full extracted menu JSON is attached to the latest user message. Use it. Store remaining meals if any are missing.';
+        $naming = MenuNaming::guide();
 
         return <<<PROMPT
 You are the restaurant menu operator on the Kaman Form page. Talk and act like Cursor: read the files, then send HTTP yourself. Hands-free. No WhatsApp.
@@ -3184,6 +3514,8 @@ Tools:
 - assign_meal_photos: match uploaded meal photos to meals by file name, then by looking at each photo, and upload the image onto the meal.
 - read_menu: the live menu (categories, meals, and option groups). Call this before any change.
 - edit_menu: apply chat edits to the live menu. Use this for rename, remove a phrase, change a price, change a description, or the same edit on many rows. Do not recreate meals to rename them.
+- read_item_options: which option values (ingredients, add-ons) a meal has, with group, default, and extra price.
+- edit_item_options: link or unlink option values on a meal or a whole menu section, and turn "selected by default" or "extra price" on or off.
 - kaman_request: one HTTP call (GET, POST, PUT, PATCH, DELETE) when edit_menu does not fit
 - kaman_request_many: many HTTP calls in order (bulk meals). Max 80 per call; call again for the rest.
 
@@ -3209,6 +3541,17 @@ Chat edits:
 - remove_text strips a phrase from names. An Arabic phrase only hits Arabic names. Keep the rest of the name, including brand names.
 - target "items" is meals and drinks. "categories" is section titles. "choices" is option values (pita, hummus, large). "groups" is option questions (choose a size).
 - After edit_menu, answer in the user's language with what changed. Do not store the menu again.
+
+Meal options (ingredients / add-ons):
+- "add cheese to the pizza", "remove onion from the burger", "make ketchup default", "cheese should cost 3", "make sauces free" are option edits. Use edit_item_options, not kaman_request.
+- link adds an option to a meal. unlink removes it from that meal only; the option itself stays in the menu.
+- default true/false switches "selected by default". extra_fee false makes it free; custom_fee sets the extra price.
+- Use group to link every value of an option group at once, and menu_category to apply to every meal in a section.
+- To change the base price of an option value everywhere, use edit_menu with target "choices" and set price.
+- If you are not sure which meal or option the user means, call read_item_options first.
+- When edit_item_options reports a failure, say it plainly with the HTTP status. Do not claim it worked.
+
+{$naming}
 
 Rules:
 - Follow user instructions exactly (item name as description, dialect spellings, etc.).
@@ -3398,6 +3741,384 @@ PROMPT;
                 'failed' => $failed,
             ], 8000),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array{ok: bool, summary: string, content: string}
+     */
+    private function readItemOptions(array $arguments, string $token, string $baseUrl): array
+    {
+        $needle = trim((string) ($arguments['item'] ?? ''));
+        $items = $this->matchByNameOrId($this->fetchPaged($token, $baseUrl, '/items'), $needle);
+        if ($items === []) {
+            return [
+                'ok' => false,
+                'summary' => 'No meal matched '.$needle,
+                'content' => json_encode(['error' => 'No meal matched '.$needle], JSON_UNESCAPED_UNICODE),
+            ];
+        }
+
+        $choices = $this->rowsById($this->fetchCashierPaged($token, $baseUrl, '/ingredients'));
+        $groups = $this->rowsById($this->fetchCashierPaged($token, $baseUrl, '/ingredient-categories'));
+        $out = [];
+        $linked = 0;
+        foreach (array_slice($items, 0, 10) as $item) {
+            $itemId = $this->rowId($item);
+            $options = [];
+            foreach ($this->itemOptionLinks($itemId, $token, $baseUrl) as $ingredientId => $link) {
+                $choice = $choices[$ingredientId] ?? (is_array($link['row']['ingredient'] ?? null) ? $link['row']['ingredient'] : []);
+                $group = $groups[(string) ($choice['category_id'] ?? '')] ?? [];
+                $options[] = [
+                    'ingredient_id' => $ingredientId,
+                    'name' => $choice !== [] ? $this->rowLabel($choice) : '#'.$ingredientId,
+                    'group' => $group !== [] ? $this->rowLabel($group) : '',
+                    'default' => $link['default_ingredient'],
+                    'extra_fee' => $link['extra_fee'],
+                    'custom_fee' => $link['custom_fee'],
+                ];
+            }
+            $linked += count($options);
+            $out[] = [
+                'id' => $itemId,
+                'name_ar' => (string) ($item['name_ar'] ?? ''),
+                'name_en' => (string) ($item['name_en'] ?? ''),
+                'name_he' => (string) ($item['name_he'] ?? ''),
+                'options' => $options,
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'summary' => count($out).' meal'.(count($out) === 1 ? '' : 's').', '.$linked.' linked options',
+            'content' => $this->jsonForModel(['meals' => $out], 16000),
+        ];
+    }
+
+    /**
+     * Link / unlink option values on meals and switch "default" and "extra price" on a link.
+     * Kaman keeps these on the cashier API: /items/{id}/ingredients[/{ingredientId}].
+     *
+     * @param  array<string, mixed>  $arguments
+     * @return array{ok: bool, summary: string, content: string}
+     */
+    private function editItemOptions(array $arguments, string $token, string $baseUrl): array
+    {
+        $operations = $arguments['operations'] ?? [];
+        if (is_array($operations) && ! array_is_list($operations)) {
+            $operations = [$operations];
+        }
+        if (! is_array($operations) || $operations === []) {
+            return [
+                'ok' => false,
+                'summary' => 'No option edits given',
+                'content' => json_encode(['error' => 'operations is required'], JSON_UNESCAPED_UNICODE),
+            ];
+        }
+
+        $items = $this->fetchPaged($token, $baseUrl, '/items');
+        $categories = $this->fetchPaged($token, $baseUrl, '/categories');
+        $choices = $this->fetchCashierPaged($token, $baseUrl, '/ingredients');
+        $groups = $this->fetchCashierPaged($token, $baseUrl, '/ingredient-categories');
+        $links = [];
+        $changed = [];
+        $unchanged = [];
+        $failed = [];
+        $writes = 0;
+
+        foreach (array_slice($operations, 0, 40) as $operation) {
+            if (! is_array($operation)) {
+                continue;
+            }
+            $action = strtolower(trim((string) ($operation['action'] ?? 'link')));
+            if (! in_array($action, ['link', 'unlink', 'update'], true)) {
+                $failed[] = 'Unknown action '.$action;
+                continue;
+            }
+
+            $meals = $this->optionTargetMeals($operation, $items, $categories);
+            if ($meals === []) {
+                $failed[] = 'No meal matched '.trim(($operation['item'] ?? '').' '.($operation['menu_category'] ?? ''));
+                continue;
+            }
+            $options = $this->optionTargetChoices($operation, $choices, $groups);
+            if ($options === []) {
+                $failed[] = 'No option matched '.trim(($operation['ingredient'] ?? '').' '.($operation['group'] ?? ''));
+                continue;
+            }
+
+            foreach ($meals as $meal) {
+                $itemId = $this->rowId($meal);
+                $links[$itemId] ??= $this->itemOptionLinks($itemId, $token, $baseUrl);
+                foreach ($options as $choice) {
+                    $ingredientId = $this->rowId($choice);
+                    $label = $this->rowLabel($meal).' · '.$this->rowLabel($choice);
+                    $existing = $links[$itemId][$ingredientId] ?? null;
+
+                    if ($writes >= self::MAX_OPTION_WRITES) {
+                        $failed[] = 'Stopped after '.self::MAX_OPTION_WRITES.' changes. Ask again for the rest.';
+                        break 3;
+                    }
+
+                    if ($action === 'unlink') {
+                        if ($existing === null) {
+                            $unchanged[] = $label.': was not linked';
+                            continue;
+                        }
+                        $writes++;
+                        $sent = $this->sendCashier('DELETE', '/items/'.$itemId.'/ingredients/'.$ingredientId, [], $token, $baseUrl);
+                        if ($sent['ok']) {
+                            unset($links[$itemId][$ingredientId]);
+                            $changed[] = $label.': unlinked';
+                        } else {
+                            $failed[] = $label.': unlink HTTP '.$sent['status'].' '.mb_substr($sent['content'], 0, 160);
+                        }
+                        continue;
+                    }
+
+                    if ($action === 'update' && $existing === null) {
+                        $failed[] = $label.': not linked to this meal (use link)';
+                        continue;
+                    }
+
+                    $wanted = $this->wantedOptionLink($operation, $existing, $choice);
+                    if ($existing !== null
+                        && $existing['default_ingredient'] === $wanted['default_ingredient']
+                        && $existing['extra_fee'] === $wanted['extra_fee']
+                        && abs((float) ($existing['custom_fee'] ?? 0) - (float) ($wanted['custom_fee'] ?? 0)) < 0.009
+                    ) {
+                        $unchanged[] = $label.': already '.$this->describeOptionLink($wanted);
+                        continue;
+                    }
+
+                    $writes++;
+                    if ($existing === null) {
+                        $body = [
+                            'ingredient_id' => $ingredientId,
+                            'default_ingredient' => $wanted['default_ingredient'],
+                            'extra_fee' => $wanted['extra_fee'],
+                        ];
+                        if ($wanted['extra_fee']) {
+                            $body['custom_fee'] = $wanted['custom_fee'];
+                        }
+                        $sent = $this->sendCashier('POST', '/items/'.$itemId.'/ingredients', $body, $token, $baseUrl);
+                    } else {
+                        $sent = $this->sendCashier('PUT', '/items/'.$itemId.'/ingredients/'.$ingredientId, $wanted, $token, $baseUrl);
+                    }
+
+                    if ($sent['ok']) {
+                        $links[$itemId][$ingredientId] = $wanted + ['row' => []];
+                        $changed[] = $label.': '.($existing === null ? 'linked, ' : '').$this->describeOptionLink($wanted);
+                    } else {
+                        $failed[] = $label.': HTTP '.$sent['status'].' '.mb_substr($sent['content'], 0, 160);
+                    }
+                }
+            }
+        }
+
+        return [
+            'ok' => $failed === [] && ($changed !== [] || $unchanged !== []),
+            'summary' => count($changed).' option links changed'
+                .($unchanged === [] ? '' : ', '.count($unchanged).' already right')
+                .($failed === [] ? '' : ', '.count($failed).' failed'),
+            'content' => $this->jsonForModel([
+                'changed' => $changed,
+                'already_right' => $unchanged,
+                'failed' => $failed,
+            ], 10000),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $operation
+     * @param  list<array<string, mixed>>  $items
+     * @param  list<array<string, mixed>>  $categories
+     * @return list<array<string, mixed>>
+     */
+    private function optionTargetMeals(array $operation, array $items, array $categories): array
+    {
+        $meals = [];
+        $item = trim((string) ($operation['item'] ?? ''));
+        if ($item !== '') {
+            foreach ($this->matchByNameOrId($items, $item) as $row) {
+                $meals[$this->rowId($row)] = $row;
+            }
+        }
+        $section = trim((string) ($operation['menu_category'] ?? ''));
+        if ($section !== '') {
+            $sectionIds = array_map(fn (array $row): string => $this->rowId($row), $this->matchByNameOrId($categories, $section));
+            foreach ($items as $row) {
+                $categoryId = (string) ($row['category_id'] ?? ($row['category']['id'] ?? ''));
+                if ($categoryId !== '' && in_array($categoryId, $sectionIds, true)) {
+                    $meals[$this->rowId($row)] = $row;
+                }
+            }
+        }
+        unset($meals['']);
+
+        return array_values($meals);
+    }
+
+    /**
+     * @param  array<string, mixed>  $operation
+     * @param  list<array<string, mixed>>  $choices
+     * @param  list<array<string, mixed>>  $groups
+     * @return list<array<string, mixed>>
+     */
+    private function optionTargetChoices(array $operation, array $choices, array $groups): array
+    {
+        $groupNeedle = trim((string) ($operation['group'] ?? ''));
+        $groupIds = $groupNeedle === ''
+            ? null
+            : array_map(fn (array $row): string => $this->rowId($row), $this->matchByNameOrId($groups, $groupNeedle));
+        if ($groupIds === []) {
+            return [];
+        }
+        $inGroup = $groupIds === null
+            ? $choices
+            : array_values(array_filter($choices, static fn (array $row): bool => in_array((string) ($row['category_id'] ?? ''), $groupIds, true)));
+
+        $ingredient = trim((string) ($operation['ingredient'] ?? ''));
+        if ($ingredient === '') {
+            return $groupIds === null ? [] : $inGroup;
+        }
+
+        return array_values(array_filter(
+            $this->matchByNameOrId($inGroup, $ingredient),
+            fn (array $row): bool => $this->rowId($row) !== '',
+        ));
+    }
+
+    /**
+     * Exact id, then exact name (any language), then names that contain the text.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function matchByNameOrId(array $rows, string $needle): array
+    {
+        $needle = trim($needle);
+        if ($needle === '') {
+            return [];
+        }
+        $byId = array_values(array_filter($rows, fn (array $row): bool => $this->rowId($row) === $needle));
+        if ($byId !== []) {
+            return $byId;
+        }
+
+        $lower = mb_strtolower($needle);
+        $exact = [];
+        $partial = [];
+        foreach ($rows as $row) {
+            foreach ($this->rowNames($row) as $name) {
+                $name = mb_strtolower(trim($name));
+                if ($name === '') {
+                    continue;
+                }
+                if ($name === $lower) {
+                    $exact[] = $row;
+                    continue 2;
+                }
+                if (str_contains($name, $lower)) {
+                    $partial[] = $row;
+                    continue 2;
+                }
+            }
+        }
+
+        return $exact !== [] ? $exact : $partial;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return array<string, array<string, mixed>>
+     */
+    private function rowsById(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            $id = $this->rowId($row);
+            if ($id !== '') {
+                $out[$id] = $row;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, array{default_ingredient: bool, extra_fee: bool, custom_fee: float|null, row: array<string, mixed>}>
+     */
+    private function itemOptionLinks(string $itemId, string $token, string $baseUrl): array
+    {
+        $sent = $this->sendCashier('GET', '/items/'.$itemId.'/ingredients', [], $token, $baseUrl);
+        if (! $sent['ok']) {
+            return [];
+        }
+        $out = [];
+        foreach ($this->unwrapList(json_decode($sent['content'], true)) as $row) {
+            $id = (string) ($row['ingredient_id'] ?? ($row['ingredient']['id'] ?? ($row['id'] ?? '')));
+            if ($id === '') {
+                continue;
+            }
+            $extra = filter_var($row['extra_fee'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $fee = $row['custom_fee'] ?? $row['extra_fee_cost'] ?? null;
+            $out[$id] = [
+                'default_ingredient' => filter_var($row['default_ingredient'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'extra_fee' => $extra,
+                'custom_fee' => $extra && is_numeric($fee) ? round((float) $fee, 2) : null,
+                'row' => $row,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $operation
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $choice
+     * @return array{default_ingredient: bool, extra_fee: bool, custom_fee: float|null}
+     */
+    private function wantedOptionLink(array $operation, ?array $existing, array $choice): array
+    {
+        $default = array_key_exists('default', $operation) && $operation['default'] !== null
+            ? filter_var($operation['default'], FILTER_VALIDATE_BOOLEAN)
+            : (bool) ($existing['default_ingredient'] ?? false);
+
+        $fee = isset($operation['custom_fee']) && is_numeric($operation['custom_fee'])
+            ? round((float) $operation['custom_fee'], 2)
+            : null;
+        $choicePrice = is_numeric($choice['price'] ?? null) ? round((float) $choice['price'], 2) : 0.0;
+
+        if (array_key_exists('extra_fee', $operation) && $operation['extra_fee'] !== null) {
+            $extra = filter_var($operation['extra_fee'], FILTER_VALIDATE_BOOLEAN);
+        } elseif ($fee !== null) {
+            $extra = $fee > 0;
+        } elseif ($existing !== null) {
+            $extra = (bool) $existing['extra_fee'];
+        } else {
+            $extra = $choicePrice > 0;
+        }
+
+        if (! $extra) {
+            return ['default_ingredient' => $default, 'extra_fee' => false, 'custom_fee' => null];
+        }
+
+        $fee ??= isset($existing['custom_fee']) && (float) $existing['custom_fee'] > 0
+            ? (float) $existing['custom_fee']
+            : $choicePrice;
+
+        return ['default_ingredient' => $default, 'extra_fee' => true, 'custom_fee' => round((float) $fee, 2)];
+    }
+
+    /**
+     * @param  array{default_ingredient: bool, extra_fee: bool, custom_fee: float|null}  $link
+     */
+    private function describeOptionLink(array $link): string
+    {
+        return ($link['default_ingredient'] ? 'default on' : 'default off')
+            .', '.($link['extra_fee'] ? 'extra price '.number_format((float) $link['custom_fee'], 2, '.', '') : 'no extra price');
     }
 
     /**
@@ -3775,6 +4496,80 @@ PROMPT;
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'read_item_options',
+                    'description' => 'Show which option values (ingredients / add-ons) are linked to a meal, with their group, whether each is selected by default, and whether it charges an extra price.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'item' => [
+                                'type' => 'string',
+                                'description' => 'Meal name (any language) or meal id. An exact name wins over partial matches.',
+                            ],
+                        ],
+                        'required' => ['item'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'edit_item_options',
+                    'description' => 'Link or unlink option values (ingredients / add-ons) on meals, and turn "selected by default" and "extra price" on or off for a linked option.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'operations' => [
+                                'type' => 'array',
+                                'minItems' => 1,
+                                'maxItems' => 40,
+                                'items' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'action' => [
+                                            'type' => 'string',
+                                            'enum' => ['link', 'unlink', 'update'],
+                                            'description' => 'link = add the option to the meal (or update it if already linked). unlink = remove it from the meal. update = change default / extra price on an option already linked.',
+                                        ],
+                                        'item' => [
+                                            'type' => 'string',
+                                            'description' => 'Meal name or meal id. Leave empty when using menu_category.',
+                                        ],
+                                        'menu_category' => [
+                                            'type' => 'string',
+                                            'description' => 'Apply to every meal in this menu section (name or id), e.g. Pizzas.',
+                                        ],
+                                        'ingredient' => [
+                                            'type' => 'string',
+                                            'description' => 'Option value name or id, e.g. Extra cheese.',
+                                        ],
+                                        'group' => [
+                                            'type' => 'string',
+                                            'description' => 'Option group name or id, e.g. Choose a sauce. Without ingredient it means every value in that group.',
+                                        ],
+                                        'default' => [
+                                            'type' => 'boolean',
+                                            'description' => 'true = selected by default. false = not selected by default. Omit to keep.',
+                                        ],
+                                        'extra_fee' => [
+                                            'type' => 'boolean',
+                                            'description' => 'true = charges an extra price. false = free. Omit to keep.',
+                                        ],
+                                        'custom_fee' => [
+                                            'type' => 'number',
+                                            'description' => 'Extra price amount, e.g. 3. Setting it above 0 turns extra_fee on.',
+                                        ],
+                                    ],
+                                    'required' => ['action'],
+                                ],
+                            ],
+                        ],
+                        'required' => ['operations'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'assign_meal_photos',
                     'description' => 'Match meal photos already uploaded in this chat to menu meals. File names are tried first. Remaining photos are matched by looking at the food. Matched photos are uploaded onto the meals.',
                     'parameters' => [
@@ -3824,6 +4619,8 @@ PROMPT;
             'assign_meal_photos' => $this->assignMealPhotosTool($token, $baseUrl),
             'read_menu' => $this->readMenu($token, $baseUrl),
             'edit_menu' => $this->editMenu($arguments, $token, $baseUrl),
+            'read_item_options' => $this->readItemOptions($arguments, $token, $baseUrl),
+            'edit_item_options' => $this->editItemOptions($arguments, $token, $baseUrl),
             'kaman_request' => $this->kamanRequest($arguments, $token, $baseUrl),
             'kaman_request_many' => $this->kamanRequestMany($arguments, $token, $baseUrl),
             default => [
@@ -4161,7 +4958,10 @@ PROMPT;
         if ($name === 'read_menu' || $name === 'assign_meal_photos') {
             return [];
         }
-        if ($name === 'edit_menu') {
+        if ($name === 'read_item_options') {
+            return ['item' => (string) ($arguments['item'] ?? '')];
+        }
+        if ($name === 'edit_menu' || $name === 'edit_item_options') {
             $operations = $arguments['operations'] ?? [];
 
             return [

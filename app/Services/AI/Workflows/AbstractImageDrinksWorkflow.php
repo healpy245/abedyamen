@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Workflows;
 
 use App\Support\KamanUrl;
+use App\Support\MenuNaming;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -277,7 +278,7 @@ abstract class AbstractImageDrinksWorkflow extends AbstractFormWorkflow
                 ];
             }
         }
-        $prompt = 'Translate this drink/product name to Arabic and Hebrew. Return JSON: {"name_ar":"...","name_en":"...","name_he":"..."}. Use native Arabic and Hebrew script. name_en stays as given. Output ONLY valid JSON.';
+        $prompt = 'Translate this drink/product name to Arabic and Hebrew. Return JSON: {"name_ar":"...","name_en":"...","name_he":"..."}. Use native Arabic and Hebrew script. name_en stays as given. Output ONLY valid JSON.'."\n\n".MenuNaming::guide();
         try {
             $response = $this->chat($prompt, $nameEn, ['max_tokens' => 256]);
             $decoded = json_decode(trim(preg_replace('/```(?:json)?\s*|```/', '', $response)), true);
