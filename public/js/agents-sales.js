@@ -184,6 +184,7 @@
         });
     };
 
+    // A lead's quote: the PDF downloads in the language picked from the menu.
     var closePdfMenus = function (except) {
         document.querySelectorAll('[data-sq-pdf-menu]').forEach(function (menu) {
             if (menu === except) return;
@@ -192,7 +193,6 @@
             if (toggle) toggle.setAttribute('aria-expanded', 'false');
         });
     };
-
     document.addEventListener('click', function (event) {
         var toggle = event.target.closest('[data-sq-pdf-toggle]');
         if (toggle) {
@@ -216,6 +216,17 @@
         if (!event.target.closest('[data-sq-pdf-menu]')) closePdfMenus(null);
     });
 
+    // A client's contract is in Hebrew, so the PDF downloads straight away.
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-sq-pdf]');
+        if (!button) return;
+        var panel = button.closest('[data-sq-panel]');
+        button.classList.add('is-loading');
+        makePdf(panel, 'he', 'save')
+            .catch(function () { showToast(document.documentElement.getAttribute('data-pdf-failed') || 'PDF failed', true); })
+            .then(function () { button.classList.remove('is-loading'); });
+    });
+
     /* ---------- WhatsApp ---------- */
     var waDialog = document.querySelector('[data-sq-wa-dialog]');
     if (waDialog) {
@@ -227,20 +238,45 @@
         var waMessages = {};
         var waEdited = false;
 
-        document.addEventListener('click', function (event) {
-            var btn = event.target.closest('[data-sq-whatsapp]');
-            if (!btn) return;
-            waPanel = btn.closest('[data-sq-panel]');
+        // A lead's quote goes out as the PDF; a client's as a link to sign the contract.
+        var setMode = function (mode) {
+            waDialog.setAttribute('data-mode', mode);
+            waDialog.querySelectorAll('[data-link][data-pdf]').forEach(function (el) {
+                el.textContent = el.getAttribute(mode === 'pdf' ? 'data-pdf' : 'data-link');
+            });
+        };
+        var openWhatsapp = function (panel) {
+            waPanel = panel;
+            var pdfMode = panel.getAttribute('data-wa-mode') === 'pdf';
+            setMode(pdfMode ? 'pdf' : 'link');
+            // The contract (a client's quote) only goes out in Hebrew; a lead's PDF quote can be in any language.
+            waDialog.querySelector('[data-sq-wa-langs]').hidden = !pdfMode;
             waMessages = JSON.parse(waPanel.getAttribute('data-messages') || '{}');
             waEdited = false;
             waError.hidden = true;
             waDialog.querySelector('[data-sq-wa-phone]').value = waPanel.getAttribute('data-phone') || '';
-            var lang = waPanel.getAttribute('data-lang') || 'he';
+            var lang = pdfMode ? (waPanel.getAttribute('data-lang') || 'he') : 'he';
             var radio = waDialog.querySelector('[data-sq-wa-lang][value="' + lang + '"]');
             if (radio) radio.checked = true;
             waMessage.value = waMessages[lang] || '';
             openDialog(waDialog);
+        };
+
+        document.addEventListener('click', function (event) {
+            var btn = event.target.closest('[data-sq-whatsapp]');
+            if (btn) openWhatsapp(btn.closest('[data-sq-panel]'));
         });
+
+        // After the agent cancels a signature to send again, the page comes back with the dialog open.
+        var resend = document.querySelector('[data-sq-panel][data-resend]');
+        if (resend) {
+            try {
+                var clean = new URL(location.href);
+                clean.searchParams.delete('resend');
+                history.replaceState(history.state, '', clean.pathname + clean.search);
+            } catch (e) {}
+            window.setTimeout(function () { openWhatsapp(resend); }, 50);
+        }
 
         waMessage.addEventListener('input', function () { waEdited = true; });
         waDialog.addEventListener('change', function (event) {
@@ -251,13 +287,10 @@
         waForm.addEventListener('submit', function (event) {
             event.preventDefault();
             if (!waPanel) return;
-            var lang = (waDialog.querySelector('[data-sq-wa-lang]:checked') || {}).value || 'he';
             waError.hidden = true;
             waSend.classList.add('is-loading');
-            makePdf(waPanel, lang, 'blob').then(function (blob) {
-                var data = new FormData(waForm);
-                data.set('lang', lang);
-                data.set('pdf', new File([blob], (waPanel.getAttribute('data-filename') || 'quote') + '-' + lang + '.pdf', { type: 'application/pdf' }));
+            var lang = (waDialog.querySelector('[data-sq-wa-lang]:checked') || {}).value || 'he';
+            var post = function (data) {
                 return fetch(waPanel.getAttribute('data-whatsapp-url'), {
                     method: 'POST',
                     body: data,
@@ -268,7 +301,23 @@
                         Accept: 'application/json'
                     }
                 });
-            }).then(function (res) {
+            };
+            var sending;
+            if (waPanel.getAttribute('data-wa-mode') === 'pdf') {
+                // The quote PDF is made here and sent as a file.
+                sending = makePdf(waPanel, lang, 'blob').then(function (blob) {
+                    var data = new FormData(waForm);
+                    data.set('lang', lang);
+                    data.set('pdf', new File([blob], (waPanel.getAttribute('data-filename') || 'quote') + '-' + lang + '.pdf', { type: 'application/pdf' }));
+                    return post(data);
+                });
+            } else {
+                // The server sends a link to the contract; the client signs it there.
+                var data = new FormData(waForm);
+                data.delete('lang');
+                sending = post(data);
+            }
+            sending.then(function (res) {
                 return res.json().catch(function () { return {}; }).then(function (body) {
                     if (!res.ok) {
                         var first = body.errors ? Object.values(body.errors)[0] : null;
@@ -349,8 +398,8 @@
     }
 
     /* ---------- quote builder ---------- */
-    // Two parts: the monthly offer (base subscription plus ticked features) and the devices offer
-    // (quantities per device). The form only gets its line inputs when it is submitted.
+    // Three parts: the monthly offer (base subscription plus ticked features), the devices offer (quantities per
+    // device) and one-time services (ticked). The form only gets its line inputs when it is submitted.
     var builder = document.querySelector('[data-sq-builder]');
     if (builder) {
         var form = builder.querySelector('[data-sq-form]');
@@ -386,19 +435,27 @@
                 var qty = Number(row.querySelector('[data-qty]').textContent) || 0;
                 if (qty > 0) lines.push({ kind: 'equipment', ref_id: row.getAttribute('data-sq-device'), quantity: qty });
             });
+            builder.querySelectorAll('[data-sq-service]:checked').forEach(function (box) {
+                lines.push({ kind: 'service', ref_id: box.value });
+            });
             return lines.concat(extra);
         };
 
         var refresh = function () {
-            var sum = { monthly: 0, one_time: 0 };
+            var sum = { monthly: 0, devices: 0, services: 0 };
             selected().forEach(function (line) {
                 var ref = line.kind === 'custom' || line.kind === 'package' ? null : byId(line.kind, line.ref_id);
                 var price = line.unit_price != null && line.unit_price !== '' ? Number(line.unit_price) : (ref ? ref.price : 0);
                 var billing = line.billing || (ref ? ref.billing : 'monthly');
-                sum[billing] += price * (line.kind === 'equipment' ? (Number(line.quantity) || 1) : 1);
+                var total = price * (line.kind === 'equipment' ? (Number(line.quantity) || 1) : 1);
+                if (billing === 'monthly') sum.monthly += total;
+                else if (line.kind === 'equipment') sum.devices += total;
+                else sum.services += total;
             });
             builder.querySelector('[data-sq-total="monthly"]').textContent = money(sum.monthly);
-            builder.querySelector('[data-sq-total="one_time"]').textContent = money(sum.one_time);
+            builder.querySelector('[data-sq-total="devices"]').textContent = money(sum.devices);
+            builder.querySelector('[data-sq-total="services"]').textContent = money(sum.services);
+            builder.querySelector('[data-sq-total="one_time"]').textContent = money(sum.devices + sum.services);
             monthlyBody.hidden = !monthlyOn.checked;
             builder.querySelector('[data-sq-monthly-off]').hidden = monthlyOn.checked;
             builder.querySelector('[data-sq-monthly]').classList.toggle('is-off', !monthlyOn.checked);
@@ -484,15 +541,18 @@
             var lines = data && data.lines ? data.lines : [];
             var features = {};
             var devices = {};
+            var services = {};
             extra = [];
             lines.forEach(function (line) {
                 if (line.kind === 'feature') features[line.ref_id] = true;
                 else if (line.kind === 'equipment') devices[line.ref_id] = Number(line.quantity) || 1;
+                else if (line.kind === 'service') services[line.ref_id] = true;
                 else if (line.kind !== 'base') extra.push(line);
             });
             monthlyOn.checked = !editing || lines.some(function (l) { return l.kind === 'base' || l.kind === 'feature'; });
             builder.querySelectorAll('[data-sq-feature]').forEach(function (box) { box.checked = !!features[box.value]; });
             builder.querySelectorAll('[data-sq-device]').forEach(function (row) { setQty(row, devices[row.getAttribute('data-sq-device')] || 0); });
+            builder.querySelectorAll('[data-sq-service]').forEach(function (box) { box.checked = !!services[box.value]; });
             builder.querySelector('[data-sq-empty]').classList.remove('is-alert');
             showClient();
             refresh();

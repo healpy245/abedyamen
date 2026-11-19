@@ -10,7 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalesQuoteItem extends Model
 {
-    public const KINDS = ['base', 'package', 'feature', 'equipment', 'custom'];
+    public const KINDS = ['base', 'package', 'feature', 'equipment', 'service', 'custom'];
+
+    /** Lines priced from storage: devices (by quantity) and one-time services. */
+    public const STORAGE_KINDS = ['equipment', 'service'];
 
     protected $fillable = [
         'sales_quote_id',

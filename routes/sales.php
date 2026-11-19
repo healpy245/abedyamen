@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Sales\AppointmentController;
 use App\Http\Controllers\Sales\CatalogController;
+use App\Http\Controllers\Sales\ContractController;
 use App\Http\Controllers\Sales\LeadController;
+use App\Http\Controllers\Sales\LeadReportController;
 use App\Http\Controllers\Sales\QuoteController;
 use Illuminate\Support\Facades\Route;
+
+// The contract link a client opens from WhatsApp: no login, the token is the key.
+Route::get('/contract/{token}', [ContractController::class, 'show'])->name('contracts.show');
+Route::post('/contract/{token}', [ContractController::class, 'sign'])->middleware('throttle:12,1')->name('contracts.sign');
 
 Route::middleware('auth')
     ->prefix('workspace/agents')
@@ -18,6 +24,7 @@ Route::middleware('auth')
         Route::post('/sales/{quote}/close-request', [QuoteController::class, 'requestDeal'])->name('sales.request');
         Route::post('/sales/{quote}/convert-lead', [QuoteController::class, 'convertLead'])->name('sales.convert');
         Route::post('/sales/{quote}/whatsapp', [QuoteController::class, 'whatsapp'])->name('sales.whatsapp');
+        Route::post('/sales/{quote}/signature/cancel', [QuoteController::class, 'cancelSignature'])->name('sales.signature.cancel');
         Route::get('/sales/files/{file}', [QuoteController::class, 'file'])->name('sales.file');
         Route::delete('/sales/{quote}', [QuoteController::class, 'destroy'])->name('sales.destroy');
         Route::get('/sales/{quote}/panel', [QuoteController::class, 'panel'])->name('sales.panel');
@@ -26,6 +33,7 @@ Route::middleware('auth')
         // The pages at /leads and /calendar are workspace.agents; these only change things and answer JSON.
         Route::post('/leads', [LeadController::class, 'store'])->name('leads.store');
         Route::post('/leads/import', [LeadController::class, 'import'])->name('leads.import');
+        Route::get('/leads/report', [LeadReportController::class, 'show'])->name('leads.report');
         Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
         Route::post('/leads/{lead}/notes', [LeadController::class, 'note'])->name('leads.notes');
         Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');

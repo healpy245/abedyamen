@@ -69,35 +69,111 @@
         return dd;
     }
 
-    function render(payload) {
-        var ticket = payload.ticket || {};
-        var copy = payload.copy || {};
-        var sheet = el('div', 'tk-assure__sheet');
+    // The Kaman mark, from next to this script: /js/ticket-view.js -> /kaman.png.
+    var script = document.currentScript;
+    var kamanLogo = script && script.src ? script.src.replace(/js\/ticket-view\.js.*$/, 'kaman.png') : '/kaman.png';
+    var loadingWords = { ar: 'جارٍ تحميل التذكرة…', he: 'טוען את הפנייה…', en: 'Loading the ticket…' };
 
-        var head = el('div', 'tk-assure__head');
+    // The workspace's own Kaman AI loader (partials/kaman-ai-loader), small, with a caption.
+    function loader() {
+        var lang = (document.documentElement.lang || 'en').slice(0, 2);
+        var box = el('div', 'tk-kaman-loader');
+        box.setAttribute('role', 'status');
+        var mark = el('div', 'kaman-ai-loader kaman-ai-loader--sm');
+        mark.setAttribute('aria-hidden', 'true');
+        var orbit = el('span', 'kaman-ai-loader__orbit');
+        orbit.append(el('i'), el('i'), el('i'), el('i'));
+        var logo = el('img', 'kaman-ai-loader__logo');
+        logo.src = kamanLogo;
+        logo.alt = '';
+        mark.append(
+            el('span', 'kaman-ai-loader__ring'),
+            el('span', 'kaman-ai-loader__ring kaman-ai-loader__ring--b'),
+            el('span', 'kaman-ai-loader__ring kaman-ai-loader__ring--c'),
+            orbit,
+            el('span', 'kaman-ai-loader__pulse'),
+            logo
+        );
+        box.append(mark, el('p', null, loadingWords[lang] || loadingWords.en));
+        return box;
+    }
+
+    // The restaurant's logo, or its first letter while there is none.
+    function logoMark(ticket) {
+        var name = ticket.restaurant || ticket.slug || '';
+        var mark = el('span', 'tk-ticket__logo');
+        mark.append(el('b', null, name ? name.charAt(0).toUpperCase() : '?'));
+        if (ticket.logo) {
+            var img = el('img');
+            img.alt = '';
+            img.src = ticket.logo;
+            img.onerror = function () { img.remove(); };
+            mark.append(img);
+        }
+        return mark;
+    }
+
+    function header(ticket, copy) {
+        var head = el('div', 'tk-assure__head tk-ticket__head');
         var title = el('div', 'tk-ticket__title');
-        var h2 = el('h2', null, ticket.title || ticket.id || '');
-        h2.id = 'tk-view-title';
+        var name = el('h2');
+        name.id = 'tk-view-title';
+        var place;
+        if (ticket.restaurantKey) {
+            place = el('button', 'tk-ticket__place sp-rest-link');
+            place.type = 'button';
+            place.setAttribute('data-act', 'open-support');
+            place.setAttribute('data-id', ticket.restaurantKey);
+        } else {
+            place = el('span', 'tk-ticket__place');
+        }
+        place.append(logoMark(ticket), el('span', null, ticket.restaurant || ticket.id || ''));
+        name.append(place);
         var meta = el('p', 'tk-ticket__meta');
         var id = el('bdi', null, ticket.id || '');
         id.dir = 'ltr';
         meta.append(id);
-        if (ticket.at) meta.append(document.createTextNode(' · ' + ticket.at));
+        [ticket.at, ticket.cashier].forEach(function (part) { if (part) meta.append(document.createTextNode(' · ' + part)); });
         var badges = el('div', 'tk-ticket__badges');
         if (ticket.statusLabel) badges.append(el('span', 'tk-ticket__badge is-' + (ticket.status || 'open'), ticket.statusLabel));
         if (ticket.levelLabel) badges.append(el('span', 'tk-ticket__badge is-level-' + (ticket.level || ''), ticket.levelLabel));
-        title.append(h2, meta, badges);
+        title.append(name, meta, badges);
         head.append(title, closeButton(copy));
+        return head;
+    }
+
+    // What the cashier wrote, once: no title copy, no details copy, no timeline copy.
+    function reportBlock(ticket, copy) {
+        var text = ticket.report != null ? ticket.report : (ticket.details || ticket.title || '');
+        var box = el('div', 'tk-ticket__report');
+        if (copy.report) box.append(el('p', 'tk-ticket__label', copy.report));
+        box.append(el('p', 'tk-ticket__text' + (text ? '' : ' is-empty'), text || copy.noReport || '—'));
+        return box;
+    }
+
+    function preview(ticket) {
+        var sheet = el('div', 'tk-assure__sheet');
+        sheet.append(header(ticket, {}), reportBlock(ticket, {}), loader());
+        dialog.replaceChildren(sheet);
+    }
+
+    function render(payload) {
+        var ticket = payload.ticket || {};
+        var copy = payload.copy || {};
+        var sheet = el('div', 'tk-assure__sheet');
+        var head = header(ticket, copy);
+        var report = reportBlock(ticket, copy);
 
         var body = el('dl', 'tk-assure__body');
-        fact(body, copy.details, ticket.details || '—');
-        if (ticket.restaurant) {
-            var place = el('button', 'sp-rest-link', ticket.restaurant);
-            place.type = 'button';
-            place.setAttribute('data-act', 'open-support');
-            place.setAttribute('data-id', ticket.restaurantKey || '');
-            place.disabled = !ticket.restaurantKey;
-            fact(body, copy.restaurant, place);
+        if (ticket.contact && ticket.contact.whatsapp) {
+            var chat = el('a', 'ds-btn ds-btn--secondary ds-btn--sm sp-whatsapp');
+            chat.href = ticket.contact.whatsapp;
+            chat.target = '_blank';
+            chat.rel = 'noopener';
+            var number = el('bdi', null, ticket.contact.phone || '');
+            number.dir = 'ltr';
+            chat.append(document.createTextNode((copy.whatsapp || 'WhatsApp') + ' '), number);
+            fact(body, copy.contact, chat);
         }
         if (ticket.device) {
             var device = el('bdi', null, ticket.device);
@@ -105,7 +181,7 @@
             fact(body, copy.device, device);
         }
 
-        sheet.append(head, body);
+        sheet.append(head, report, body);
 
         if (ticket.voice || ticket.screen) {
             var media = el('div', 'tk-assure__media');
@@ -187,18 +263,38 @@
             .catch(function () {});
     }
 
-    function open(url) {
+    // Answers kept for a minute: hovering a row starts the request, the click finds it ready.
+    var cache = {};
+    function load(url) {
+        var hit = cache[url];
+        if (hit && Date.now() - hit.at < 60000) return hit.promise;
+        var promise = fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+            .then(function (response) { if (!response.ok) throw new Error(String(response.status)); return response.json(); });
+        cache[url] = { at: Date.now(), promise: promise };
+        promise.catch(function () { delete cache[url]; });
+        return promise;
+    }
+
+    function prefetch(url) {
+        if (url && !cache[url]) load(url).catch(function () {});
+    }
+
+    function open(url, row) {
         if (!url) return;
         mount();
         stopMedia();
         var mine = ++request;
-        dialog.replaceChildren(el('div', 'tk-assure__sheet tk-ticket--loading', '…'));
+        if (row && (row.restaurant || row.report || row.title)) preview(row);
+        else {
+            var sheet = el('div', 'tk-assure__sheet tk-ticket--loading');
+            sheet.append(loader());
+            dialog.replaceChildren(sheet);
+        }
         if (!dialog.open) dialog.showModal();
-        fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
-            .then(function (response) { if (!response.ok) throw new Error(String(response.status)); return response.json(); })
+        load(url)
             .then(function (payload) { if (mine === request) render(payload); })
             .catch(function () { if (mine === request) shut(); });
     }
 
-    window.TicketView = { open: open, close: shut };
+    window.TicketView = { open: open, close: shut, prefetch: prefetch };
 })();

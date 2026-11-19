@@ -68,7 +68,8 @@ class MobileApiTest extends TestCase
     {
         // A mobile route missing from Door::routeRules() would be open to every signed-in user.
         // The restaurant view is behind any of four doors, which its controller checks.
-        $ungated = ['mobile.me', 'mobile.flash', 'mobile.users', 'mobile.restaurants.show'];
+        // Any signed-in phone may register for pushes; the sender checks the Support doors before each push.
+        $ungated = ['mobile.me', 'mobile.flash', 'mobile.users', 'mobile.restaurants.show', 'mobile.push-devices.store', 'mobile.push-devices.destroy'];
         foreach (Route::getRoutes()->getRoutesByName() as $name => $route) {
             if (! str_starts_with($name, 'mobile.') || in_array($name, $ungated, true)) {
                 continue;

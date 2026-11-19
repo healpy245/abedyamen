@@ -72,6 +72,12 @@
                             data-public="{{ $ticket->public_id }}"
                             data-title="{{ $ticket->summary }}"
                             data-details="{{ $ticket->details }}"
+                            data-report="{{ $ticket->report() }}"
+                            data-restaurant="{{ $ticket->restaurant_name ?: $ticket->restaurant }}"
+                            data-slug="{{ $ticket->restaurant }}"
+                            @if(! $closed && ! $escalated && auth()->user()?->can('create', \App\Models\AppDevelopment\AppDevelopmentTicket::class))
+                                data-escalate-text="{{ $ticket->escalationText() }}"
+                            @endif
                         >
                             <td class="ds-col-tight"><bdi dir="ltr" class="ds-num">{{ $ticket->public_id }}</bdi></td>
                             <td class="ds-cell-lead">
@@ -113,6 +119,12 @@
                             <td class="ds-col-tight ds-cell-end">
                                 <div class="ds-actions">
                                     <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-ticket-view>{{ __('app-development.tickets.view') }}</button>
+                                    @if($contact = $ticket->contact())
+                                        <a class="ds-btn ds-btn--secondary ds-btn--sm sp-whatsapp" href="{{ $contact['whatsapp'] }}" target="_blank" rel="noopener" title="{{ __('kaman-support.whatsapp') }} {{ $contact['phone'] }}">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
+                                            <bdi dir="ltr">{{ $contact['phone'] }}</bdi>
+                                        </a>
+                                    @endif
                                     @unless($closed)
                                         @unless($escalated)
                                             <button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" data-escalate-open="{{ $ticket->public_id }}">{{ __('kaman-support.escalate') }}</button>
@@ -152,9 +164,10 @@
             </div>
             <p class="tk-assure__done" data-escalate-done hidden></p>
             <div data-escalate-actions>
+                <p class="sp-escalate-lead">{{ __('kaman-support.escalate_lead') }}</p>
                 <label>
                     {{ __('kaman-support.details') }}
-                    <textarea class="ds-textarea" name="description" rows="5" data-escalate-description></textarea>
+                    <textarea class="ds-textarea sp-escalate-text" name="description" rows="14" data-escalate-description></textarea>
                 </label>
                 <div class="tk-assure__foot">
                     <button class="ds-btn ds-btn--secondary" type="button" data-dialog-cancel>{{ __('app-development.cancel') }}</button>
@@ -195,7 +208,24 @@
     const closeDialog = document.querySelector('[data-close-dialog]');
     const closeForm = document.querySelector('[data-close-form]');
     const ticketUrl = @json(route('kaman-support.show', ['ticket' => '__ID__']));
-    const openTicket = (publicId) => window.TicketView && publicId && window.TicketView.open(ticketUrl.replace('__ID__', encodeURIComponent(publicId)));
+    const ticketPreview = (row) => {
+        if (!row) return null;
+        const logo = row.querySelector('[data-logo] img');
+        return {
+            id: row.getAttribute('data-public') || '',
+            title: row.getAttribute('data-title') || '',
+            report: row.getAttribute('data-report') || '',
+            restaurant: row.getAttribute('data-restaurant') || '',
+            slug: row.getAttribute('data-slug') || '',
+            logo: logo ? logo.getAttribute('src') : null,
+        };
+    };
+    const openTicket = (publicId, row) => window.TicketView && publicId && window.TicketView.open(ticketUrl.replace('__ID__', encodeURIComponent(publicId)), ticketPreview(row));
+    // Start loading a ticket as soon as the pointer reaches its row, so the modal is ready on click.
+    document.addEventListener('pointerover', (event) => {
+        const row = event.target.closest && event.target.closest('tr[data-public]');
+        if (row && window.TicketView && window.TicketView.prefetch) window.TicketView.prefetch(ticketUrl.replace('__ID__', encodeURIComponent(row.getAttribute('data-public') || '')));
+    });
     const escalatedLabel = @json(__('kaman-support.escalated'));
     const escalateDialog = document.querySelector('[data-escalate-dialog]');
     const escalateForm = document.querySelector('[data-escalate-form]');
@@ -238,7 +268,10 @@
 
     document.addEventListener('click', (event) => {
         const view = event.target.closest('[data-ticket-view]');
-        if (view) openTicket(view.closest('tr')?.getAttribute('data-public'));
+        if (view) {
+            const row = view.closest('tr');
+            openTicket(row?.getAttribute('data-public'), row);
+        }
 
         const escalate = event.target.closest('[data-escalate-open]');
         if (escalate && escalateForm && escalateDialog) {
@@ -247,10 +280,11 @@
             escalateForm.action = base + '/' + encodeURIComponent(publicId) + '/escalate';
             escalateForm.dataset.publicId = publicId;
             const name = escalateDialog.querySelector('[data-escalate-name]');
-            if (name) name.textContent = row ? (row.getAttribute('data-title') || '') : '';
+            if (name) name.textContent = row ? [publicId, row.getAttribute('data-restaurant')].filter(Boolean).join(' · ') : publicId;
             resetEscalate();
             const description = escalateForm.querySelector('[data-escalate-description]');
-            if (description) description.value = row ? (row.getAttribute('data-details') || '') : '';
+            // The whole ticket, written out by the server: report, restaurant, contact, recordings, link back.
+            if (description) description.value = row ? (row.getAttribute('data-escalate-text') || row.getAttribute('data-details') || '') : '';
             if (typeof escalateDialog.showModal === 'function') escalateDialog.showModal();
         }
 

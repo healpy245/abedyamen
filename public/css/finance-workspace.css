@@ -796,3 +796,20 @@ body.ds .fcm2--embedded .fcm2__foot:not(:has(.fcm2__foot-set:not([hidden]) :is(b
 .fc-linked { color: var(--ds-text-2); }
 .fcm2-account__mfit { align-items: flex-start; }
 .fcm2-account__mfit > .ds-btn { margin-top: 22px; }
+
+/* The signed contract in a deal. */
+.fd-contract { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--ds-border, #eadfce); border-radius: 12px; }
+.fd-contract.is-signed { border-color: transparent; background: var(--ds-green-soft, #e6f6ef); }
+.fd-contract p { margin: 0; font-size: 13px; }
+.fd-contract__body { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.fd-contract__sig { width: 120px; height: 56px; padding: 4px; border-radius: 8px; background: #fff; object-fit: contain; }
+.fd-contract__text { display: grid; flex: 1 1 160px; gap: 2px; }
+.fd-contract__text small { color: var(--ds-text-2, #6b5d4f); }
+
+/* Why a deal cannot be confirmed yet: a failed confirm, or devices Storage cannot cover. */
+.fd-alert { display: grid; gap: 6px; margin: 0; padding: 12px 14px; border-radius: var(--ds-r-lg, 14px); background: var(--ds-red-soft); color: var(--ds-red); font-size: 13px; font-weight: 600; }
+.fd-alert.is-warn { background: var(--ds-amber-soft); color: var(--ds-text); font-weight: 400; }
+.fd-alert ul { margin: 0; padding-inline-start: 18px; }
+.fd-alert small { color: var(--ds-text-2); }
+.fd-alert .ds-btn { justify-self: start; }
+.fd-confirm__short { margin: 0 20px 4px; }

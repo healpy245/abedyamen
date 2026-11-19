@@ -73,10 +73,51 @@
             </header>
 
             <div class="fd-modal__body">
+                @php
+                    // Devices Storage cannot cover: confirming takes them out of stock, so it is refused until stock is added.
+                    $short = $deal->status === QuoteStatus::Pending
+                        ? $deal->items->filter(fn ($line) => $line->storageItem?->track_stock && $line->storageItem->stock < (int) ceil((float) $line->quantity))
+                        : collect();
+                    $failed = $open?->id === $deal->id && ($errors->any() || session('error'));
+                @endphp
+                @if($failed)
+                    <div class="fd-alert" role="alert">{{ session('error') ?: $errors->first() }}</div>
+                @endif
+                @if($short->isNotEmpty())
+                    <div class="fd-alert is-warn">
+                        <strong>{{ __('finance.deals.short_title') }}</strong>
+                        <ul>
+                            @foreach($short as $line)
+                                <li>{{ $line->displayName() }} — {{ __('finance.deals.short_line', ['need' => $line->quantityLabel(), 'stock' => $line->storageItem->stock]) }}</li>
+                            @endforeach
+                        </ul>
+                        <small>{{ __('finance.deals.short_hint') }}</small>
+                        <a class="ds-btn ds-btn--secondary ds-btn--sm" href="{{ route('workspace.finance.storage') }}">{{ __('finance.deals.short_fix') }}</a>
+                    </div>
+                @endif
                 <div class="fd-totals">
                     <div><span>{{ __('sales.monthly_total') }}</span><b class="ds-num">{{ FinanceMoney::format($deal->monthly_total) }}</b></div>
                     <div><span>{{ __('sales.one_time_total') }}</span><b class="ds-num">{{ FinanceMoney::format($deal->one_time_total) }}</b></div>
                     <div><span lang="he">{{ __('finance.modal.has_method') }}</span>{!! $method($deal->client) !!}</div>
+                </div>
+
+                @php $contractSignature = $deal->signature?->isSigned() ? $deal->signature : null; @endphp
+                <div class="fd-contract {{ $contractSignature ? 'is-signed' : '' }}">
+                    <span class="ds-label">{{ __('sales.contract.finance_title') }}</span>
+                    @if($contractSignature)
+                        <div class="fd-contract__body">
+                            @if($image = $contractSignature->signatureDataUri())
+                                <img class="fd-contract__sig" src="{{ $image }}" alt="{{ __('sales.contract.client_signature') }}">
+                            @endif
+                            <span class="fd-contract__text">
+                                <strong>{{ __('sales.contract.state_signed') }}</strong>
+                                <small>{{ __('sales.contract.state_signed_body', ['name' => $contractSignature->signer_name, 'date' => $contractSignature->signed_at?->format('j.n.Y H:i')]) }}</small>
+                            </span>
+                            <a class="ds-btn ds-btn--secondary ds-btn--sm" href="{{ route('workspace.agents.sales.document', $deal) }}" target="_blank" rel="noopener"><x-ds.icon name="file" />{{ __('sales.contract.finance_open') }}</a>
+                        </div>
+                    @else
+                        <p class="ds-muted">{{ __('sales.contract.finance_missing') }}</p>
+                    @endif
                 </div>
 
                 @if($deal->deal_note)
@@ -114,6 +155,7 @@
                             <div class="fd-line">
                                 <span>{{ $line->displayName() }}</span>
                                 @if($line->kind === 'equipment')<small class="ds-muted" dir="ltr">× {{ $line->quantityLabel() }}</small>@endif
+                                @if($short->contains($line))<x-ds.badge tone="red" soft>{{ __('finance.deals.out_of_stock') }}</x-ds.badge>@endif
                                 <b class="ds-num">{{ FinanceMoney::format($line->line_total) }}</b>
                             </div>
                         @endforeach
@@ -200,6 +242,9 @@
                             </div>
                         @endif
                     </div>
+                    @if($short->isNotEmpty())
+                        <p class="fd-alert is-warn fd-confirm__short">{{ __('finance.deals.short_confirm', ['items' => $short->map->displayName()->unique()->join(', ')]) }}</p>
+                    @endif
                     <footer class="ds-dialog__foot">
                         <button type="button" class="ds-btn ds-btn--secondary" data-fin-sheet-close>{{ __('finance.modal.cancel') }}</button>
                         <button type="submit" class="ds-btn ds-btn--primary"><x-ds.icon name="check" />{{ __('finance.deals.confirm') }}</button>

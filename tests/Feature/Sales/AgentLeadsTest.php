@@ -39,6 +39,11 @@ class AgentLeadsTest extends TestCase
         ]);
     }
 
+    private function manager(): User
+    {
+        return $this->member(['agents.manage' => true]);
+    }
+
     private function member(array $doors = []): User
     {
         return User::factory()->create(['is_admin' => false, 'projects' => ['app-development'], 'door_access' => $doors === [] ? null : $doors]);
@@ -117,7 +122,7 @@ class AgentLeadsTest extends TestCase
     public function test_a_lead_saved_by_one_person_reads_back_for_another(): void
     {
         $web = $this->member();
-        $app = $this->member();
+        $app = $this->manager();
 
         $created = $this->actingAs($web)->postJson(self::LEADS, [
             'name' => 'Ponte',
@@ -136,11 +141,14 @@ class AgentLeadsTest extends TestCase
         $this->assertSame(['7'], array_column($read->json('cities'), 'id'));
 
         // And the other way: what the second person changes is what the first one reads.
-        $this->putJson(self::LEADS.'/'.$id, ['stage' => 'negotiation', 'agent_id' => $app->id])->assertOk();
+        $this->putJson(self::LEADS.'/'.$id, ['stage' => 'waiting', 'agent_id' => $app->id])->assertOk();
         $this->postJson(self::LEADS.'/'.$id.'/notes', ['text' => 'Wants a demo'])->assertOk();
 
-        $back = $this->actingAs($web)->getJson(self::LEADS_READ)->assertOk();
-        $this->assertSame('negotiation', $back->json('leads.0.stage.value'));
+        // Handed to the admin, it is no longer the worker's: they stop seeing it.
+        $this->actingAs($web)->getJson(self::LEADS_READ)->assertOk()->assertJsonCount(0, 'leads');
+        $back = $this->actingAs($app)->getJson(self::LEADS_READ)->assertOk();
+        $this->assertSame('waiting', $back->json('leads.0.stage.value'));
+        $this->assertSame('after_meeting', $back->json('leads.0.stage.group'));
         $this->assertSame($app->name, $back->json('leads.0.agent'));
         $this->assertSame('Wants a demo', $back->json('leads.0.notes.0.text'));
         $this->assertSame($app->name, $back->json('leads.0.notes.0.by'));
@@ -159,7 +167,7 @@ class AgentLeadsTest extends TestCase
     {
         $lead = $this->lead(['contact' => 'Alaa']);
 
-        $this->actingAs($this->member())->putJson(self::LEADS.'/'.$lead->id, ['stage' => 'won'])->assertOk();
+        $this->actingAs($this->manager())->putJson(self::LEADS.'/'.$lead->id, ['stage' => 'won'])->assertOk();
 
         $lead->refresh();
         $this->assertSame('won', $lead->stage->value);
@@ -170,7 +178,7 @@ class AgentLeadsTest extends TestCase
     public function test_an_appointment_on_a_lead_becomes_its_follow_up_and_keeps_its_instant(): void
     {
         $lead = $this->lead();
-        $user = $this->member();
+        $user = $this->manager();
 
         $created = $this->actingAs($user)->postJson(self::CALENDAR, [
             'lead_id' => $lead->id,
@@ -202,7 +210,7 @@ class AgentLeadsTest extends TestCase
         $this->appointment(['agent_lead_id' => $lead->id, 'restaurant_id' => null]);
         $kept = $this->appointment();
 
-        $this->actingAs($this->member())->deleteJson(self::LEADS.'/'.$lead->id)->assertOk();
+        $this->actingAs($this->manager())->deleteJson(self::LEADS.'/'.$lead->id)->assertOk();
 
         $this->assertSame([$kept->id], AgentAppointment::query()->pluck('id')->all());
     }
@@ -227,7 +235,8 @@ class AgentLeadsTest extends TestCase
 
         $lead = AgentLead::query()->sole();
         $this->assertSame($user->id, $lead->agent_id);
-        $this->assertSame('demo', $lead->stage->value);
+        // "Demo completed" no longer exists: the lead had its meeting and is waiting to decide.
+        $this->assertSame('waiting', $lead->stage->value);
         $this->assertSame('2026-10-01 09:00:00', $lead->notes()->sole()->created_at->format('Y-m-d H:i:s'));
 
         // Every browser numbered its rows from the same start, so the same id elsewhere is another lead.

@@ -5,7 +5,7 @@ return [
     'nav' => [
         'dashboard' => 'Dashboard',
         'clients' => 'Clients',
-        'storage' => 'Storage',
+        'storage' => 'Storage, services & features',
         'deals' => 'Deals to confirm',
     ],
     'languages' => [
@@ -215,7 +215,14 @@ return [
         'line' => 'Total',
     ],
     'storage' => [
-        'title' => 'Storage',
+        'title' => 'Storage, services & features',
+        'subtitle' => 'Everything quotes are priced from: devices and stock, one-time services, and the monthly subscription with its features.',
+        'new_service' => 'New service',
+        'tabs' => [
+            'storage' => 'Devices & stock',
+            'services' => 'Services',
+            'features' => 'Subscription & features',
+        ],
         'search' => 'Search item or SKU',
         'all_categories' => 'All categories',
         'only_low' => 'Low stock only',
@@ -299,6 +306,12 @@ return [
         'no_lines' => 'Add at least one item.',
     ],
     'deals' => [
+        'out_of_stock' => 'Out of stock',
+        'short_title' => 'Not enough stock for the devices in this deal',
+        'short_line' => 'needs :need, storage has :stock',
+        'short_hint' => 'Confirming takes the devices out of storage, so it cannot go through until stock is added. You can also return it to the agent to change the devices.',
+        'short_fix' => 'Add stock in Storage',
+        'short_confirm' => 'Missing stock: :items. Confirming will fail until stock is added in Storage.',
         'title' => 'Deals waiting for confirmation',
         'subtitle' => 'Close-deal requests from sales agents. Confirming starts the client\'s billing and invoices the devices.',
         'notifications' => 'Deal requests',
@@ -367,5 +380,22 @@ return [
             'diners' => 'Diners',
             'card' => '',
         ],
+    ],
+    'features' => [
+        'new' => 'New feature',
+        'edit' => 'Edit feature',
+        'base' => 'Monthly base subscription',
+        'billing_label' => 'Billing',
+        'billing' => [
+            'monthly' => 'Monthly',
+            'one_time' => 'One-time',
+        ],
+        'note' => 'Short note',
+        'bullets' => 'What is included',
+        'bullets_hint' => 'One line per point. Shown to agents on the price list.',
+        'popular' => 'Marked as popular',
+        'remove_confirm' => 'Remove this feature? Quotes that already include it stay as they are.',
+        'saved' => 'Price list saved.',
+        'removed' => 'Feature removed from the price list.',
     ],
 ];

@@ -85,6 +85,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/workspace/users', [\App\Http\Controllers\UserAccessController::class, 'index'])->name('workspace.users');
         Route::put('/workspace/users/{user}/access', [\App\Http\Controllers\UserAccessController::class, 'update'])->name('workspace.users.access');
         Route::put('/workspace/users/{user}/account', [\App\Http\Controllers\UserAccessController::class, 'account'])->name('workspace.users.account');
+        Route::post('/workspace/users', [\App\Http\Controllers\UserAccessController::class, 'store'])->name('workspace.users.store');
+        Route::put('/workspace/users/{user}/password', [\App\Http\Controllers\UserAccessController::class, 'password'])->name('workspace.users.password');
     });
     Route::get('/design', [\App\Http\Controllers\DesignConceptController::class, 'index'])->name('design.index');
     Route::get('/design/modern-light', [\App\Http\Controllers\DesignConceptController::class, 'modernLight'])->name('design.modern-light');

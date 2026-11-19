@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace App\Enums\Sales;
 
 /**
- * Draft → sent to the client on WhatsApp → close-deal request waiting for MFITGROUP Finance → sold.
+ * Draft → contract sent to the client on WhatsApp → signed by the client → close-deal request waiting for
+ * MFITGROUP Finance → sold.
  * Finance can return a request to the agent with a note instead of confirming it.
  */
 enum QuoteStatus: string
 {
     case Draft = 'draft';
     case Sent = 'sent';
+    case Signed = 'signed';
     case Pending = 'pending';
     case Returned = 'returned';
     case Sold = 'sold';
@@ -28,6 +30,7 @@ enum QuoteStatus: string
     {
         return match ($this) {
             self::Sent => 'blue',
+            self::Signed => 'green',
             self::Pending => 'amber',
             self::Returned => 'red',
             self::Sold => 'green',

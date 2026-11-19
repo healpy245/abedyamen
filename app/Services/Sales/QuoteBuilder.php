@@ -10,6 +10,7 @@ use App\Models\Finance\StorageItem;
 use App\Models\Sales\AgentLead;
 use App\Models\Sales\SalesCatalogItem;
 use App\Models\Sales\SalesQuote;
+use App\Models\Sales\SalesQuoteItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -79,12 +80,12 @@ class QuoteBuilder
             $kind = (string) $row['kind'];
             $refId = (int) ($row['ref_id'] ?? 0);
             $catalogItem = in_array($kind, SalesCatalogItem::KINDS, true) ? $catalog->get($refId) : null;
-            $storageItem = $kind === 'equipment' ? $storage->get($refId) : null;
+            $storageItem = in_array($kind, SalesQuoteItem::STORAGE_KINDS, true) ? $storage->get($refId) : null;
 
             if (in_array($kind, SalesCatalogItem::KINDS, true) && ($catalogItem === null || $catalogItem->kind !== $kind)) {
                 continue;
             }
-            if ($kind === 'equipment' && $storageItem === null) {
+            if (in_array($kind, SalesQuoteItem::STORAGE_KINDS, true) && $storageItem === null) {
                 continue;
             }
 
@@ -94,7 +95,7 @@ class QuoteBuilder
             }
 
             $billing = match ($kind) {
-                'equipment' => 'one_time',
+                'equipment', 'service' => 'one_time',
                 'custom' => in_array($row['billing'] ?? null, SalesCatalogItem::BILLINGS, true) ? $row['billing'] : 'monthly',
                 default => $catalogItem->billing,
             };

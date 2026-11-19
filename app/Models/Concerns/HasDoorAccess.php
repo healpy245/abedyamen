@@ -18,12 +18,23 @@ trait HasDoorAccess
 {
     public const USER_MANAGER_EMAIL = 'yamen@kaman.rest';
 
+    /** Super admins: every door, and the users page. */
+    public const USER_MANAGER_EMAILS = ['yamen@kaman.rest', 'fregmac@kaman.rest'];
+
     /** Support tabs the live-only accounts can never open: their version scope only covers the live board. */
     private const LIMITED_SUPPORT_CLOSED = ['logs', 'menu', 'tickets'];
 
     public function managesUsers(): bool
     {
-        return strcasecmp((string) $this->email, self::USER_MANAGER_EMAIL) === 0;
+        return in_array(mb_strtolower(trim((string) $this->email)), self::USER_MANAGER_EMAILS, true);
+    }
+
+    /**
+     * An agents admin sees and changes every agent's leads, meetings and quotes. A worker only their own.
+     */
+    public function managesAgents(): bool
+    {
+        return $this->canOpenSubDoor(Door::Agents, 'manage');
     }
 
     /**
@@ -193,6 +204,7 @@ trait HasDoorAccess
     {
         return match (true) {
             $door === Door::Development && $subDoor === 'reports' => (bool) $this->is_admin,
+            $door === Door::Agents && $subDoor === 'manage' => (bool) $this->is_admin,
             default => true,
         };
     }

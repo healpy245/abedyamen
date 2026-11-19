@@ -94,8 +94,8 @@
         <form class="fs-dialog__form" data-sq-wa-form>
             <header class="ds-dialog__head fs-dialog__head">
                 <div>
-                    <h2 id="sq-wa-title">{{ __('sales.whatsapp.title') }}</h2>
-                    <p class="ds-sub">{{ __('sales.whatsapp.subtitle') }}</p>
+                    <h2 id="sq-wa-title" data-link="{{ __('sales.whatsapp.title') }}" data-pdf="{{ __('sales.whatsapp.pdf_title') }}">{{ __('sales.whatsapp.title') }}</h2>
+                    <p class="ds-sub" data-sq-wa-sub data-link="{{ __('sales.whatsapp.subtitle') }}" data-pdf="{{ __('sales.whatsapp.pdf_subtitle') }}">{{ __('sales.whatsapp.subtitle') }}</p>
                 </div>
                 <button type="button" class="ds-btn ds-btn--ghost ds-btn--icon" data-fin-sheet-close aria-label="{{ __('sales.close') }}"><x-ds.icon name="x" /></button>
             </header>
@@ -103,8 +103,8 @@
                 <x-ds.field :label="__('sales.whatsapp.phone')" for="sq-wa-phone" :hint="__('sales.whatsapp.phone_hint')">
                     <input id="sq-wa-phone" class="ds-input ds-num" type="tel" name="phone" required maxlength="40" dir="ltr" placeholder="05X-XXXXXXX" data-sq-wa-phone>
                 </x-ds.field>
-                <div class="ds-field">
-                    <span class="ds-label">{{ __('sales.pdf_language') }}</span>
+                <div class="ds-field" data-sq-wa-langs>
+                    <span class="ds-label">{{ __('sales.whatsapp.message_language') }}</span>
                     <div class="sq-langs sq-langs--wide" role="radiogroup">
                         @foreach(\App\Models\Sales\SalesQuote::DOCUMENT_LANGUAGES as $lang)
                             <label><input type="radio" name="lang" value="{{ $lang }}" data-sq-wa-lang><span>{{ __('sales.lang_short.'.$lang) }}</span></label>
@@ -118,7 +118,7 @@
             </div>
             <footer class="ds-dialog__foot">
                 <button type="button" class="ds-btn ds-btn--secondary" data-fin-sheet-close>{{ __('sales.cancel') }}</button>
-                <button type="submit" class="ds-btn ds-btn--primary sq-wa__send" data-sq-wa-send><x-ds.icon name="whatsapp" />{{ __('sales.whatsapp.send') }}</button>
+                <button type="submit" class="ds-btn ds-btn--primary sq-wa__send" data-sq-wa-send><x-ds.icon name="whatsapp" /><span data-link="{{ __('sales.whatsapp.send') }}" data-pdf="{{ __('sales.whatsapp.pdf_send') }}">{{ __('sales.whatsapp.send') }}</span></button>
             </footer>
         </form>
     </dialog>
@@ -324,11 +324,38 @@
                             @endforelse
                         </div>
                         <footer class="sq-section__foot">
-                            <span>{{ __('sales.one_time_total') }}</span>
-                            <b class="ds-num" data-sq-total="one_time">₪0</b>
+                            <span>{{ __('sales.contract.totals.devices') }}</span>
+                            <b class="ds-num" data-sq-total="devices">₪0</b>
+                        </footer>
+                    </section>
+
+                    <section class="sq-section" data-sq-services>
+                        <header class="sq-section__head">
+                            <span class="sq-section__icon">@include('components.workspace.icons', ['name' => 'spark'])</span>
+                            <span class="sq-section__title">
+                                <strong>{{ __('sales.services_offer') }}</strong>
+                                <small>{{ __('sales.services_offer_hint') }}</small>
+                            </span>
+                        </header>
+                        <div class="sq-section__body">
+                            @forelse($catalog['service'] as $service)
+                                <label class="sq-row sq-row--pick">
+                                    <input type="checkbox" value="{{ $service['id'] }}" data-sq-service>
+                                    <span class="sq-row__check"><x-ds.icon name="check" /></span>
+                                    <span class="sq-row__name">{{ $service['name'] }}</span>
+                                    <b class="sq-row__price ds-num">{{ FinanceMoney::format($service['price']) }}</b>
+                                </label>
+                            @empty
+                                <p class="sq-section__off">{{ __('sales.catalog.empty') }}</p>
+                            @endforelse
+                        </div>
+                        <footer class="sq-section__foot">
+                            <span>{{ __('sales.contract.totals.services') }}</span>
+                            <b class="ds-num" data-sq-total="services">₪0</b>
                         </footer>
                     </section>
                 </div>
+                <p class="sq-builder__onetime">{{ __('sales.one_time_total') }}: <b class="ds-num" data-sq-total="one_time">₪0</b></p>
 
                 <details class="sq-note" @if($old['notes'] ?? false) open @endif>
                     <summary>{{ __('sales.add_note') }}</summary>

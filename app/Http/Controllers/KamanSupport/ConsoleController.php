@@ -6,7 +6,6 @@ namespace App\Http\Controllers\KamanSupport;
 
 use App\Enums\KamanSupport\SupportCommandName;
 use App\Enums\KamanSupport\SupportTicketStatus;
-use App\Http\Controllers\AgentsWorkspaceController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\KamanSupport\StoreSupportTicketCommandRequest;
 use App\Models\FormWorkflowRun;
@@ -202,6 +201,9 @@ class ConsoleController extends Controller
                     'id' => $ticket->public_id,
                     'title' => (string) $ticket->summary,
                     'details' => (string) $ticket->details,
+                    'report' => $ticket->report(),
+                    'escalateText' => $ticket->escalationText(),
+                    'contact' => $ticket->contact(),
                     'restaurant' => (string) ($ticket->restaurant_name ?: $ticket->restaurant),
                     'slug' => (string) $ticket->restaurant,
                     'logo' => $images[(string) $ticket->restaurant] ?? null,
@@ -226,11 +228,14 @@ class ConsoleController extends Controller
                 'progress' => __('kaman-support.status.in_progress'),
                 'empty' => __('kaman-support.empty'),
                 'escalate' => __('kaman-support.escalate'),
+                'escalateLead' => __('kaman-support.escalate_lead'),
                 'escalated' => __('kaman-support.escalated'),
                 'close' => __('kaman-support.close_ticket'),
                 'closeTitle' => __('kaman-support.close_title'),
                 'closeNote' => __('kaman-support.close_note'),
                 'details' => __('kaman-support.details'),
+                'whatsapp' => __('kaman-support.whatsapp'),
+                'contact' => __('kaman-support.contact'),
                 'restaurant' => __('kaman-support.restaurant'),
                 'device' => __('kaman-support.device'),
                 'events' => __('kaman-support.events'),
@@ -316,7 +321,7 @@ class ConsoleController extends Controller
         ]);
         $description = trim((string) ($data['description'] ?? ''));
         if ($description === '') {
-            $description = $ticket->details ?: $ticket->summary;
+            $description = $ticket->escalationText();
         }
 
         $dev = \App\Models\AppDevelopment\AppDevelopmentTicket::query()->create([
@@ -332,6 +337,7 @@ class ConsoleController extends Controller
         ]);
         app(\App\Services\AppDevelopment\TicketNumberService::class)->assign($dev);
         $dev->syncAppTypes(['cashier']);
+        $this->attachVoice($ticket, $dev, $request->user());
         $ticket->forceFill(['escalated_ticket_id' => $dev->id])->save();
 
         if ($request->expectsJson()) {
@@ -345,6 +351,44 @@ class ConsoleController extends Controller
         return redirect()
             ->route('kaman-support.inbox', ['ticket' => $ticket->public_id])
             ->with('status', $dev->ticket_number);
+    }
+
+    /**
+     * The cashier's voice note goes with the escalation, so development can play it on their ticket.
+     * The screen recording is in the POS's own format and only plays on the support ticket, which the
+     * escalated text links to.
+     */
+    private function attachVoice(SupportTicket $ticket, \App\Models\AppDevelopment\AppDevelopmentTicket $dev, User $user): void
+    {
+        $path = $ticket->mediaPath('audioPath');
+        $disk = Storage::disk('local');
+        if ($path === null || ! $disk->exists($path)) {
+            return;
+        }
+
+        try {
+            $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'm4a';
+            $target = 'app-development/tickets/'.$dev->id.'/attachments/'.\Illuminate\Support\Str::uuid()->toString().'.'.$extension;
+            if (! $disk->copy($path, $target)) {
+                return;
+            }
+            \App\Models\AppDevelopment\AppDevelopmentTicketAttachment::query()->create([
+                'ticket_id' => $dev->id,
+                'uploaded_by' => $user->id,
+                'original_name' => 'voice-'.$ticket->public_id.'.'.$extension,
+                'disk' => 'local',
+                'path' => $target,
+                'mime_type' => match ($extension) {
+                    'wav' => 'audio/wav',
+                    'mp3' => 'audio/mpeg',
+                    'ogg' => 'audio/ogg',
+                    default => 'audio/mp4',
+                },
+                'size' => $disk->size($target),
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function logs(Request $request): View
@@ -584,7 +628,7 @@ class ConsoleController extends Controller
     /**
      * One ticket for the ticket modal. There is no ticket page: an old link lands on the inbox with the modal open.
      */
-    public function show(Request $request, SupportTicket $ticket, RestaurantSupport $support): JsonResponse|RedirectResponse
+    public function show(Request $request, SupportTicket $ticket, RestaurantSupport $support, RestaurantLogoResolver $logos): JsonResponse|RedirectResponse
     {
         if (! $request->expectsJson()) {
             return redirect()->route('kaman-support.inbox', ['ticket' => $ticket->public_id]);
@@ -593,12 +637,24 @@ class ConsoleController extends Controller
         $ticket->load('events');
         $timezone = config('kaman-support.display_timezone', 'Asia/Jerusalem');
         $level = $ticket->reportLevel();
+        // The "created" event repeats the summary word for word; the description is shown once, above.
+        $repeats = array_filter([trim((string) $ticket->summary), trim((string) $ticket->details)]);
+        $canEscalate = (bool) $request->user()?->can('create', \App\Models\AppDevelopment\AppDevelopmentTicket::class);
 
         return response()->json([
             'ticket' => [
                 'id' => $ticket->public_id,
                 'title' => (string) $ticket->summary,
                 'details' => (string) $ticket->details,
+                'report' => $ticket->report(),
+                'contact' => $ticket->contact(),
+                'cashier' => (string) $ticket->cashier_name,
+                'slug' => (string) $ticket->restaurant,
+                'logo' => $logos->cached([(string) $ticket->restaurant])[strtolower(trim((string) $ticket->restaurant))] ?? null,
+                'voiceSeconds' => $ticket->hasVoice() ? $ticket->mediaSeconds('voice') : null,
+                'screenSeconds' => $ticket->hasScreen() ? $ticket->mediaSeconds('screen') : null,
+                'escalated' => filled($ticket->escalated_ticket_id),
+                'escalateText' => $canEscalate ? $ticket->escalationText() : null,
                 'status' => $ticket->status?->value,
                 'statusLabel' => $ticket->status?->label() ?? '',
                 'level' => $level,
@@ -613,11 +669,16 @@ class ConsoleController extends Controller
                     'type' => $event->type?->label() ?? '',
                     'actor' => (string) $event->actor_name,
                     'at' => $event->created_at?->timezone($timezone)->format('Y-m-d H:i'),
-                    'message' => (string) $event->message,
+                    'message' => in_array(trim((string) $event->message), $repeats, true) ? '' : (string) $event->message,
                 ])->values()->all(),
             ],
             'copy' => [
                 'details' => __('kaman-support.details'),
+                'report' => __('kaman-support.report'),
+                'noReport' => __('kaman-support.no_written_report'),
+                'cashier' => __('kaman-support.cashier'),
+                'whatsapp' => __('kaman-support.whatsapp'),
+                'contact' => __('kaman-support.contact'),
                 'restaurant' => __('kaman-support.restaurant'),
                 'device' => __('kaman-support.device'),
                 'voice' => __('kaman-support.voice'),
@@ -1333,29 +1394,13 @@ class ConsoleController extends Controller
      */
     private function logRestaurantChoices(array $picked): array
     {
-        $companies = app(AgentsWorkspaceController::class)->catalog()['companies'];
         $reported = [];
-        foreach ($this->sessions->restaurantChoices() as $choice) {
+        foreach ($this->sessions->reportedRestaurantChoices() as $choice) {
             $reported[mb_strtolower($choice['value'])] ??= $choice;
         }
-        if ($companies === []) {
-            return array_values($reported);
-        }
-
-        // Someone limited to one product only sees the restaurants that use it.
-        $limited = auth()->user()?->supportProduct() !== null;
         $choices = [];
-        foreach ($companies as $company) {
-            $slug = trim((string) ($company['subdomain'] ?? ''));
-            $key = mb_strtolower($slug);
-            if ($slug === '' || ($limited && ! isset($reported[$key]))) {
-                continue;
-            }
-            $choices[$key] = [
-                'value' => $reported[$key]['value'] ?? $slug,
-                'label' => (string) $company['name'],
-                'logo' => (string) ($company['logo'] ?? ''),
-            ];
+        foreach ($this->sessions->restaurantChoices() as $choice) {
+            $choices[mb_strtolower($choice['value'])] = $choice;
         }
         foreach ($picked as $slug) {
             $key = mb_strtolower($slug);

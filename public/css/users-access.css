@@ -191,3 +191,20 @@ html[dir="rtl"] .ua-toast { transform: translateX(50%); animation-name: ua-toast
     .ua-user, .ua-user__chev, .ua-chip, .ua-user__panel, .ua-door, .ua-subs { transition: none; }
     .ua-toast { animation: none; }
 }
+
+/* Adding a user and setting a password. */
+.ua-flash { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: var(--ds-green-soft); color: var(--ds-green); font-weight: 600; }
+.ua-add, .ua-password { margin: 0 0 14px; border: 1px solid var(--ds-border); border-radius: 14px; background: var(--ds-surface); }
+.ua-password { margin: 10px 0; }
+.ua-add > summary, .ua-password > summary { padding: 12px 16px; font-weight: 600; cursor: pointer; }
+.ua-password > summary { padding: 10px 14px; font-size: 13px; }
+.ua-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 16px 16px; }
+.ua-form--inline { grid-template-columns: 1fr 1fr auto; align-items: center; padding: 0 14px 14px; }
+.ua-field { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.ua-form .ds-btn { justify-self: start; }
+.ua-error, .ua-hint { grid-column: 1 / -1; margin: 0; font-size: 13px; }
+.ua-error { color: var(--ds-red); font-weight: 600; }
+.ua-hint { color: var(--ds-text-3); }
+@media (max-width: 640px) {
+    .ua-form, .ua-form--inline { grid-template-columns: 1fr; }
+}

@@ -31,6 +31,30 @@
                 <span class="ua-count">{{ __('access.user_count', ['count' => count($rows)]) }}</span>
             </header>
 
+            @if(session('ua_status'))
+                <p class="ua-flash" role="status">{{ session('ua_status') }}</p>
+            @endif
+
+            <details class="ua-add" @if($errors->newUser->any()) open @endif>
+                <summary>{{ __('access.add_user') }}</summary>
+                <form method="post" action="{{ route('workspace.users.store') }}" class="ua-form" autocomplete="off">
+                    @csrf
+                    <label class="ua-field"><span>{{ __('access.field_name') }}</span>
+                        <input class="ds-input" type="text" name="name" required maxlength="120" value="{{ old('name') }}"></label>
+                    <label class="ua-field"><span>{{ __('access.field_email') }}</span>
+                        <input class="ds-input" type="email" name="email" required maxlength="191" dir="ltr" value="{{ old('email') }}"></label>
+                    <label class="ua-field"><span>{{ __('access.field_password') }}</span>
+                        <input class="ds-input" type="password" name="password" required minlength="8" autocomplete="new-password" dir="ltr"></label>
+                    <label class="ua-field"><span>{{ __('access.field_password_again') }}</span>
+                        <input class="ds-input" type="password" name="password_confirmation" required minlength="8" autocomplete="new-password" dir="ltr"></label>
+                    @if($errors->newUser->any())
+                        <p class="ua-error" role="alert">{{ $errors->newUser->first() }}</p>
+                    @endif
+                    <p class="ua-hint">{{ __('access.add_user_hint') }}</p>
+                    <button type="submit" class="ds-btn ds-btn--primary">{{ __('access.add') }}</button>
+                </form>
+            </details>
+
             <div class="ua-list">
                 @foreach($rows as $row)
                     <article @class(['ua-user', 'is-turned-off' => $row['turnedOff']]) data-ua-user data-url="{{ $row['url'] }}" data-account-url="{{ $row['accountUrl'] }}" data-search="{{ mb_strtolower($row['name'].' '.$row['email']) }}">
@@ -74,6 +98,20 @@
                                 @if($row['note'] !== null)
                                     <p class="ua-note">{{ $row['note'] }}</p>
                                 @endif
+                                @php $bag = $errors->{'password'.$row['id']}; @endphp
+                                <details class="ua-password" @if($bag->any()) open @endif>
+                                    <summary>{{ __('access.set_password') }}</summary>
+                                    <form method="post" action="{{ $row['passwordUrl'] }}" class="ua-form ua-form--inline" autocomplete="off">
+                                        @csrf
+                                        @method('PUT')
+                                        <input class="ds-input" type="password" name="password" required minlength="8" autocomplete="new-password" dir="ltr" placeholder="{{ __('access.field_password') }}" aria-label="{{ __('access.field_password') }}">
+                                        <input class="ds-input" type="password" name="password_confirmation" required minlength="8" autocomplete="new-password" dir="ltr" placeholder="{{ __('access.field_password_again') }}" aria-label="{{ __('access.field_password_again') }}">
+                                        <button type="submit" class="ds-btn ds-btn--secondary">{{ __('access.save_password') }}</button>
+                                        @if($bag->any())
+                                            <p class="ua-error" role="alert">{{ $bag->first() }}</p>
+                                        @endif
+                                    </form>
+                                </details>
                                 <div class="ua-doors">
                                     @foreach($row['doors'] as $key => $door)
                                         <section @class(['ua-door', 'is-open' => $door['on']]) data-ua-door="{{ $key }}">

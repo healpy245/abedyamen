@@ -10,26 +10,36 @@ use App\Http\Requests\Finance\StoreStorageItemRequest;
 use App\Models\Finance\FinanceInvoiceItem;
 use App\Models\Finance\StorageItem;
 use App\Models\Finance\StorageMovement;
+use App\Models\Sales\SalesCatalogItem;
 use App\Services\Finance\StorageLedger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
+/**
+ * Storage, services and features: devices and their stock, the one-time services agents sell, and the
+ * monthly subscription with its features. Everything a quote is priced from.
+ */
 class StorageController extends Controller
 {
+    public const TABS = ['storage', 'services', 'features'];
+
     public function __construct(
         private readonly StorageLedger $ledger,
     ) {}
 
     public function index(Request $request): View
     {
+        $tab = in_array($request->query('tab'), self::TABS, true) ? (string) $request->query('tab') : 'storage';
         $search = trim((string) $request->query('q', ''));
         $category = StorageCategory::tryFrom((string) $request->query('category', ''));
         $lowOnly = $request->boolean('low');
 
         $items = StorageItem::query()
             ->where('active', true)
+            ->when($tab === 'services', fn ($query) => $query->where('category', StorageCategory::Service))
+            ->when($tab === 'storage', fn ($query) => $query->where('category', '!=', StorageCategory::Service))
             ->when($search !== '', fn ($query) => $query->where(function ($inner) use ($search): void {
                 $inner->where('name', 'like', '%'.$search.'%')->orWhere('sku', 'like', '%'.$search.'%');
             }))
@@ -43,6 +53,10 @@ class StorageController extends Controller
 
         return view('workspace.finance.storage', [
             'page' => 'storage',
+            'tab' => $tab,
+            'features' => $tab === 'features'
+                ? SalesCatalogItem::query()->whereIn('kind', ['base', 'feature'])->where('active', true)->orderByRaw("case when kind = 'base' then 0 else 1 end")->orderBy('sort')->orderBy('id')->get()
+                : collect(),
             'items' => $items,
             'search' => $search,
             'filters' => ['category' => $category?->value ?? '', 'low' => $lowOnly],
@@ -76,7 +90,7 @@ class StorageController extends Controller
             $this->ledger->move($item, $opening, 'purchase', $request->user(), null, __('finance.storage.opening'));
         }
 
-        return redirect()->route('workspace.finance.storage')->with('success', __('finance.flash.item_saved'));
+        return redirect()->route('workspace.finance.storage', $this->tabFor($item))->with('success', __('finance.flash.item_saved'));
     }
 
     public function update(StoreStorageItemRequest $request, StorageItem $item): RedirectResponse
@@ -93,7 +107,7 @@ class StorageController extends Controller
             'low_stock' => (int) ($data['low_stock'] ?? 0),
         ]);
 
-        return redirect()->route('workspace.finance.storage')->with('success', __('finance.flash.item_saved'));
+        return redirect()->route('workspace.finance.storage', $this->tabFor($item))->with('success', __('finance.flash.item_saved'));
     }
 
     public function adjust(Request $request, StorageItem $item): RedirectResponse
@@ -120,6 +134,16 @@ class StorageController extends Controller
             $item->delete();
         }
 
-        return redirect()->route('workspace.finance.storage')->with('success', __('finance.flash.item_removed'));
+        return redirect()->route('workspace.finance.storage', $this->tabFor($item))->with('success', __('finance.flash.item_removed'));
+    }
+
+    /**
+     * Back to the tab the item is listed on.
+     *
+     * @return array<string, string>
+     */
+    private function tabFor(StorageItem $item): array
+    {
+        return $item->category === StorageCategory::Service ? ['tab' => 'services'] : [];
     }
 }

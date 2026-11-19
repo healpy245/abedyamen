@@ -29,12 +29,13 @@ class UserAccessTest extends TestCase
     private const STANDARD_ACCESS = [
         'yamen@kaman.rest' => ['doors' => ['overview', 'support', 'development', 'agents', 'finance', 'form']],
         'burhan@kaman.rest' => ['doors' => ['overview', 'development', 'agents', 'finance', 'form']],
-        'ahmad@kaman.rest' => ['doors' => ['overview', 'agents', 'form']],
-        'mohamed@kaman.rest' => ['doors' => ['overview', 'agents', 'form']],
-        'abedjaber@kaman.rest' => ['doors' => ['overview', 'development', 'agents'], 'closed' => ['development.reports']],
-        'ahmadessa@kaman.rest' => ['doors' => ['overview', 'development', 'agents', 'form'], 'closed' => ['development.reports']],
-        'moaz@kaman.rest' => ['doors' => ['overview', 'support', 'agents']],
-        'connections@kaman.rest' => ['doors' => ['overview', 'support', 'agents'], 'closed' => ['support.logs', 'support.menu', 'support.tickets']],
+        // Agents who are not admins work as agents: only their own leads, meetings and quotes.
+        'ahmad@kaman.rest' => ['doors' => ['overview', 'agents', 'form'], 'closed' => ['agents.manage']],
+        'mohamed@kaman.rest' => ['doors' => ['overview', 'agents', 'form'], 'closed' => ['agents.manage']],
+        'abedjaber@kaman.rest' => ['doors' => ['overview', 'development', 'agents'], 'closed' => ['development.reports', 'agents.manage']],
+        'ahmadessa@kaman.rest' => ['doors' => ['overview', 'development', 'agents', 'form'], 'closed' => ['development.reports', 'agents.manage']],
+        'moaz@kaman.rest' => ['doors' => ['overview', 'support', 'agents'], 'closed' => ['agents.manage']],
+        'connections@kaman.rest' => ['doors' => ['overview', 'support', 'agents'], 'closed' => ['support.logs', 'support.menu', 'support.tickets', 'agents.manage']],
     ];
 
     private User $yamen;

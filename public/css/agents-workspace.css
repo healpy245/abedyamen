@@ -1005,6 +1005,8 @@ button.rm-row--link { width: 100%; border: 0; border-top: 1px solid var(--sales-
 .sp-rest-link { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px; cursor: pointer; }
 .sp-rest-link:hover:not(:disabled) { color: #f58220; text-decoration-color: currentColor; }
 .sp-rest-link:disabled { text-decoration: none; cursor: default; }
+.sp-whatsapp { color: #128c4b; gap: 6px; text-decoration: none; }
+.sp-whatsapp:hover { color: #0b6b38; }
 
 /* Support in the restaurant modal: the Support door's overview, devices, recent logs and tickets. */
 .rm-subbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
@@ -1053,3 +1055,83 @@ a.rm-dev:hover { border-color: color-mix(in srgb, var(--sales-accent) 40%, var(-
 button.rm-dev { width: 100%; font: inherit; text-align: start; cursor: pointer; }
 button.rm-dev:hover { border-color: color-mix(in srgb, var(--sales-accent) 40%, var(--sales-line)); }
 button.rm-dev:focus-visible { outline: 2px solid var(--sales-accent); outline-offset: 1px; }
+
+/* "After meeting": one lane with a drop area per outcome (waiting to decide, won, lost). */
+.sales-lane--after { flex-basis: 300px; width: 300px; min-width: 300px; max-width: 300px; }
+.sales-sublane { min-height: 76px; margin-bottom: 10px; padding: 8px; border: 1px dashed var(--sales-line); border-radius: 12px; }
+.sales-sublane.is-over { outline: 2px solid var(--lane-color, var(--sales-accent)); outline-offset: 1px; }
+.sales-sublane-head { display: flex; align-items: center; gap: 8px; padding: 2px 2px 8px; font-size: 12px; font-weight: 700; }
+.sales-sublane-head span { display: inline-flex; align-items: center; gap: 7px; flex: 1; }
+.sales-sublane-head span::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--lane-color); }
+.sales-sublane-head small { padding: 1px 7px; border-radius: 999px; background: var(--sales-panel); color: var(--sales-muted); font-size: 11px; }
+.sales-sublane .sales-card:last-child { margin-bottom: 0; }
+
+/* The meeting form opened when a lead moves to "Meeting scheduled". */
+.ag-dialog__hint { margin: -4px 0 12px; color: var(--sales-muted); font-size: 13px; }
+
+/* Leads: "Added" quick picks with an optional date range, and the PDF report button. */
+.sales-period { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -6px 0 15px; }
+.sales-period__label { margin-inline-end: 4px; color: var(--sales-muted); font-size: 12px; font-weight: 700; }
+.sales-period__chip { padding: 6px 12px; border: 1px solid var(--sales-line); border-radius: 999px; background: var(--sales-panel); color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; }
+.sales-period__chip.is-on { border-color: var(--sales-accent); background: color-mix(in srgb, var(--sales-accent) 16%, transparent); color: var(--sales-accent); font-weight: 700; }
+.sales-period__range { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-inline-start: 4px; }
+.sales-period__range label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sales-muted); }
+.sales-period__range input { padding: 5px 8px; border: 1px solid var(--sales-line); border-radius: 8px; background: var(--sales-panel); color: inherit; font: inherit; font-size: 12.5px; }
+.sales-report-btn { margin-inline-start: auto; }
+
+/* Leads: the "Date added" range picker. */
+.sales-period, .sales-period__chip { display: none; }
+.dp { position: relative; }
+.dp-trigger { display: inline-flex; align-items: center; gap: 8px; min-width: 210px; height: 100%; min-height: 40px; padding: 0 12px; border: 1px solid var(--sales-line); border-radius: 12px; background: var(--sales-panel); color: var(--sales-muted); font: inherit; font-size: 13px; cursor: pointer; transition: border-color .18s ease, box-shadow .18s ease; }
+.dp-trigger svg { width: 17px; height: 17px; flex: none; }
+.dp-trigger span { flex: 1; text-align: start; white-space: nowrap; }
+.dp-trigger.has-value { color: inherit; border-color: color-mix(in srgb, var(--sales-accent) 55%, var(--sales-line)); }
+.dp-trigger[aria-expanded="true"], .dp-trigger:hover { border-color: var(--sales-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sales-accent) 16%, transparent); }
+.dp-trigger__clear { font-style: normal; font-size: 16px; line-height: 1; padding: 0 2px; opacity: .7; }
+.dp-trigger__clear:hover { opacity: 1; color: var(--sales-accent); }
+.dp-pop { position: fixed; z-index: 80; top: 0; left: 0; width: min(720px, calc(100vw - 32px)); border: 1px solid var(--sales-line); border-radius: 16px; background: var(--sales-panel); box-shadow: 0 24px 60px rgba(0, 0, 0, .28); overflow: hidden;
+    opacity: 0; transform: translateY(-8px) scale(.98); transform-origin: top; transition: opacity .18s ease, transform .22s cubic-bezier(.2, .8, .2, 1); }
+.dp-pop.is-open { opacity: 1; transform: none; }
+.dp-pop.is-leaving { opacity: 0; transform: translateY(-6px) scale(.985); }
+.dp-main { display: grid; grid-template-columns: 168px 1fr; }
+.dp-presets { order: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px; border-inline-end: 1px solid var(--sales-line); background: color-mix(in srgb, var(--sales-bg) 60%, transparent); }
+.dp-preset { padding: 9px 12px; border: 0; border-radius: 10px; background: none; color: var(--sales-muted); font: inherit; font-size: 13px; text-align: start; cursor: pointer; transition: background .15s ease, color .15s ease; }
+.dp-preset:hover { background: color-mix(in srgb, var(--sales-accent) 10%, transparent); color: inherit; }
+.dp-preset.is-on { background: var(--sales-accent); color: #fff; font-weight: 700; }
+.dp-months { order: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 14px 16px; }
+.dp-months.slide-forward { animation: dp-forward .26s cubic-bezier(.2, .8, .2, 1); }
+.dp-months.slide-back { animation: dp-back .26s cubic-bezier(.2, .8, .2, 1); }
+@keyframes dp-forward { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes dp-back { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+html[dir="rtl"] .dp-months.slide-forward { animation-name: dp-back; }
+html[dir="rtl"] .dp-months.slide-back { animation-name: dp-forward; }
+.dp-month__head { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 10px; }
+.dp-month__head select { padding: 4px 6px; border: 1px solid var(--sales-line); border-radius: 8px; background: var(--sales-bg); color: inherit; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.dp-nav { width: 28px; height: 28px; border: 0; border-radius: 8px; background: none; color: inherit; font-size: 18px; line-height: 1; cursor: pointer; }
+.dp-nav:hover { background: color-mix(in srgb, var(--sales-accent) 14%, transparent); color: var(--sales-accent); }
+.dp-week, .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.dp-week span { padding: 4px 0 6px; color: var(--sales-muted); font-size: 11px; font-weight: 700; text-align: center; }
+.dp-day { position: relative; height: 32px; border: 0; background: none; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; transition: background .12s ease, color .12s ease; }
+.dp-day:hover { background: color-mix(in srgb, var(--sales-accent) 16%, transparent); border-radius: 8px; }
+.dp-day.is-out { color: var(--sales-muted); opacity: .45; }
+.dp-day.is-today { font-weight: 800; color: var(--sales-accent); }
+.dp-day.is-between { background: color-mix(in srgb, var(--sales-accent) 15%, transparent); border-radius: 0; }
+.dp-day.is-start, .dp-day.is-end { background: var(--sales-accent); color: #fff; font-weight: 800; border-radius: 8px; }
+.dp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--sales-line); }
+.dp-summary { color: var(--sales-muted); font-size: 12.5px; direction: ltr; unicode-bidi: isolate; }
+.dp-actions { display: flex; gap: 8px; }
+.dp-btn { padding: 7px 14px; border: 1px solid var(--sales-line); border-radius: 10px; background: none; color: inherit; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: transform .12s ease, background .15s ease; }
+.dp-btn:hover { background: color-mix(in srgb, var(--sales-accent) 10%, transparent); }
+.dp-btn:active { transform: scale(.97); }
+.dp-btn--primary { border-color: var(--sales-accent); background: var(--sales-accent); color: #fff; }
+.dp-btn--primary:hover { background: color-mix(in srgb, var(--sales-accent) 85%, #000); }
+.dp-btn[disabled] { opacity: .45; cursor: default; }
+@media (max-width: 720px) {
+    .dp-main { grid-template-columns: 1fr; }
+    .dp-presets { order: 0; flex-direction: row; flex-wrap: wrap; border-inline-end: 0; border-bottom: 1px solid var(--sales-line); }
+    .dp-months { grid-template-columns: 1fr; }
+    .dp-months .dp-month:last-child { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dp-pop, .dp-months { transition: none; animation: none; }
+}

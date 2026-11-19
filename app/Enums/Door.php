@@ -98,6 +98,8 @@ enum Door: string
                 'calendar' => ['label' => __('app.agents_calendar'), 'icon' => 'calendar', 'route' => 'workspace.agents', 'params' => ['page' => 'calendar']],
                 'sales' => ['label' => __('app.agents_sales'), 'icon' => 'receipt', 'route' => 'workspace.agents.sales'],
                 'packages' => ['label' => __('app.agents_packages'), 'icon' => 'box', 'route' => 'workspace.agents.packages'],
+                // Not a page: on, the agent manages every agent's leads, meetings and quotes; off, only their own.
+                'manage' => ['label' => __('access.agents_manage'), 'icon' => 'users', 'route' => null],
             ],
             self::Finance => [
                 'dashboard' => ['label' => __('finance.nav.dashboard'), 'icon' => 'chart', 'route' => 'workspace.finance.dashboard'],

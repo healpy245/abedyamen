@@ -26,6 +26,7 @@ class AppointmentController extends Controller
 
         return response()->json([
             'appointments' => AgentAppointment::query()
+                ->tap($this->ownedBy($user))
                 ->with(['lead:id,name,contact,phone', 'agent:id,name'])
                 ->orderBy('at')
                 ->get()
@@ -33,14 +34,14 @@ class AppointmentController extends Controller
                 ->values()
                 ->all(),
             // Only what a meeting's picker needs: the calendar door does not open the leads themselves.
-            'leads' => AgentLead::query()->latest('id')->get(['id', 'name', 'contact', 'phone'])->values()->all(),
+            'leads' => AgentLead::query()->tap($this->ownedBy($user))->latest('id')->get(['id', 'name', 'contact', 'phone'])->values()->all(),
             'restaurants' => collect($workspace->catalog()['companies'])
                 ->map(fn (array $company): array => ['id' => $company['id'], 'name' => $company['name']])
                 ->values()
                 ->all(),
             'types' => $this->states(AppointmentType::class),
             'statuses' => $this->states(AppointmentStatus::class),
-            'agents' => $this->assignable(),
+            'agents' => $this->assignable($user),
             'me' => $user->id,
         ]);
     }
@@ -48,7 +49,10 @@ class AppointmentController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $this->agent($request);
-        $data = $this->validated($request, creating: true);
+        $data = $this->keepOwnAgent($user, $this->validated($request, creating: true));
+        if (! empty($data['lead_id'])) {
+            $this->authorizeOwn($user, AgentLead::query()->whereKey($data['lead_id'])->value('agent_id'));
+        }
         if (empty($data['lead_id']) && empty($data['restaurant_id'])) {
             throw ValidationException::withMessages(['lead_id' => __('sales.flash.appointment_needs_target')]);
         }
@@ -64,8 +68,9 @@ class AppointmentController extends Controller
 
     public function update(Request $request, AgentAppointment $appointment): JsonResponse
     {
-        $this->agent($request);
-        $data = $this->validated($request, creating: false);
+        $user = $this->agent($request);
+        $this->authorizeOwn($user, $appointment->agent_id);
+        $data = $this->keepOwnAgent($user, $this->validated($request, creating: false));
 
         $appointment->update($this->attributes($data));
         if (array_key_exists('at', $data) || array_key_exists('lead_id', $data)) {
@@ -77,7 +82,7 @@ class AppointmentController extends Controller
 
     public function destroy(Request $request, AgentAppointment $appointment): JsonResponse
     {
-        $this->agent($request);
+        $this->authorizeOwn($this->agent($request), $appointment->agent_id);
         $appointment->delete();
 
         return response()->json(['message' => __('sales.flash.appointment_deleted')]);

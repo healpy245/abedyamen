@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Finance\ClientController;
 use App\Http\Controllers\Finance\DashboardController;
 use App\Http\Controllers\Finance\DealController;
+use App\Http\Controllers\Finance\FeatureController;
 use App\Http\Controllers\Finance\InvoiceController;
 use App\Http\Controllers\Finance\PaymentController;
 use App\Http\Controllers\Finance\StorageController;
@@ -67,4 +68,7 @@ Route::middleware(['auth', 'door'])
         Route::patch('/storage/{item}', [StorageController::class, 'update'])->name('storage.update');
         Route::post('/storage/{item}/adjust', [StorageController::class, 'adjust'])->name('storage.adjust');
         Route::delete('/storage/{item}', [StorageController::class, 'destroy'])->name('storage.destroy');
+        Route::post('/storage/features', [FeatureController::class, 'store'])->name('storage.features.store');
+        Route::patch('/storage/features/{feature}', [FeatureController::class, 'update'])->name('storage.features.update');
+        Route::delete('/storage/features/{feature}', [FeatureController::class, 'destroy'])->name('storage.features.destroy');
     });

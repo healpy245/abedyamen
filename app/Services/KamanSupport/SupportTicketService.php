@@ -10,6 +10,7 @@ use App\Models\KamanSupport\SupportDevice;
 use App\Models\KamanSupport\SupportTicket;
 use App\Models\KamanSupport\SupportTicketEvent;
 use App\Models\User;
+use App\Services\Push\SupportPushNotifier;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -129,6 +130,7 @@ class SupportTicketService
         }
 
         $this->logSubmit($ticket, idempotent: false);
+        SupportPushNotifier::safely(fn () => app(SupportPushNotifier::class)->ticketSubmitted($ticket));
 
         return ['ticket' => $ticket->load('events'), 'created' => true];
     }

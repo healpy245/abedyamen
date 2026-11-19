@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -24,7 +25,7 @@ class DealController extends Controller
 {
     public function index(Request $request): View
     {
-        $relations = ['client', 'agent:id,name', 'items.catalogItem', 'items.storageItem', 'files', 'invoice', 'confirmer:id,name'];
+        $relations = ['client', 'agent:id,name', 'items.catalogItem', 'items.storageItem', 'files', 'invoice', 'confirmer:id,name', 'signature'];
 
         $pending = SalesQuote::query()
             ->with($relations)
@@ -69,12 +70,19 @@ class DealController extends Controller
             ? round($devicesTotal - (float) $data['devices_left'], 2)
             : null;
 
-        $quote = $deals->confirm(
-            $quote,
-            $request->user(),
-            isset($data['next_billing_date']) ? Carbon::parse($data['next_billing_date']) : null,
-            $devicesPaid,
-        );
+        try {
+            $quote = $deals->confirm(
+                $quote,
+                $request->user(),
+                isset($data['next_billing_date']) ? Carbon::parse($data['next_billing_date']) : null,
+                $devicesPaid,
+            );
+        } catch (ValidationException $e) {
+            // Back to this deal's modal, which shows why (the toast alone sits under the reopened modal).
+            return redirect()
+                ->route('workspace.finance.deals', ['open' => $quote->id])
+                ->withErrors($e->errors());
+        }
 
         return redirect()
             ->route('workspace.finance.deals')

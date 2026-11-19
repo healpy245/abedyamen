@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Mobile\AgentsController;
 use App\Http\Controllers\Mobile\DevelopmentController;
 use App\Http\Controllers\Mobile\FinanceController;
+use App\Http\Controllers\Mobile\PushDeviceController;
 use App\Http\Controllers\Mobile\RestaurantController;
 use App\Http\Controllers\Mobile\UsersController;
 use App\Http\Controllers\Mobile\WorkspaceController;
@@ -50,4 +51,8 @@ Route::middleware('auth')
         Route::get('/users', [UsersController::class, 'index'])
             ->middleware('user-manager')
             ->name('users');
+
+        // The one write here: this phone's push token and its notification switches.
+        Route::post('/push-devices', [PushDeviceController::class, 'store'])->name('push-devices.store');
+        Route::post('/push-devices/remove', [PushDeviceController::class, 'destroy'])->name('push-devices.destroy');
     });

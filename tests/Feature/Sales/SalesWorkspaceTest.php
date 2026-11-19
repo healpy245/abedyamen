@@ -15,6 +15,8 @@ use App\Models\Finance\StorageItem;
 use App\Models\Sales\AgentLead;
 use App\Models\Sales\SalesCatalogItem;
 use App\Models\Sales\SalesQuote;
+use App\Models\Sales\SalesQuoteSignature;
+use App\Services\Sales\QuoteContract;
 use App\Models\User;
 use App\Notifications\SalesDealRequested;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,6 +42,8 @@ class SalesWorkspaceTest extends TestCase
         parent::setUp();
 
         Cache::flush();
+        // Signatures and deal evidence are kept on the private disk.
+        Storage::fake('local');
         Http::fake([
             'https://kaman.rest/api/companies' => Http::response(['data' => ['companies' => []]]),
             'https://kaman.rest/api/company-areas' => Http::response(['data' => ['areas' => []]]),
@@ -58,6 +62,45 @@ class SalesWorkspaceTest extends TestCase
     private function feature(string $name): SalesCatalogItem
     {
         return SalesCatalogItem::query()->where('kind', 'feature')->where('name', $name)->firstOrFail();
+    }
+
+    /**
+     * A drawn signature, as the signing page sends it.
+     */
+    private function signaturePng(): string
+    {
+        $image = imagecreatetruecolor(320, 120);
+        imagefill($image, 0, 0, imagecolorallocate($image, 255, 255, 255));
+        imagesetthickness($image, 3);
+        imageline($image, 20, 90, 300, 30, imagecolorallocate($image, 20, 20, 60));
+        ob_start();
+        imagepng($image);
+
+        return 'data:image/png;base64,'.base64_encode((string) ob_get_clean());
+    }
+
+    /**
+     * The client opens the contract link and signs it.
+     */
+    private function signContract(SalesQuote $quote, string $name = 'עלאא חג יחיא'): SalesQuoteSignature
+    {
+        $link = app(QuoteContract::class)->link($quote, '0501234567', $quote->agent ?? $this->agent);
+        $this->post(route('contracts.sign', $link->token), [
+            'signer_name' => $name,
+            'signer_business_number' => '515151515',
+            'signer_address' => 'הרצל 5, טייבה',
+            'agree' => '1',
+            'signature' => $this->signaturePng(),
+        ])->assertRedirect(route('contracts.show', $link->token))->assertSessionHasNoErrors();
+
+        return $link->fresh();
+    }
+
+    private function signed(SalesQuote $quote): void
+    {
+        if (! $quote->fresh()->isSigned()) {
+            $this->signContract($quote);
+        }
     }
 
     private function quoteFor(User $user, array $lines): SalesQuote
@@ -106,6 +149,7 @@ class SalesWorkspaceTest extends TestCase
 
     private function requestClose(SalesQuote $quote): void
     {
+        $this->signed($quote);
         $this->actingAs($this->agent)->post(route('workspace.agents.sales.request', $quote), [
             'deal_note' => 'Standing order signed, devices paid by bank transfer.',
             'files' => [UploadedFile::fake()->image('standing-order.jpg')],
@@ -220,9 +264,17 @@ class SalesWorkspaceTest extends TestCase
     {
         $quote = $this->quoteFor($this->agent, [['kind' => 'base', 'ref_id' => $this->base()->id]]);
 
+        // Not signed yet: Finance does not get it.
+        $this->actingAs($this->agent)->post(route('workspace.agents.sales.request', $quote), [
+            'deal_note' => 'Standing order signed.',
+            'files' => [UploadedFile::fake()->image('standing-order.jpg')],
+        ])->assertSessionHas('error', __('sales.errors.not_signed'));
+        $this->assertSame(QuoteStatus::Draft, $quote->fresh()->status);
+
+        $this->signContract($quote);
         $this->actingAs($this->agent)->post(route('workspace.agents.sales.request', $quote), [])
             ->assertSessionHasErrors(['deal_note', 'files']);
-        $this->assertSame(QuoteStatus::Draft, $quote->fresh()->status);
+        $this->assertSame(QuoteStatus::Signed, $quote->fresh()->status);
     }
 
     public function test_finance_can_return_a_request_and_the_agent_can_fix_it(): void
@@ -254,13 +306,31 @@ class SalesWorkspaceTest extends TestCase
         $quote = $this->quoteFor($this->agent, [['kind' => 'equipment', 'ref_id' => $empty->id, 'quantity' => 1]]);
         $this->requestClose($quote);
 
-        $this->actingAs($this->admin)->post(route('workspace.finance.deals.confirm', $quote))->assertSessionHasErrors('stock');
+        // Finance sees which device is short before trying, inside the deal.
+        $this->actingAs($this->admin)->get(route('workspace.finance.deals', ['open' => $quote->id]))
+            ->assertOk()
+            ->assertSee(__('finance.deals.short_title'))
+            ->assertSee(__('finance.deals.out_of_stock'))
+            ->assertSee(__('finance.deals.short_fix'));
+
+        // A refused confirm comes back to this deal's modal with the reason in it, not only in a toast under it.
+        $this->post(route('workspace.finance.deals.confirm', $quote))
+            ->assertRedirect(route('workspace.finance.deals', ['open' => $quote->id]))
+            ->assertSessionHasErrors('stock');
+        $this->get(route('workspace.finance.deals', ['open' => $quote->id]))
+            ->assertSee('class="fd-alert" role="alert"', false)
+            ->assertSee(__('finance.errors.not_enough_stock', ['item' => 'Nexgo', 'stock' => 0]));
 
         $this->assertSame(QuoteStatus::Pending, $quote->fresh()->status);
         $this->assertSame(0, FinanceInvoice::query()->count());
+
+        // With stock added, the same deal confirms.
+        $empty->update(['stock' => 1]);
+        $this->post(route('workspace.finance.deals.confirm', $quote))->assertRedirect(route('workspace.finance.deals'))->assertSessionHasNoErrors();
+        $this->assertSame(QuoteStatus::Sold, $quote->fresh()->status);
     }
 
-    public function test_quote_pdf_goes_to_the_client_on_whatsapp(): void
+    private function whatsappLine(): void
     {
         Http::fake(['https://green.test/*' => Http::response(['idMessage' => 'ok'])]);
         KamanWhatsappLine::query()->create([
@@ -272,20 +342,129 @@ class SalesWorkspaceTest extends TestCase
             'greenapi_url' => 'https://green.test/waInstance1/sendMessage/token',
             'integration_settings' => ['enabled' => true, 'ignored_reply_phones' => []],
         ]);
+    }
+
+    public function test_the_contract_link_goes_to_the_client_on_whatsapp(): void
+    {
+        $this->whatsappLine();
         $this->client->update(['phone' => null]);
         $quote = $this->quoteFor($this->agent, [['kind' => 'base', 'ref_id' => $this->base()->id]]);
 
         $this->actingAs($this->agent)->post(route('workspace.agents.sales.whatsapp', $quote), [
             'phone' => '0501112233',
-            'lang' => 'ar',
             'message' => 'مرحبًا',
-            'pdf' => UploadedFile::fake()->createWithContent('quote.pdf', "%PDF-1.4\n%quote\n"),
         ], ['Accept' => 'application/json'])->assertOk();
 
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/sendFileByUpload/') && str_contains($request->body(), '972501112233@c.us'));
+        $link = $quote->signature()->sole();
+        $this->assertTrue($link->isPending());
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage/')
+            && $request['chatId'] === '972501112233@c.us'
+            && str_starts_with($request['message'], 'مرحبًا')
+            && str_contains($request['message'], route('contracts.show', $link->token)));
         $this->assertSame(QuoteStatus::Sent, $quote->fresh()->status);
         $this->assertNotNull($quote->fresh()->whatsapp_sent_at);
         $this->assertSame('0501112233', $this->client->fresh()->phone);
+
+        // Sending again before the client signs sends the same link.
+        $this->post(route('workspace.agents.sales.whatsapp', $quote), ['phone' => '0501112233'], ['Accept' => 'application/json'])->assertOk();
+        $this->assertSame(1, $quote->signatures()->count());
+    }
+
+    public function test_the_client_signs_the_contract_and_the_agent_sends_it_to_finance(): void
+    {
+        $service = StorageItem::query()->where('name', 'בניית תפריט')->firstOrFail();
+        $quote = $this->quoteFor($this->agent, [
+            ['kind' => 'base', 'ref_id' => $this->base()->id],
+            ['kind' => 'service', 'ref_id' => $service->id],
+        ]);
+        $link = app(QuoteContract::class)->link($quote, '0501234567', $this->agent);
+        auth()->logout();
+
+        // The client reads the whole agreement with the quote in it, no login needed.
+        $this->get(route('contracts.show', $link->token))
+            ->assertOk()
+            ->assertSee('הסכם התקשרות לשירותי אפליקציית KAMAN')
+            ->assertSee('אמ.פיי איי טי גרופ בע"מ, ח.פ. 517119558', false)
+            ->assertSee('14.3 כותרות הסעיפים בהסכם זה נועדו לנוחות בלבד ולא ישמשו בפרשנותו.')
+            ->assertSee('Ponte')
+            ->assertSee('בניית תפריט')
+            ->assertSeeText('בסך 500 ש"ח')
+            ->assertSee('data-ct-form', false);
+        $this->get(route('contracts.show', str_repeat('a', 48)))->assertNotFound();
+
+        // An empty pad or no agreement is refused.
+        $this->post(route('contracts.sign', $link->token), ['signer_name' => 'Ala', 'agree' => '1', 'signature' => 'data:image/png;base64,AAAA'])->assertSessionHasErrors('signature');
+        $this->post(route('contracts.sign', $link->token), ['signer_name' => 'Ala', 'signature' => $this->signaturePng()])->assertSessionHasErrors('agree');
+        $this->assertTrue($link->fresh()->isPending());
+
+        $signature = $this->signContract($quote, 'Ala Haj Yahya');
+        $this->assertTrue($signature->isSigned());
+        Storage::disk('local')->assertExists($signature->signature_path);
+        $this->assertSame('Ala Haj Yahya', $signature->snapshot['signed']['name']);
+        $this->assertSame(QuoteStatus::Signed, $quote->fresh()->status);
+        $this->get(route('contracts.show', $link->token))->assertOk()->assertSee('Ala Haj Yahya')->assertSee('data:image/png;base64,', false)->assertDontSee('data-ct-form', false);
+        // Signing twice is refused.
+        $this->post(route('contracts.sign', $link->token), ['signer_name' => 'X', 'agree' => '1', 'signature' => $this->signaturePng()])->assertSessionHasErrors('signature');
+
+        // The agent sees it signed, can view the signature, and can now send it to Finance. The lines are held.
+        $this->actingAs($this->agent)->get(route('workspace.agents.sales.panel', $quote))
+            ->assertOk()
+            ->assertSee(__('sales.contract.state_signed'))
+            ->assertSee(__('sales.contract.view'))
+            ->assertSee(__('sales.contract.resend'))
+            ->assertSee('data-sq-request', false)
+            ->assertDontSee('data-sq-edit', false)
+            ->assertDontSee('data-sq-whatsapp', false);
+        $this->get(route('workspace.agents.sales.document', $quote))->assertOk()->assertSee('Ala Haj Yahya')->assertSee('515151515');
+        $this->put(route('workspace.agents.sales.update', $quote), ['finance_client_id' => $this->client->id, 'lines' => [['kind' => 'base', 'ref_id' => $this->base()->id]]])
+            ->assertSessionHas('error', __('sales.errors.locked'));
+
+        $this->requestClose($quote);
+        $this->assertSame(QuoteStatus::Pending, $quote->fresh()->status);
+
+        // Finance sees the signed contract with the deal, and can open it.
+        $this->actingAs($this->admin)->get(route('workspace.finance.deals'))
+            ->assertOk()
+            ->assertSee(__('sales.contract.finance_title'))
+            ->assertSee('Ala Haj Yahya')
+            ->assertSee(route('workspace.agents.sales.document', $quote), false);
+        $this->get(route('workspace.agents.sales.document', $quote))->assertOk()->assertSee('Ala Haj Yahya');
+
+        // Once Finance has it, the signature can no longer be cancelled.
+        $this->actingAs($this->agent)->post(route('workspace.agents.sales.signature.cancel', $quote))->assertSessionHasErrors('contract');
+        $this->assertTrue($quote->fresh()->isSigned());
+    }
+
+    public function test_sending_again_cancels_the_signature(): void
+    {
+        $quote = $this->quoteFor($this->agent, [['kind' => 'base', 'ref_id' => $this->base()->id]]);
+        $first = $this->signContract($quote);
+
+        // A signed contract is not sent again by accident.
+        $this->actingAs($this->agent)->post(route('workspace.agents.sales.whatsapp', $quote), ['phone' => '0501112233'], ['Accept' => 'application/json'])
+            ->assertUnprocessable();
+        $other = User::factory()->create(['is_admin' => false]);
+        $this->actingAs($other)->post(route('workspace.agents.sales.signature.cancel', $quote))->assertForbidden();
+
+        $this->actingAs($this->agent)->post(route('workspace.agents.sales.signature.cancel', $quote))
+            ->assertRedirect(route('workspace.agents.sales', ['open' => $quote->id, 'resend' => 1]));
+        $this->assertSame(SalesQuoteSignature::CANCELLED, $first->fresh()->status);
+        $this->assertSame($this->agent->id, $first->fresh()->cancelled_by);
+        $quote->refresh();
+        $this->assertFalse($quote->isSigned());
+        $this->assertSame(QuoteStatus::Sent, $quote->status);
+        // The page comes back with the send dialog ready, and the quote can be changed again.
+        $this->get(route('workspace.agents.sales', ['open' => $quote->id, 'resend' => 1]))->assertOk()->assertSee('data-resend', false);
+        $this->put(route('workspace.agents.sales.update', $quote), ['finance_client_id' => $this->client->id, 'lines' => [['kind' => 'base', 'ref_id' => $this->base()->id]]])
+            ->assertSessionHasNoErrors()->assertSessionMissing('error');
+
+        // The old link no longer opens the contract; the new one does.
+        $this->get(route('contracts.show', $first->token))->assertOk()->assertSee(__('sales.contract.closed_title'))->assertDontSee('data-ct-form', false);
+        $this->post(route('contracts.sign', $first->token), ['signer_name' => 'X', 'agree' => '1', 'signature' => $this->signaturePng()])
+            ->assertRedirect(route('contracts.show', $first->token));
+        $second = $this->signContract($quote);
+        $this->assertNotSame($first->token, $second->token);
+        $this->assertTrue($quote->fresh()->isSigned());
     }
 
     public function test_agents_only_see_their_own_quotes(): void
@@ -312,20 +491,54 @@ class SalesWorkspaceTest extends TestCase
         $this->actingAs($other)->get(route('workspace.agents.sales.panel', $quote))->assertForbidden();
     }
 
-    public function test_document_downloads_in_arabic_hebrew_and_english(): void
+    public function test_the_pdf_is_the_contract_with_the_quote_in_it(): void
     {
         $drawer = StorageItem::query()->where('name', 'מגירת כסף')->firstOrFail();
+        $setup = StorageItem::query()->where('name', 'הגדרת מכשירים ורשת LAN')->firstOrFail();
         $quote = $this->quoteFor($this->agent, [
             ['kind' => 'base', 'ref_id' => $this->base()->id],
             ['kind' => 'equipment', 'ref_id' => $drawer->id, 'quantity' => 1],
+            ['kind' => 'service', 'ref_id' => $setup->id],
         ]);
-        $doc = fn (string $lang) => $this->actingAs($this->agent)->get(route('workspace.agents.sales.document', [$quote, 'lang' => $lang, 'pdf' => 1]));
 
-        $doc('ar')->assertOk()->assertSee('dir="rtl"', false)->assertSee('عرض سعر')->assertSee('اشتراك كمان الأساسي')->assertSee('درج نقود')->assertSee('html2pdf', false);
-        $doc('he')->assertOk()->assertSee('dir="rtl"', false)->assertSee('הצעת מחיר')->assertSee('מנוי בסיס קמאן');
-        $doc('en')->assertOk()->assertSee('dir="ltr"', false)->assertSee('Price quote')->assertSee('Kaman base subscription')->assertSee('Cash drawer')->assertDontSee('מנוי בסיס קמאן')->assertDontSee('מגירת כסף');
+        $this->actingAs($this->agent)->get(route('workspace.agents.sales.document', [$quote, 'pdf' => 1]))
+            ->assertOk()
+            ->assertSee('dir="rtl"', false)
+            ->assertSee('הסכם התקשרות לשירותי אפליקציית KAMAN')
+            ->assertSee('הצעת מחיר')
+            ->assertSee('מנוי בסיס קמאן')
+            ->assertSee('מגירת כסף')
+            ->assertSee('הגדרת מכשירים ורשת LAN')
+            ->assertSee(__('sales.contract.groups.devices'))
+            ->assertSee(__('sales.contract.groups.services'))
+            ->assertSee('ולראיה באו הצדדים על החתום:')
+            ->assertSee('html2pdf', false)
+            ->assertDontSee('data-ct-form', false);
         auth()->logout();
         $this->get(route('workspace.agents.sales.document', $quote))->assertRedirect();
+    }
+
+    public function test_services_have_their_own_square_on_the_quote(): void
+    {
+        $catalog = $this->actingAs($this->agent)->get(route('workspace.agents.sales'))->assertOk()->viewData('catalog');
+        $services = collect($catalog['service'])->pluck('price', 'id');
+        $id = fn (string $name): int => StorageItem::query()->where('name', $name)->firstOrFail()->id;
+        $this->assertSame(500.0, $services[$id('בניית תפריט')]);
+        $this->assertSame(200.0, $services[$id('הדרכה מלאה לעובדי הקופה')]);
+        $this->assertSame(200.0, $services[$id('הדרכת CRM בזום')]);
+        $this->assertSame(500.0, $services[$id('הגדרת מכשירים ורשת LAN')]);
+        // Services are not offered as devices.
+        $this->assertNotContains($id('בניית תפריט'), array_column($catalog['equipment'], 'id'));
+
+        $menu = StorageItem::query()->where('name', 'בניית תפריט')->firstOrFail();
+        $quote = $this->quoteFor($this->agent, [
+            ['kind' => 'base', 'ref_id' => $this->base()->id],
+            ['kind' => 'service', 'ref_id' => $menu->id, 'quantity' => 3],
+        ]);
+        $line = $quote->items->firstWhere('kind', 'service');
+        $this->assertSame('one_time', $line->billing);
+        $this->assertSame(1.0, (float) $line->quantity);
+        $this->assertSame(500.0, (float) $quote->one_time_total);
     }
 
     public function test_kaman_agents_devices_are_in_stock(): void
@@ -354,6 +567,8 @@ class SalesWorkspaceTest extends TestCase
 
     private function closeRequest(SalesQuote $quote): TestResponse
     {
+        $this->signed($quote);
+
         return $this->actingAs($this->agent)->post(route('workspace.agents.sales.request', $quote), [
             'deal_note' => 'Standing order signed.',
             'files' => [UploadedFile::fake()->image('standing-order.jpg')],
@@ -421,9 +636,17 @@ class SalesWorkspaceTest extends TestCase
             ->assertOk()
             ->assertSee('Cafe Lina')
             ->assertSee('0529998877')
-            ->assertSee('data-sq-convert', false)
+            // A lead's quote is a plain quote: PDF in a language, sent as a file. No convert, signing or Finance.
+            ->assertSee('data-wa-mode="pdf"', false)
+            ->assertSee('data-sq-pdf-lang="ar"', false)
+            ->assertDontSee('data-sq-convert', false)
+            ->assertDontSee(__('sales.convert.state_title'))
+            ->assertDontSee(__('sales.contract.need_signature'))
             ->assertDontSee('data-sq-request', false);
-        $this->get(route('workspace.agents.sales.document', [$quote, 'lang' => 'en']))->assertOk()->assertSee('Cafe Lina')->assertSee('Lina Haddad');
+        // Its PDF is the price quote, not the contract, in the language picked.
+        $this->get(route('workspace.agents.sales.document', [$quote, 'lang' => 'en']))->assertOk()
+            ->assertSee('Cafe Lina')->assertSee('Price quote')->assertSee('dir="ltr"', false)
+            ->assertDontSee('הסכם התקשרות לשירותי אפליקציית KAMAN');
 
         $this->getJson('/api/mobile/v1/agents/sales')->assertOk()
             ->assertJsonPath('quotes.0.client', null)
@@ -441,25 +664,23 @@ class SalesWorkspaceTest extends TestCase
 
     public function test_a_lead_quote_can_go_out_on_whatsapp(): void
     {
-        Http::fake(['https://green.test/*' => Http::response(['idMessage' => 'ok'])]);
-        KamanWhatsappLine::query()->create([
-            'user_id' => $this->admin->id,
-            'name' => 'Kaman POS — WhatsApp',
-            'system_prompt' => 'test',
-            'stores_members' => false,
-            'integration_type' => 'kaman_whatsapp',
-            'greenapi_url' => 'https://green.test/waInstance1/sendMessage/token',
-            'integration_settings' => ['enabled' => true, 'ignored_reply_phones' => []],
-        ]);
+        $this->whatsappLine();
         $quote = $this->quoteForLead($this->lead());
 
+        // The quote PDF goes as a file, as quotes always did; no contract link is made.
         $this->actingAs($this->agent)->post(route('workspace.agents.sales.whatsapp', $quote), [
+            'phone' => '0529998877',
+        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors(['pdf', 'lang']);
+
+        $this->post(route('workspace.agents.sales.whatsapp', $quote), [
             'phone' => '0529998877',
             'lang' => 'he',
             'pdf' => UploadedFile::fake()->createWithContent('quote.pdf', "%PDF-1.4\n%quote\n"),
         ], ['Accept' => 'application/json'])->assertOk();
 
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/sendFileByUpload/') && str_contains($request->body(), '972529998877@c.us'));
         $this->assertSame(QuoteStatus::Sent, $quote->fresh()->status);
+        $this->assertSame(0, $quote->signatures()->count());
     }
 
     public function test_closing_a_deal_on_an_unconverted_lead_is_refused(): void
@@ -472,7 +693,7 @@ class SalesWorkspaceTest extends TestCase
             $this->closeRequest($quote)->assertSessionHas('error', __('sales.errors.lead_not_converted'));
 
             $quote->refresh();
-            $this->assertSame(QuoteStatus::Draft, $quote->status);
+            $this->assertSame(QuoteStatus::Signed, $quote->status);
             $this->assertNull($quote->requested_at);
             $this->assertCount(0, $quote->files);
         }
@@ -505,7 +726,10 @@ class SalesWorkspaceTest extends TestCase
             $this->assertNull($moved->agent_lead_id);
             $this->assertSame('ar', $moved->lang);
         }
-        $this->get(route('workspace.agents.sales.panel', $quote))->assertOk()->assertSee('data-sq-request', false)->assertDontSee('data-sq-convert', false);
+        // Converted, but not signed yet: the agent sends the contract first.
+        $this->get(route('workspace.agents.sales.panel', $quote))->assertOk()->assertDontSee('data-sq-request', false)->assertDontSee('data-sq-convert', false)->assertSee(__('sales.contract.need_signature'));
+        $this->signContract($quote);
+        $this->actingAs($this->agent)->get(route('workspace.agents.sales.panel', $quote))->assertOk()->assertSee('data-sq-request', false);
 
         $this->closeRequest($quote)->assertRedirect(route('workspace.agents.sales', ['open' => $quote->id]));
         $this->assertSame(QuoteStatus::Pending, $quote->fresh()->status);

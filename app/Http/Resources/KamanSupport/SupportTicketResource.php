@@ -36,6 +36,7 @@ class SupportTicketResource extends JsonResource
             'status' => $ticket->status?->value,
             'summary' => $ticket->summary,
             'details' => $ticket->details,
+            'contact' => $ticket->contact(),
             'restaurant' => $ticket->restaurant,
             'restaurantName' => $ticket->restaurant_name,
             'cashierName' => $ticket->cashier_name,

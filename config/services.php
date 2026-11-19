@@ -73,4 +73,13 @@ return [
         ),
     ],
 
+    // Firebase Cloud Messaging for the Kaman Workspace phone app. Pushes are
+    // off until the Firebase service-account JSON is at this path.
+    'fcm' => [
+        'credentials' => env('FCM_CREDENTIALS', storage_path('app/private/firebase-workspace.json')),
+        // One error push per restaurant in this many minutes, so a broken
+        // printer does not ring the phone for every failed ticket.
+        'failure_cooldown_minutes' => (int) env('FCM_FAILURE_COOLDOWN_MINUTES', 10),
+    ],
+
 ];

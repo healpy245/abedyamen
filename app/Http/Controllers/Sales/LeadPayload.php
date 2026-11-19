@@ -34,13 +34,46 @@ trait LeadPayload
      *
      * @return list<array{id: int, name: string}>
      */
-    private function assignable(): array
+    private function assignable(?User $for = null): array
     {
+        // A worker can only assign to themselves.
+        if ($for !== null && ! $for->managesAgents()) {
+            return [['id' => $for->id, 'name' => (string) $for->name]];
+        }
+
         return User::query()->orderBy('name')->get()
             ->filter(fn (User $user): bool => $user->canOpen(Door::Agents, 'leads') || $user->canOpen(Door::Agents, 'calendar'))
             ->map(fn (User $user): array => ['id' => $user->id, 'name' => $user->name])
             ->values()
             ->all();
+    }
+
+    /**
+     * A worker only gets their own leads and meetings; an agents admin gets everyone's.
+     */
+    private function ownedBy(User $user): \Closure
+    {
+        return fn ($query) => $user->managesAgents() ? $query : $query->where('agent_id', $user->id);
+    }
+
+    private function authorizeOwn(User $user, ?int $agentId): void
+    {
+        abort_unless($user->managesAgents() || $agentId === $user->id, 403);
+    }
+
+    /**
+     * Only an agents admin hands work to someone else.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function keepOwnAgent(User $user, array $data): array
+    {
+        if (! $user->managesAgents()) {
+            unset($data['agent_id']);
+        }
+
+        return $data;
     }
 
     /**
@@ -76,8 +109,12 @@ trait LeadPayload
             'restaurant_id' => $lead->restaurant_id,
             'agent_id' => $lead->agent_id,
             'agent' => (string) $lead->agent?->name,
-            'stage' => self::state($lead->stage),
+            'stage' => self::state($lead->stage) + [
+                'group' => $lead->stage->group(),
+                'group_label' => $lead->stage->groupLabel(),
+            ],
             'next_follow_up_at' => $lead->next_follow_up_at?->toIso8601String(),
+            'created_at' => $lead->created_at?->toIso8601String(),
             'notes' => $lead->notes->map(fn (AgentLeadNote $note): array => [
                 'id' => $note->id,
                 'at' => $note->created_at?->toIso8601String(),

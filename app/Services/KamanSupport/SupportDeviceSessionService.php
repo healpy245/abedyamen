@@ -6,6 +6,7 @@ namespace App\Services\KamanSupport;
 
 use App\Models\KamanSupport\SupportDevice;
 use App\Models\KamanSupport\SupportDeviceLog;
+use App\Services\Push\SupportPushNotifier;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -83,10 +84,11 @@ class SupportDeviceSessionService
         $messageMax = max(200, (int) config('kaman-support.log_message_max', 4000));
         $keep = max(200, (int) config('kaman-support.max_logs_per_device', 5000));
         $accepted = 0;
+        $errors = [];
 
         $rows = array_slice(array_values($rows), 0, $maxBatch);
 
-        DB::transaction(function () use ($device, $rows, $messageMax, $keep, &$accepted): void {
+        DB::transaction(function () use ($device, $rows, $messageMax, $keep, &$accepted, &$errors): void {
             foreach ($rows as $row) {
                 if (! is_array($row)) {
                     continue;
@@ -118,6 +120,9 @@ class SupportDeviceSessionService
 
                 if ($created->wasRecentlyCreated) {
                     $accepted++;
+                    if ((string) $created->level === 'error') {
+                        $errors[] = (string) $created->message;
+                    }
                     if ($created->source === 'printer') {
                         $this->recordPrinterIssue($device, $created);
                     }
@@ -132,6 +137,10 @@ class SupportDeviceSessionService
                 'last_seen_at' => now(),
             ])->save();
         });
+
+        if ($errors !== []) {
+            SupportPushNotifier::safely(fn () => app(SupportPushNotifier::class)->failuresLogged($device, $errors));
+        }
 
         return ['accepted' => $accepted, 'device' => $device->fresh() ?? $device];
     }
@@ -585,7 +594,52 @@ class SupportDeviceSessionService
     /**
      * @return list<array{value: string, label: string}>
      */
+    /**
+     * The restaurant search on every page: the same kaman.rest list as Overview → Restaurants.
+     * The value is the restaurant's subdomain (spelled the way its tablets report it, so device
+     * filters still match) and the label is its Kaman name. Someone limited to one product only
+     * sees the restaurants that use it. If kaman.rest is unreachable it falls back to the
+     * restaurants whose tablets have reported in.
+     *
+     * @return list<array{value: string, label: string, logo?: string}>
+     */
     public function restaurantChoices(): array
+    {
+        $reported = [];
+        foreach ($this->reportedRestaurantChoices() as $choice) {
+            $reported[mb_strtolower($choice['value'])] ??= $choice;
+        }
+
+        $companies = app(\App\Http\Controllers\AgentsWorkspaceController::class)->catalog()['companies'];
+        if ($companies === []) {
+            return array_values($reported);
+        }
+
+        $limited = $this->viewer()?->supportProduct() !== null;
+        $choices = [];
+        foreach ($companies as $company) {
+            $slug = trim((string) ($company['subdomain'] ?? ''));
+            $key = mb_strtolower($slug);
+            if ($slug === '' || isset($choices[$key]) || ($limited && ! isset($reported[$key]))) {
+                continue;
+            }
+            $choices[$key] = [
+                'value' => $reported[$key]['value'] ?? $slug,
+                'label' => trim((string) ($company['name'] ?? '')) ?: $slug,
+                'logo' => (string) ($company['logo'] ?? ''),
+            ];
+        }
+        uasort($choices, static fn (array $a, array $b): int => strnatcasecmp($a['label'], $b['label']));
+
+        return array_values($choices);
+    }
+
+    /**
+     * The restaurants whose tablets have reported in, as the device table names them.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    public function reportedRestaurantChoices(): array
     {
         $seen = [];
         $choices = [];

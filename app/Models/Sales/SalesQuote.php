@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class SalesQuote extends Model
 {
@@ -96,6 +97,28 @@ class SalesQuote extends Model
         return $this->hasMany(SalesQuoteFile::class)->orderBy('id');
     }
 
+    public function signatures(): HasMany
+    {
+        return $this->hasMany(SalesQuoteSignature::class)->latest('id');
+    }
+
+    /**
+     * The contract link still in force: waiting for the client, or signed. Cancelled links are history.
+     */
+    public function signature(): HasOne
+    {
+        return $this->hasOne(SalesQuoteSignature::class)
+            ->ofMany(['id' => 'max'], fn ($query) => $query->where('status', '!=', SalesQuoteSignature::CANCELLED));
+    }
+
+    /**
+     * The client signed the contract and it was not sent again since.
+     */
+    public function isSigned(): bool
+    {
+        return $this->signature?->isSigned() ?? false;
+    }
+
     public function confirmer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
@@ -131,6 +154,14 @@ class SalesQuote extends Model
      * Waiting for Finance or already sold: the lines are with Finance, so the agent can no longer change them.
      */
     public function isLocked(): bool
+    {
+        return $this->isSold() || $this->status === QuoteStatus::Pending || $this->isSigned();
+    }
+
+    /**
+     * Pending or sold: the signature is part of the deal Finance has, so it can no longer be cancelled.
+     */
+    public function isWithFinance(): bool
     {
         return $this->isSold() || $this->status === QuoteStatus::Pending;
     }

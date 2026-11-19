@@ -523,7 +523,7 @@
     var itemDialog = document.querySelector('[data-fin-item-dialog]');
     var adjustDialog = document.querySelector('[data-fin-adjust-dialog]');
 
-    function fillItemForm(action, data) {
+    function fillItemForm(action, data, category) {
         var form = itemDialog.querySelector('[data-fin-item-form]');
         var title = itemDialog.querySelector('#fin-item-title');
         form.reset();
@@ -540,6 +540,10 @@
             form.elements.unit_price.value = data.unit_price || 0;
             form.elements.low_stock.value = data.low_stock || 0;
             form.elements.track_stock.checked = !!data.track_stock;
+        } else if (category) {
+            // New services start as services, without stock.
+            form.elements.category.value = category;
+            form.elements.track_stock.checked = category !== 'service';
         }
         if (window.ds) window.ds.sync(form);
         openDialog(itemDialog);
@@ -550,7 +554,7 @@
         if (!itemDialog) return;
         var newBtn = event.target.closest('[data-fin-item-new]');
         if (newBtn) {
-            fillItemForm(itemDialog.querySelector('[data-fin-item-form]').getAttribute('data-store-action'), null);
+            fillItemForm(itemDialog.querySelector('[data-fin-item-form]').getAttribute('data-store-action'), null, newBtn.getAttribute('data-category'));
             return;
         }
         var editBtn = event.target.closest('[data-fin-item-edit]');
@@ -606,6 +610,35 @@
     }
     if (adjustDialog) {
         adjustDialog.querySelector('[data-fin-adjust-form]').elements.change.addEventListener('input', showAdjustResult);
+    }
+
+    /* ---------- monthly subscription and features ---------- */
+    var featureDialog = document.querySelector('[data-fin-feature-dialog]');
+    if (featureDialog) {
+        var featureForm = featureDialog.querySelector('[data-fin-feature-form]');
+        var featureStore = featureForm.action;
+        document.addEventListener('click', function (event) {
+            var btn = event.target.closest('[data-fin-feature-new], [data-fin-feature-edit]');
+            if (!btn) return;
+            var data = btn.hasAttribute('data-fin-feature-edit') ? JSON.parse(btn.getAttribute('data-feature') || '{}') : null;
+            var title = featureDialog.querySelector('#fin-feature-title');
+            featureForm.reset();
+            featureForm.action = data ? btn.getAttribute('data-fin-feature-edit') : featureStore;
+            featureForm.querySelector('[data-fin-feature-method]').value = data ? 'PATCH' : 'POST';
+            title.textContent = title.getAttribute(data ? 'data-edit' : 'data-new');
+            if (data) {
+                ['name', 'name_ar', 'name_en', 'price', 'note', 'bullets'].forEach(function (key) {
+                    featureForm.elements[key].value = data[key] == null ? '' : data[key];
+                });
+                featureForm.elements.billing.value = data.billing || 'monthly';
+                featureForm.elements.popular.checked = !!data.popular;
+            }
+            // The base subscription is always monthly.
+            featureDialog.querySelector('[data-fin-feature-billing]').hidden = !!(data && data.kind === 'base');
+            if (window.ds) window.ds.sync(featureForm);
+            openDialog(featureDialog);
+            window.setTimeout(function () { featureForm.elements.name.focus(); }, 60);
+        });
     }
 
     // Remember the create URL; editing an item points the same form elsewhere.

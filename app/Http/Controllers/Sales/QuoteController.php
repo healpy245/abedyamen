@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\Finance\FinanceClientDirectory;
 use App\Services\Sales\DealRequests;
 use App\Services\Sales\LeadConversion;
+use App\Services\Sales\QuoteContract;
 use App\Services\Sales\QuoteBuilder;
 use App\Services\Sales\QuoteWhatsApp;
 use Illuminate\Http\JsonResponse;
@@ -38,10 +39,10 @@ class QuoteController extends Controller
         $directory->syncIfStale();
 
         $status = QuoteStatus::tryFrom((string) $request->query('status', ''));
-        $agentId = $user->is_admin ? $request->integer('agent') : 0;
+        $agentId = $user->managesAgents() ? $request->integer('agent') : 0;
         $search = trim((string) $request->query('q', ''));
 
-        $visible = SalesQuote::query()->when(! $user->is_admin, fn ($query) => $query->where('agent_id', $user->id));
+        $visible = SalesQuote::query()->when(! $user->managesAgents(), fn ($query) => $query->where('agent_id', $user->id));
 
         $quotes = (clone $visible)
             ->with(['client:id,name', 'lead:id,name', 'agent:id,name'])
@@ -59,8 +60,8 @@ class QuoteController extends Controller
 
         $sold = (clone $visible)->where('status', QuoteStatus::Sold);
         $open = SalesQuote::query()
-            ->with(['client', 'lead.client', 'agent:id,name', 'items.catalogItem', 'items.storageItem', 'invoice', 'files'])
-            ->when(! $user->is_admin, fn ($query) => $query->where('agent_id', $user->id))
+            ->with(['client', 'lead.client', 'agent:id,name', 'items.catalogItem', 'items.storageItem', 'invoice', 'files', 'signature'])
+            ->when(! $user->managesAgents(), fn ($query) => $query->where('agent_id', $user->id))
             ->find($request->integer('open'));
 
         return view('workspace.agents.sales', [
@@ -70,17 +71,19 @@ class QuoteController extends Controller
             'search' => $search,
             'filters' => ['status' => $status?->value ?? '', 'agent' => $agentId ?: ''],
             'stats' => [
-                'open' => (clone $visible)->whereIn('status', [QuoteStatus::Draft, QuoteStatus::Sent, QuoteStatus::Returned])->count(),
+                'open' => (clone $visible)->whereIn('status', [QuoteStatus::Draft, QuoteStatus::Sent, QuoteStatus::Signed, QuoteStatus::Returned])->count(),
                 'pending' => (clone $visible)->where('status', QuoteStatus::Pending)->count(),
                 'sold' => (clone $sold)->count(),
                 'monthly' => (float) (clone $sold)->sum('monthly_total'),
                 'one_time' => (float) (clone $sold)->sum('one_time_total'),
             ],
-            'agents' => $user->is_admin
+            'agents' => $user->managesAgents()
                 ? User::query()->whereIn('id', SalesQuote::query()->select('agent_id')->whereNotNull('agent_id'))->orderBy('name')->pluck('name', 'id')->all()
                 : [],
             'clients' => FinanceClient::query()->orderBy('name')->get(['id', 'name', 'contact_name', 'phone']),
-            'leads' => $user->canOpen(Door::Agents, 'leads') ? AgentLead::query()->orderBy('name')->get(['id', 'name', 'contact', 'phone']) : null,
+            'leads' => $user->canOpen(Door::Agents, 'leads')
+                ? AgentLead::query()->when(! $user->managesAgents(), fn ($query) => $query->where('agent_id', $user->id))->orderBy('name')->get(['id', 'name', 'contact', 'phone'])
+                : null,
             'catalog' => $this->catalog(),
         ]);
     }
@@ -114,8 +117,12 @@ class QuoteController extends Controller
     public function requestDeal(Request $request, SalesQuote $quote, DealRequests $deals, LeadConversion $conversion): RedirectResponse
     {
         $this->authorizeQuote($request, $quote);
-        if ($quote->isLocked()) {
+        if ($quote->isWithFinance()) {
             return back()->with('error', __('sales.errors.locked'));
+        }
+        // Finance closes a deal on the client's signed contract.
+        if (! $quote->isSigned()) {
+            return back()->with('error', __('sales.errors.not_signed'));
         }
         if (! $conversion->settle($quote)) {
             return back()->with('error', __('sales.errors.lead_not_converted'));
@@ -164,31 +171,63 @@ class QuoteController extends Controller
     }
 
     /**
-     * Sends the quote PDF (made in the browser) to the client on WhatsApp.
+     * Sends the client a WhatsApp link to read and sign the contract. A lead's quote goes out as the quote PDF
+     * (made in the browser), as quotes always did.
      */
     public function whatsapp(Request $request, SalesQuote $quote, QuoteWhatsApp $whatsapp): JsonResponse
     {
         $this->authorizeQuote($request, $quote);
+        if ($quote->needsConversion()) {
+            $data = $request->validate([
+                'phone' => ['required', 'string', 'max:40'],
+                'message' => ['nullable', 'string', 'max:1000'],
+                'lang' => ['required', Rule::in(SalesQuote::DOCUMENT_LANGUAGES)],
+                'pdf' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+            ]);
+
+            try {
+                $whatsapp->sendPdf(
+                    $quote,
+                    $data['phone'],
+                    (string) ($data['message'] ?? ''),
+                    $request->file('pdf'),
+                    __('sales.doc.file_name', ['number' => $quote->number], $data['lang']).'.pdf',
+                );
+            } catch (RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return response()->json(['message' => __('sales.flash.whatsapp_sent', ['phone' => $data['phone']])]);
+        }
+
         $data = $request->validate([
             'phone' => ['required', 'string', 'max:40'],
             'message' => ['nullable', 'string', 'max:1000'],
-            'lang' => ['required', Rule::in(SalesQuote::DOCUMENT_LANGUAGES)],
-            'pdf' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ]);
+        if ($quote->isSigned()) {
+            return response()->json(['message' => __('sales.contract.errors.already_signed')], 422);
+        }
 
         try {
-            $whatsapp->send(
-                $quote->loadMissing('client'),
-                $data['phone'],
-                (string) ($data['message'] ?? ''),
-                $request->file('pdf'),
-                __('sales.doc.file_name', ['number' => $quote->number], $data['lang']).'.pdf',
-            );
+            $whatsapp->send($quote->loadMissing('client'), $data['phone'], (string) ($data['message'] ?? ''), $request->user());
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json(['message' => __('sales.flash.whatsapp_sent', ['phone' => $data['phone']])]);
+    }
+
+    /**
+     * Cancels the contract link in force and its signature, so the contract can be changed and sent again.
+     */
+    public function cancelSignature(Request $request, SalesQuote $quote, QuoteContract $contract): RedirectResponse
+    {
+        $this->authorizeQuote($request, $quote);
+        $contract->cancel($quote, $request->user());
+
+        return redirect()
+            ->route('workspace.agents.sales', ['open' => $quote->id, 'resend' => 1])
+            ->with('success', __('sales.contract.flash.cancelled'));
     }
 
     /**
@@ -229,29 +268,70 @@ class QuoteController extends Controller
     public function panel(Request $request, SalesQuote $quote): View
     {
         $this->authorizeQuote($request, $quote);
-        $quote->load(['client', 'lead.client', 'agent:id,name', 'items.catalogItem', 'items.storageItem', 'invoice', 'files']);
+        $quote->load(['client', 'lead.client', 'agent:id,name', 'items.catalogItem', 'items.storageItem', 'invoice', 'files', 'signature']);
 
         return view('workspace.agents.partials.quote-panel', ['quote' => $quote]);
     }
 
     /**
-     * The printable quote. With ?pdf=1 the page turns itself into a PDF download (the panel loads it in a hidden frame).
+     * The printable contract (the Kaman service agreement with the quote). Signed, it shows the client's
+     * signature. With ?pdf=1 the page turns itself into a PDF download (the panel loads it in a hidden frame).
+     * Finance opens it from the deal too.
      */
-    public function document(Request $request, SalesQuote $quote): View
+    public function document(Request $request, SalesQuote $quote, QuoteContract $contract): View
     {
-        $this->authorizeQuote($request, $quote);
+        if (! $request->user()?->canOpenSubDoor(Door::Finance, 'deals')) {
+            $this->authorizeQuote($request, $quote);
+        }
 
-        $lang = (string) $request->query('lang', $quote->lang);
-        $lang = in_array($lang, SalesQuote::DOCUMENT_LANGUAGES, true) ? $lang : $quote->lang;
-        app()->setLocale($lang);
-        $quote->load(['client', 'lead', 'agent:id,name', 'items.catalogItem', 'items.storageItem']);
+        // A lead's quote is the plain price quote, in the language picked.
+        if ($quote->needsConversion()) {
+            $lang = (string) $request->query('lang', $quote->lang);
+            $lang = in_array($lang, SalesQuote::DOCUMENT_LANGUAGES, true) ? $lang : $quote->lang;
+            app()->setLocale($lang);
+            $quote->load(['client', 'lead', 'agent:id,name', 'items.catalogItem', 'items.storageItem']);
 
-        return view('workspace.agents.quote-document', [
+            return view('workspace.agents.quote-document', [
+                'quote' => $quote,
+                'lang' => $lang,
+                'pdf' => in_array((string) $request->query('pdf'), ['1', 'blob'], true),
+                'filename' => trim((string) $request->query('name', '')) ?: (string) $quote->number,
+            ]);
+        }
+
+        app()->setLocale(QuoteContract::LANG);
+        $quote->load('signature');
+        $signature = $quote->signature?->isSigned() ? $quote->signature : null;
+
+        return view('workspace.agents.contract', [
             'quote' => $quote,
-            'lang' => $lang,
+            'contract' => $contract->data($quote, $signature),
+            'signature' => $signature,
+            'mode' => 'document',
             'pdf' => in_array((string) $request->query('pdf'), ['1', 'blob'], true),
             'filename' => trim((string) $request->query('name', '')) ?: (string) $quote->number,
         ]);
+    }
+
+    /**
+     * @param  callable(\Illuminate\Database\Eloquent\Builder<StorageItem>): mixed  $scope
+     * @return list<array<string, mixed>>
+     */
+    private function storage(callable $scope): array
+    {
+        return StorageItem::query()
+            ->where('active', true)
+            ->tap($scope)
+            ->orderByRaw("case when category = 'hardware' then 0 else 1 end")
+            ->orderBy('name')
+            ->get()
+            ->map(fn (StorageItem $item): array => [
+                'id' => $item->id,
+                'name' => $item->localName(),
+                'price' => (float) $item->unit_price,
+                'billing' => 'one_time',
+                'stock' => $item->track_stock ? $item->stock : null,
+            ])->values()->all();
     }
 
     private function agent(Request $request): User
@@ -265,7 +345,7 @@ class QuoteController extends Controller
     private function authorizeQuote(Request $request, SalesQuote $quote): void
     {
         $user = $this->agent($request);
-        abort_unless($user->is_admin || $quote->agent_id === $user->id, 403);
+        abort_unless($user->managesAgents() || $quote->agent_id === $user->id, 403);
     }
 
     /**
@@ -285,20 +365,9 @@ class QuoteController extends Controller
         return [
             'base' => SalesCatalogItem::query()->listed('base')->get()->map($offer)->all(),
             'feature' => SalesCatalogItem::query()->listed('feature')->get()->map($offer)->all(),
-            // Devices first, then setup and other one-time services. Subscriptions are billed monthly, not sold here.
-            'equipment' => StorageItem::query()
-                ->where('active', true)
-                ->where('category', '!=', StorageCategory::Subscription)
-                ->orderByRaw("case when category = 'hardware' then 0 else 1 end")
-                ->orderBy('name')
-                ->get()
-                ->map(fn (StorageItem $item): array => [
-                    'id' => $item->id,
-                    'name' => $item->localName(),
-                    'price' => (float) $item->unit_price,
-                    'billing' => 'one_time',
-                    'stock' => $item->track_stock ? $item->stock : null,
-                ])->all(),
+            // Devices by quantity, and one-time services. Subscriptions are billed monthly, not sold here.
+            'equipment' => $this->storage(fn ($query) => $query->whereNotIn('category', [StorageCategory::Subscription, StorageCategory::Service])),
+            'service' => $this->storage(fn ($query) => $query->where('category', StorageCategory::Service)),
         ];
     }
 }

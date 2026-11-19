@@ -27,7 +27,7 @@ class AgentsController extends Controller
         $directory->syncIfStale();
 
         // An agent sees their own quotes; an admin sees everyone's.
-        $visible = SalesQuote::query()->when(! $user->is_admin, fn ($query) => $query->where('agent_id', $user->id));
+        $visible = SalesQuote::query()->when(! $user->managesAgents(), fn ($query) => $query->where('agent_id', $user->id));
         $sold = (clone $visible)->where('status', QuoteStatus::Sold);
 
         return response()->json([
@@ -53,7 +53,7 @@ class AgentsController extends Controller
     public function quote(Request $request, SalesQuote $quote): JsonResponse
     {
         $user = $this->agent($request);
-        abort_unless($user->is_admin || $quote->agent_id === $user->id, 403);
+        abort_unless($user->managesAgents() || $quote->agent_id === $user->id, 403);
 
         $quote->load(['client', 'lead:id,name', 'agent:id,name', 'items', 'invoice', 'files', 'confirmer:id,name']);
 

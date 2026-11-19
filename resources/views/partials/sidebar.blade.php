@@ -28,13 +28,13 @@
     <div class="kaman-sidebar__section">
         <p class="kaman-sidebar__heading">{{ __('app.quick_downloads') }}</p>
         <div class="kaman-sidebar__downloads">
-            <a href="{{ asset('downloads/kaman-pos.apk') }}?v=1.3.84.108"
+            <a href="{{ asset('downloads/kaman-pos.apk') }}?v=1.3.94.118"
                class="kaman-sidebar__download"
-               download="KamanPOS-1.3.84.apk">
+               download="KamanPOS-1.3.94.apk">
                 @include('app-development.partials.icon', ['name' => 'apk'])
                 <span>{{ __('app.download_pos_android') }}</span>
             </a>
-            <a href="{{ asset('downloads/kaman-pos-setup.exe') }}?v=1.3.84.108"
+            <a href="{{ asset('downloads/kaman-pos-setup.exe') }}?v=1.3.94.118"
                class="kaman-sidebar__download"
                download="KamanPOS-Setup.exe">
                 @include('app-development.partials.icon', ['name' => 'download'])

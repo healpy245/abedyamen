@@ -24,6 +24,7 @@ class LeadController extends Controller
 
         return response()->json([
             'leads' => AgentLead::query()
+                ->tap($this->ownedBy($user))
                 ->with(['agent:id,name', 'notes.user:id,name'])
                 ->latest('id')
                 ->get()
@@ -31,7 +32,7 @@ class LeadController extends Controller
                 ->values()
                 ->all(),
             'stages' => $this->states(LeadStage::class),
-            'agents' => $this->assignable(),
+            'agents' => $this->assignable($user),
             'cities' => collect($cities)->map(fn (string $name, int|string $id): array => ['id' => (string) $id, 'name' => $name])->values()->all(),
             'me' => $user->id,
         ]);
@@ -40,7 +41,7 @@ class LeadController extends Controller
     public function store(Request $request, AgentsWorkspaceController $workspace): JsonResponse
     {
         $user = $this->agent($request);
-        $data = $this->validated($request, creating: true);
+        $data = $this->keepOwnAgent($user, $this->validated($request, creating: true));
 
         $lead = AgentLead::query()->create($this->attributes($data) + [
             'agent_id' => $user->id,
@@ -53,8 +54,9 @@ class LeadController extends Controller
 
     public function update(Request $request, AgentLead $lead, AgentsWorkspaceController $workspace): JsonResponse
     {
-        $this->agent($request);
-        $lead->update($this->attributes($this->validated($request, creating: false)));
+        $user = $this->agent($request);
+        $this->authorizeOwn($user, $lead->agent_id);
+        $lead->update($this->attributes($this->keepOwnAgent($user, $this->validated($request, creating: false))));
 
         return $this->answer($lead, $workspace);
     }
@@ -62,6 +64,7 @@ class LeadController extends Controller
     public function note(Request $request, AgentLead $lead, AgentsWorkspaceController $workspace): JsonResponse
     {
         $user = $this->agent($request);
+        $this->authorizeOwn($user, $lead->agent_id);
         $data = $request->validate(['text' => ['required', 'string', 'max:2000']]);
 
         $lead->notes()->create(['user_id' => $user->id, 'text' => $data['text']]);
@@ -71,7 +74,7 @@ class LeadController extends Controller
 
     public function destroy(Request $request, AgentLead $lead): JsonResponse
     {
-        $this->agent($request);
+        $this->authorizeOwn($this->agent($request), $lead->agent_id);
         // Its quotes have no client to fall back on yet, and may be another agent's.
         if ($lead->quotes()->exists()) {
             return response()->json(['message' => __('sales.errors.lead_has_quotes')], 422);
@@ -109,7 +112,7 @@ class LeadController extends Controller
                         'city_id' => mb_substr((string) ($row['city_id'] ?? ''), 0, 64) ?: null,
                         'restaurant_id' => mb_substr((string) ($row['restaurant_id'] ?? ''), 0, 64) ?: null,
                         'agent_id' => $user->id,
-                        'stage' => LeadStage::tryFrom((string) ($row['stage'] ?? ''))?->value ?? LeadStage::New->value,
+                        'stage' => LeadStage::fromInput($row['stage'] ?? '')?->value ?? LeadStage::New->value,
                         'next_follow_up_at' => $this->instant($row['next_follow_up_at'] ?? null),
                         'created_by' => $user->id,
                     ],
@@ -148,6 +151,10 @@ class LeadController extends Controller
     private function validated(Request $request, bool $creating): array
     {
         $required = $creating ? 'required' : 'sometimes';
+        // The phone app may still send a stage from before "After meeting" replaced them.
+        if ($request->has('stage') && array_key_exists((string) $request->input('stage'), LeadStage::LEGACY)) {
+            $request->merge(['stage' => LeadStage::LEGACY[(string) $request->input('stage')]]);
+        }
 
         return $request->validate([
             'name' => [$required, 'string', 'max:255'],

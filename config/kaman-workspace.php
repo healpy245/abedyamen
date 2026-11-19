@@ -10,8 +10,8 @@ return [
 
     // The public POS files in public/downloads. Android and Windows can move
     // separately. The sign-in page reads each file's own ?v= stamp.
-    'pos_version' => '1.3.86',
-    'pos_build' => '110',
-    'pos_windows_version' => '1.3.86',
-    'pos_windows_build' => '110',
+    'pos_version' => '1.3.94',
+    'pos_build' => '118',
+    'pos_windows_version' => '1.3.94',
+    'pos_windows_build' => '118',
 ];

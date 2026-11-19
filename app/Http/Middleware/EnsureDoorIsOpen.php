@@ -39,8 +39,8 @@ class EnsureDoorIsOpen
             return $next($request);
         }
 
-        // Finance's deal page shows the proof files an agent attached to a quote.
-        if ($request->routeIs('workspace.agents.sales.file') && $user->canOpenSubDoor(Door::Finance, 'deals')) {
+        // Finance's deal page shows the proof files an agent attached to a quote, and the signed contract.
+        if ($request->routeIs('workspace.agents.sales.file', 'workspace.agents.sales.document') && $user->canOpenSubDoor(Door::Finance, 'deals')) {
             return $next($request);
         }
 

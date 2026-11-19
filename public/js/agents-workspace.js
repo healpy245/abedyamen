@@ -8,12 +8,12 @@
     var I18N = {
         en: {
             leads: 'Leads', calendar: 'Calendar', clients: 'Clients', agents: 'Sales Agents',
-            new: 'New lead', contacted: 'Contacted', meeting: 'Meeting scheduled', demo: 'Demo completed', negotiation: 'Negotiation', won: 'Won', lost: 'Lost',
+            new: 'New lead', contacted: 'Contacted', no_answer: 'Not answering', deciding: 'Will decide on a meeting', not_interested: 'Not interested', meeting: 'Meeting scheduled', after_meeting: 'After meeting', waiting: 'Waiting to decide', won: 'Won', lost: 'Lost', demo: 'Demo',
             markDone: 'Mark as done', scheduled: 'Scheduled', confirmed: 'Confirmed', done: 'Done', missed: 'Missed', cancelled: 'Cancelled',
             visit: 'Visit', call: 'Call', followup: 'Follow-up', onboarding: 'Onboarding',
             searchEmpty: 'Nothing matches.', create: 'Create', save: 'Save', cancel: 'Cancel', delete: 'Delete', edit: 'Edit',
             convert: 'Convert to client', openClient: 'Open client', schedule: 'Schedule', addNote: 'Add note', notePh: 'Write a note',
-            newLead: 'New lead', newAppt: 'New appointment', newClient: 'New client',
+            newLead: 'New lead', newAppt: 'New appointment', newClient: 'New client', scheduleMeeting: 'When is the meeting?', scheduleMeetingHint: 'Pick the day and hour. It goes on the calendar.',
             restaurant: 'Restaurant', contact: 'Contact', phone: 'Phone', city: 'City', agent: 'Agent', follow: 'Next follow-up',
             owner: 'Owner', address: 'Address', site: 'Website', notes: 'Notes', status: 'Status', services: 'Services', subscription: 'Subscription',
             last: 'Last activity', date: 'Date', time: 'Time', type: 'Type', all: 'All', any: 'Any time', today: 'Today', week: 'This week', overdue: 'Overdue',
@@ -33,7 +33,7 @@
             businessName: 'Registered business name', taxId: 'Company / dealer no. (ח.פ / ע.מ)', taxIdHint: '9 digits',
             namePh: 'Business name', required: 'Name and phone are required', pick: 'Choose a lead or client',
             noBilling: 'No billing on file yet.', noDevices: 'No devices are connected.', openTicket: 'Open ticket',
-            filterAgent: 'Agent', filterCity: 'City', filterStatus: 'Status', filterWhen: 'Follow-up',
+            filterAgent: 'Agent', filterCity: 'City', filterStatus: 'Status', filterWhen: 'Follow-up', periodAll: 'All time', periodWeek: 'Last week', periodMonth: 'Last month', periodYear: 'Last year', periodCustom: 'Custom', periodFrom: 'From', periodTo: 'To', periodLabel: 'Added', leadsReport: 'PDF report', dp_placeholder: 'Date added', dp_pick: 'Pick a start and end day', dp_clear: 'Clear', dp_apply: 'Apply', dp_today: 'Today', dp_yesterday: 'Yesterday', dp_last7: 'Last 7 days', dp_last30: 'Last 30 days', dp_lastWeek: 'Last week', dp_thisMonth: 'This month', dp_lastMonth: 'Last month', dp_thisYear: 'This year', dp_lastYear: 'Last year', dp_custom: 'Custom range',
             pipeline: 'Sales pipeline', pipelineLead: 'Restaurants, follow-ups and new opportunities',
             leadDetails: 'Lead details', leadHint: 'Edit your opportunity without leaving the board',
             saveChanges: 'Save changes', allAgents: 'All agents', allCities: 'All cities', searchLead: 'Search restaurant or contact',
@@ -46,12 +46,12 @@
         },
         he: {
             leads: 'לידים', calendar: 'לוח זמנים', clients: 'מסעדות', agents: 'סוכני מכירות',
-            new: 'ליד חדש', contacted: 'נוצר קשר', meeting: 'פגישה נקבעה', demo: 'הדגמה הושלמה', negotiation: 'משא ומתן', won: 'נסגר', lost: 'אבוד',
+            new: 'ליד חדש', contacted: 'נוצר קשר', no_answer: 'לא עונה', deciding: 'יחליט על פגישה', not_interested: 'לא מעוניין', meeting: 'פגישה נקבעה', after_meeting: 'אחרי פגישה', waiting: 'ממתין להחלטה', won: 'נסגר', lost: 'אבוד', demo: 'הדגמה',
             markDone: 'סמן כבוצע', scheduled: 'מתוכנן', confirmed: 'מאושר', done: 'בוצע', missed: 'לא הגיע', cancelled: 'בוטל',
             visit: 'ביקור', call: 'שיחה', followup: 'מעקב', onboarding: 'הקמה',
             searchEmpty: 'אין התאמה.', create: 'יצירה', save: 'שמירה', cancel: 'ביטול', delete: 'מחיקה', edit: 'עריכה',
             convert: 'המרה ללקוח', openClient: 'פתיחת הלקוח', schedule: 'קביעת פגישה', addNote: 'הוספת הערה', notePh: 'כתבו הערה',
-            newLead: 'ליד חדש', newAppt: 'פגישה חדשה', newClient: 'לקוח חדש',
+            newLead: 'ליד חדש', newAppt: 'פגישה חדשה', newClient: 'לקוח חדש', scheduleMeeting: 'מתי הפגישה?', scheduleMeetingHint: 'בוחרים יום ושעה, והפגישה נכנסת ללוח השנה.',
             restaurant: 'מסעדה', contact: 'איש קשר', phone: 'טלפון', city: 'עיר', agent: 'סוכן', follow: 'המעקב הבא',
             owner: 'בעלים', address: 'כתובת', site: 'אתר', notes: 'הערות', status: 'סטטוס', services: 'שירותים', subscription: 'מנוי',
             last: 'פעילות אחרונה', date: 'תאריך', time: 'שעה', type: 'סוג', all: 'הכל', any: 'כל הזמנים', today: 'היום', week: 'השבוע', overdue: 'באיחור',
@@ -71,7 +71,7 @@
             businessName: 'שם העסק הרשום', taxId: 'ח.פ / ע.מ', taxIdHint: '9 ספרות',
             namePh: 'שם העסק', required: 'שם וטלפון חובה', pick: 'בחרו ליד או לקוח',
             noBilling: 'אין חיוב עדיין.', noDevices: 'אין מכשירים מחוברים.', openTicket: 'קריאה פתוחה',
-            filterAgent: 'סוכן', filterCity: 'עיר', filterStatus: 'סטטוס', filterWhen: 'מעקב',
+            filterAgent: 'סוכן', filterCity: 'עיר', filterStatus: 'סטטוס', filterWhen: 'מעקב', periodAll: 'כל הזמנים', periodWeek: 'שבוע אחרון', periodMonth: 'חודש אחרון', periodYear: 'שנה אחרונה', periodCustom: 'טווח תאריכים', periodFrom: 'מתאריך', periodTo: 'עד תאריך', periodLabel: 'נוסף', leadsReport: 'דוח PDF', dp_placeholder: 'תאריך הוספה', dp_pick: 'בוחרים יום התחלה ויום סיום', dp_clear: 'ניקוי', dp_apply: 'החלה', dp_today: 'היום', dp_yesterday: 'אתמול', dp_last7: '7 ימים אחרונים', dp_last30: '30 ימים אחרונים', dp_lastWeek: 'השבוע שעבר', dp_thisMonth: 'החודש', dp_lastMonth: 'החודש שעבר', dp_thisYear: 'השנה', dp_lastYear: 'השנה שעברה', dp_custom: 'טווח מותאם',
             pipeline: 'צינור מכירות', pipelineLead: 'מסעדות, מעקבים והזדמנויות חדשות',
             leadDetails: 'פרטי ליד', leadHint: 'עריכת ההזדמנות בלי לצאת מהלוח',
             saveChanges: 'שמירת שינויים', allAgents: 'כל הסוכנים', allCities: 'כל הערים', searchLead: 'חיפוש מסעדה או איש קשר',
@@ -84,12 +84,12 @@
         },
         ar: {
             leads: 'العملاء المحتملون', calendar: 'الجدول', clients: 'المطاعم', agents: 'وكلاء المبيعات',
-            new: 'عميل جديد', contacted: 'تم التواصل', meeting: 'اجتماع محدد', demo: 'اكتمل العرض', negotiation: 'تفاوض', won: 'تم الفوز', lost: 'خسارة',
+            new: 'عميل جديد', contacted: 'تم التواصل', no_answer: 'لا يرد', deciding: 'سيقرر بشأن الاجتماع', not_interested: 'غير مهتم', meeting: 'اجتماع محدد', after_meeting: 'بعد الاجتماع', waiting: 'بانتظار القرار', won: 'تم الفوز', lost: 'خسارة', demo: 'عرض',
             markDone: 'تحديد كمنجز', scheduled: 'مجدول', confirmed: 'مؤكد', done: 'تم', missed: 'لم يحضر', cancelled: 'أُلغي',
             visit: 'زيارة', call: 'اتصال', followup: 'متابعة', onboarding: 'تشغيل',
             searchEmpty: 'لا توجد نتائج.', create: 'إنشاء', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف', edit: 'تعديل',
             convert: 'تحويل إلى عميل', openClient: 'فتح العميل', schedule: 'جدولة', addNote: 'إضافة ملاحظة', notePh: 'اكتب ملاحظة',
-            newLead: 'عميل محتمل', newAppt: 'موعد جديد', newClient: 'عميل جديد',
+            newLead: 'عميل محتمل', newAppt: 'موعد جديد', newClient: 'عميل جديد', scheduleMeeting: 'متى الاجتماع؟', scheduleMeetingHint: 'اختر اليوم والساعة، ويُضاف الاجتماع إلى التقويم.',
             restaurant: 'المطعم', contact: 'جهة الاتصال', phone: 'الهاتف', city: 'المدينة', agent: 'الوكيل', follow: 'المتابعة التالية',
             owner: 'المالك', address: 'العنوان', site: 'الموقع', notes: 'ملاحظات', status: 'الحالة', services: 'الخدمات', subscription: 'الاشتراك',
             last: 'آخر نشاط', date: 'التاريخ', time: 'الوقت', type: 'النوع', all: 'الكل', any: 'كل الأوقات', today: 'اليوم', week: 'هذا الأسبوع', overdue: 'متأخر',
@@ -109,7 +109,7 @@
             businessName: 'اسم العمل المسجّل', taxId: 'رقم الشركة / المشتغل (ח.פ / ע.מ)', taxIdHint: '9 أرقام',
             namePh: 'اسم العمل', required: 'الاسم والهاتف مطلوبان', pick: 'اختر عميلاً أو مطعماً',
             noBilling: 'لا فوترة بعد.', noDevices: 'لا أجهزة متصلة.', openTicket: 'تذكرة مفتوحة',
-            filterAgent: 'الوكيل', filterCity: 'المدينة', filterStatus: 'الحالة', filterWhen: 'المتابعة',
+            filterAgent: 'الوكيل', filterCity: 'المدينة', filterStatus: 'الحالة', filterWhen: 'المتابعة', periodAll: 'كل الأوقات', periodWeek: 'آخر أسبوع', periodMonth: 'آخر شهر', periodYear: 'آخر سنة', periodCustom: 'نطاق تواريخ', periodFrom: 'من', periodTo: 'إلى', periodLabel: 'أُضيف', leadsReport: 'تقرير PDF', dp_placeholder: 'تاريخ الإضافة', dp_pick: 'اختر يوم البداية ويوم النهاية', dp_clear: 'مسح', dp_apply: 'تطبيق', dp_today: 'اليوم', dp_yesterday: 'أمس', dp_last7: 'آخر 7 أيام', dp_last30: 'آخر 30 يوم', dp_lastWeek: 'الأسبوع الماضي', dp_thisMonth: 'هذا الشهر', dp_lastMonth: 'الشهر الماضي', dp_thisYear: 'هذه السنة', dp_lastYear: 'السنة الماضية', dp_custom: 'فترة مخصصة',
             pipeline: 'مسار المبيعات', pipelineLead: 'مطاعم ومتابعات وفرص جديدة',
             leadDetails: 'تفاصيل العميل المحتمل', leadHint: 'عدّل الفرصة دون مغادرة اللوحة',
             saveChanges: 'حفظ التغييرات', allAgents: 'كل الوكلاء', allCities: 'كل المدن', searchLead: 'ابحث عن مطعم أو جهة اتصال',
@@ -251,8 +251,40 @@
     });
 
 
-    var STAGES = ['new', 'contacted', 'meeting', 'demo', 'negotiation', 'won', 'lost'];
-    var LANE_COLOR = { new: '#5892ee', contacted: '#f58220', meeting: '#e6b349', demo: '#1baa82', negotiation: '#8b6bd7', won: '#128b66', lost: '#d96c3d' };
+    // A lead's stage. "Contacted" and "After meeting" each hold three sub-statuses, shown as one lane with a
+    // drop area per sub-status. Dropped on the lane itself, a lead takes the lane's first-choice sub-status.
+    var GROUPS = {
+        contacted: { subs: ['no_answer', 'deciding', 'not_interested'], fallback: 'deciding' },
+        after_meeting: { subs: ['waiting', 'won', 'lost'], fallback: 'waiting' }
+    };
+    var AFTER_MEETING = GROUPS.after_meeting.subs;
+    var STAGES = ['new', 'no_answer', 'deciding', 'not_interested', 'meeting', 'waiting', 'won', 'lost'];
+    var LANES = ['new', 'contacted', 'meeting', 'after_meeting'];
+    var FILTER_STAGES = ['new', 'contacted', 'no_answer', 'deciding', 'not_interested', 'meeting', 'after_meeting', 'waiting', 'won', 'lost'];
+    var LEGACY_STAGE = { contacted: 'deciding', demo: 'waiting', negotiation: 'waiting' };
+    var LANE_COLOR = {
+        new: '#5892ee', contacted: '#f58220', no_answer: '#9aa3b2', deciding: '#f58220', not_interested: '#d96c3d',
+        meeting: '#e6b349', after_meeting: '#8b6bd7', waiting: '#8b6bd7', won: '#128b66', lost: '#d96c3d'
+    };
+
+    function stageGroup(stage) {
+        for (var key in GROUPS) {
+            if (GROUPS[key].subs.indexOf(stage) !== -1) return key;
+        }
+        return stage;
+    }
+
+    // "Contacted › Not answering", "After meeting › Won": a sub-status reads the same in every picker.
+    function stageLabel(stage) {
+        var group = stageGroup(stage);
+        return group === stage ? t(stage) : t(group) + ' › ' + t(stage);
+    }
+
+    function stageOptions(list, selected) {
+        return list.map(function (key) {
+            return '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' + esc(stageLabel(key)) + '</option>';
+        }).join('');
+    }
     var APPT_STATUS = ['scheduled', 'confirmed', 'done', 'missed', 'cancelled'];
 
     function tri(row) { return { he: row[0], en: row[1], ar: row[2] }; }
@@ -586,10 +618,11 @@
             phone: row.phone || '',
             cityId: row.city_id || '',
             agentId: row.agent_id ? String(row.agent_id) : '',
-            stage: row.stage ? row.stage.value : 'new',
+            stage: row.stage ? (LEGACY_STAGE[row.stage.value] || row.stage.value) : 'new',
             notes: (row.notes || []).map(function (note) { return { at: note.at, text: note.text }; }),
             restaurantId: row.restaurant_id || null,
-            nextFollowUp: row.next_follow_up_at || null
+            nextFollowUp: row.next_follow_up_at || null,
+            createdAt: row.created_at || null
         };
     }
 
@@ -760,7 +793,12 @@
         move: function (id, stage) {
             guard('manageCrm');
             var row = leadRepository.find(id);
-            if (!row || STAGES.indexOf(stage) === -1) return;
+            // Dropped on a grouped lane itself: it takes the lane's first-choice sub-status, unless it already has one.
+            if (row && GROUPS[stage]) {
+                if (stageGroup(row.stage) === stage) return;
+                stage = GROUPS[stage].fallback;
+            }
+            if (!row || STAGES.indexOf(stage) === -1 || row.stage === stage) return;
             row.stage = stage;
             emit();
             saveLead(id, { stage: stage });
@@ -942,7 +980,7 @@
         supTab: 'devices',
         apptId: null,
         confirm: null,
-        filters: { agent: '', city: '', stage: '', when: '', billing: '' },
+        filters: { agent: '', city: '', stage: '', when: '', billing: '', period: '', from: '', to: '' },
         cal: 'month',
         cursor: new Date(),
         calAgent: '',
@@ -1021,6 +1059,280 @@
         return new Date(Math.min.apply(null, times)).toISOString();
     }
 
+    // "Added" filter: a date-range picker with quick ranges on one side and two months on the other.
+    // The filter keeps the chosen days (from/to, YYYY-MM-DD) and which quick range they came from.
+    var PRESETS = ['today', 'yesterday', 'last7', 'last30', 'lastWeek', 'thisMonth', 'lastMonth', 'thisYear', 'lastYear', 'custom'];
+
+    function isoDay(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function parseDay(value) {
+        if (!value) return null;
+        var parts = value.split('-');
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    }
+    function addDays(d, n) { var c = new Date(d); c.setDate(c.getDate() + n); return c; }
+
+    function presetRange(key) {
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var y = today.getFullYear(), m = today.getMonth();
+        switch (key) {
+            case 'today': return [today, today];
+            case 'yesterday': return [addDays(today, -1), addDays(today, -1)];
+            case 'last7': return [addDays(today, -6), today];
+            case 'last30': return [addDays(today, -29), today];
+            case 'lastWeek': var sunday = addDays(today, -today.getDay() - 7); return [sunday, addDays(sunday, 6)];
+            case 'thisMonth': return [new Date(y, m, 1), today];
+            case 'lastMonth': return [new Date(y, m - 1, 1), new Date(y, m, 0)];
+            case 'thisYear': return [new Date(y, 0, 1), today];
+            case 'lastYear': return [new Date(y - 1, 0, 1), new Date(y - 1, 11, 31)];
+            default: return [null, null];
+        }
+    }
+
+    function periodRange() {
+        var from = parseDay(ui.filters.from);
+        var to = parseDay(ui.filters.to);
+        if (to) to.setHours(23, 59, 59, 999);
+        return [from, to];
+    }
+
+    function periodMatch(lead) {
+        var range = periodRange();
+        if (!range[0] && !range[1]) return true;
+        if (!lead.createdAt) return false;
+        var added = new Date(lead.createdAt);
+        return (!range[0] || added >= range[0]) && (!range[1] || added <= range[1]);
+    }
+
+    var dp = { open: false, preset: '', from: '', to: '', hover: '', month: null };
+    var DP_LOCALE = { he: 'he-IL', ar: 'ar-u-nu-latn', en: 'en-GB' }[loc] || 'en-GB';
+
+    // dd/mm/yyyy written out by hand: the locale formats add direction marks that scramble a range in RTL.
+    function dpDate(value) {
+        var d = parseDay(value);
+        return d ? String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() : '…';
+    }
+
+    function dpLabel() {
+        if (!ui.filters.from && !ui.filters.to) return '';
+        var fmt = dpDate;
+        var name = ui.filters.period && ui.filters.period !== 'custom' ? t('dp_' + ui.filters.period) + ' · ' : '';
+        return name + fmt(ui.filters.from) + ' – ' + fmt(ui.filters.to || ui.filters.from);
+    }
+
+    function periodPicker() {
+        var label = dpLabel();
+        return '<div class="dp" data-dp-root>' +
+            '<button type="button" class="dp-trigger' + (label ? ' has-value' : '') + '" data-dp-toggle aria-haspopup="dialog" aria-expanded="' + dp.open + '">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>' +
+            '<span>' + esc(label || t('dp_placeholder')) + '</span>' +
+            (label ? '<i class="dp-trigger__clear" data-dp-reset role="button" aria-label="' + esc(t('dp_clear')) + '">×</i>' : '') +
+            '</button>' +
+            '<div class="dp-pop' + (dp.open ? ' is-open' : '') + '" data-dp-pop role="dialog" aria-label="' + esc(t('periodLabel')) + '"' + (dp.open ? '' : ' hidden') + '>' + (dp.open ? dpBody() : '') + '</div>' +
+            '</div>';
+    }
+
+    function dpMonth(first, side) {
+        var y = first.getFullYear(), m = first.getMonth();
+        var start = addDays(first, -first.getDay());
+        var from = dp.from, to = dp.to || (dp.from && dp.hover ? dp.hover : '');
+        if (from && to && to < from) { var swap = from; from = to; to = swap; }
+        var today = isoDay(new Date());
+        var weekdays = '';
+        for (var w = 0; w < 7; w++) weekdays += '<span>' + esc(addDays(start, w).toLocaleDateString(DP_LOCALE, { weekday: 'narrow' })) + '</span>';
+        var cells = '';
+        for (var i = 0; i < 42; i++) {
+            var d = addDays(start, i), key = isoDay(d), cls = ['dp-day'];
+            if (d.getMonth() !== m) cls.push('is-out');
+            if (key === today) cls.push('is-today');
+            if (from && key === from) cls.push('is-start');
+            if (to && key === to) cls.push('is-end');
+            if (from && to && key > from && key < to) cls.push('is-between');
+            cells += '<button type="button" class="' + cls.join(' ') + '" data-dp-day="' + key + '">' + d.getDate() + '</button>';
+        }
+        var months = '', years = '';
+        for (var mi = 0; mi < 12; mi++) months += '<option value="' + mi + '"' + (mi === m ? ' selected' : '') + '>' + esc(new Date(2000, mi, 1).toLocaleDateString(DP_LOCALE, { month: 'long' })) + '</option>';
+        var thisYear = new Date().getFullYear();
+        for (var yi = thisYear - 6; yi <= thisYear + 1; yi++) years += '<option value="' + yi + '"' + (yi === y ? ' selected' : '') + '>' + yi + '</option>';
+        var nav = side === 0
+            ? '<button type="button" class="dp-nav" data-dp-step="-1" aria-label="‹">' + (document.dir === 'rtl' ? '›' : '‹') + '</button>'
+            : '<button type="button" class="dp-nav" data-dp-step="1" aria-label="›">' + (document.dir === 'rtl' ? '‹' : '›') + '</button>';
+        return '<div class="dp-month">' +
+            '<div class="dp-month__head">' + (side === 0 ? nav : '') +
+            '<select data-dp-month="' + side + '" aria-label="month">' + months + '</select>' +
+            '<select data-dp-year="' + side + '" aria-label="year">' + years + '</select>' + (side === 1 ? nav : '') + '</div>' +
+            '<div class="dp-week">' + weekdays + '</div><div class="dp-grid">' + cells + '</div></div>';
+    }
+
+    function dpBody(slide) {
+        var first = new Date(dp.month.getFullYear(), dp.month.getMonth(), 1);
+        var second = new Date(first.getFullYear(), first.getMonth() + 1, 1);
+        var presets = PRESETS.map(function (key) {
+            return '<button type="button" class="dp-preset' + (dp.preset === key ? ' is-on' : '') + '" data-dp-preset="' + key + '">' + esc(t('dp_' + key)) + '</button>';
+        }).join('');
+        var fmt = dpDate;
+        var summary = dp.from ? fmt(dp.from) + ' – ' + fmt(dp.to || dp.from) : t('dp_pick');
+        return '<div class="dp-main"><div class="dp-presets">' + presets + '</div>' +
+            '<div class="dp-months' + (slide ? ' slide-' + slide : '') + '">' + dpMonth(first, 0) + dpMonth(second, 1) + '</div></div>' +
+            '<div class="dp-foot"><span class="dp-summary">' + esc(summary) + '</span><span class="dp-actions">' +
+            '<button type="button" class="dp-btn" data-dp-clear>' + esc(t('dp_clear')) + '</button>' +
+            '<button type="button" class="dp-btn dp-btn--primary" data-dp-apply' + (dp.from ? '' : ' disabled') + '>' + esc(t('dp_apply')) + '</button></span></div>';
+    }
+
+    // Only the open panel is redrawn while picking, so the board stays put and the motion stays smooth.
+    function dpPaint(slide) {
+        var pop = document.querySelector('[data-dp-pop]');
+        if (pop) pop.innerHTML = dpBody(slide);
+    }
+
+    function dpOpen() {
+        dp.open = true;
+        dp.preset = ui.filters.period || '';
+        dp.from = ui.filters.from || '';
+        dp.to = ui.filters.to || '';
+        dp.hover = '';
+        var anchor = parseDay(dp.from) || new Date();
+        dp.month = new Date(anchor.getFullYear(), anchor.getMonth() - (dp.from ? 0 : 1), 1);
+        var pop = document.querySelector('[data-dp-pop]');
+        var toggle = document.querySelector('[data-dp-toggle]');
+        if (!pop) return;
+        pop.innerHTML = dpBody();
+        pop.hidden = false;
+        dpPlace();
+        pop.classList.remove('is-open', 'is-leaving');
+        void pop.offsetWidth;
+        pop.classList.add('is-open');
+        if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    }
+
+    // Placed against the viewport under its button, and always kept on screen whatever the direction.
+    function dpPlace() {
+        var pop = document.querySelector('[data-dp-pop]');
+        var toggle = document.querySelector('[data-dp-toggle]');
+        if (!pop || !toggle) return;
+        var box = toggle.getBoundingClientRect();
+        var vw = document.documentElement.clientWidth;
+        var width = Math.min(720, vw - 32);
+        var rtl = getComputedStyle(toggle).direction === 'rtl';
+        var left = rtl ? box.right - width : box.left;
+        left = Math.max(16, Math.min(left, vw - width - 16));
+        pop.style.width = width + 'px';
+        pop.style.left = left + 'px';
+        pop.style.top = (box.bottom + 8) + 'px';
+    }
+    window.addEventListener('resize', function () { if (dp.open) dpPlace(); });
+    window.addEventListener('scroll', function () { if (dp.open) dpPlace(); }, true);
+
+    function dpClose() {
+        if (!dp.open) return;
+        dp.open = false;
+        var pop = document.querySelector('[data-dp-pop]');
+        var toggle = document.querySelector('[data-dp-toggle]');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        if (!pop) return;
+        pop.classList.remove('is-open');
+        pop.classList.add('is-leaving');
+        window.setTimeout(function () { if (!dp.open) { pop.hidden = true; pop.classList.remove('is-leaving'); } }, 180);
+    }
+
+    function dpCommit(preset, from, to) {
+        ui.filters.period = from ? (preset || 'custom') : '';
+        ui.filters.from = from || '';
+        ui.filters.to = from ? (to || from) : '';
+        ui.pageNum = 1;
+        dp.open = false;
+        render();
+    }
+
+    document.addEventListener('click', function (event) {
+        var root = event.target.closest('[data-dp-root]');
+        if (!root) { if (dp.open) dpClose(); return; }
+        if (event.target.closest('[data-dp-reset]')) { event.stopPropagation(); dpCommit('', '', ''); return; }
+        if (event.target.closest('[data-dp-toggle]')) { if (dp.open) dpClose(); else dpOpen(); return; }
+        var preset = event.target.closest('[data-dp-preset]');
+        if (preset) {
+            dp.preset = preset.getAttribute('data-dp-preset');
+            if (dp.preset !== 'custom') {
+                var range = presetRange(dp.preset);
+                dp.from = isoDay(range[0]);
+                dp.to = isoDay(range[1]);
+                var shown = new Date(range[1].getFullYear(), range[1].getMonth() - 1, 1);
+                var slide = shown < dp.month ? 'back' : (shown > dp.month ? 'forward' : '');
+                dp.month = shown;
+                dpPaint(slide);
+            } else {
+                dp.from = ''; dp.to = '';
+                dpPaint();
+            }
+            return;
+        }
+        var day = event.target.closest('[data-dp-day]');
+        if (day) {
+            var key = day.getAttribute('data-dp-day');
+            dp.preset = 'custom';
+            if (!dp.from || dp.to) { dp.from = key; dp.to = ''; }
+            else if (key < dp.from) { dp.to = dp.from; dp.from = key; }
+            else dp.to = key;
+            dp.hover = '';
+            dpPaint();
+            return;
+        }
+        var step = event.target.closest('[data-dp-step]');
+        if (step) {
+            var dir = Number(step.getAttribute('data-dp-step'));
+            dp.month = new Date(dp.month.getFullYear(), dp.month.getMonth() + dir, 1);
+            dpPaint(dir > 0 ? 'forward' : 'back');
+            return;
+        }
+        if (event.target.closest('[data-dp-clear]')) { dp.preset = ''; dp.from = ''; dp.to = ''; dpPaint(); return; }
+        if (event.target.closest('[data-dp-apply]')) { dpCommit(dp.preset, dp.from, dp.to); }
+    });
+
+    document.addEventListener('change', function (event) {
+        var monthSel = event.target.closest('[data-dp-month], [data-dp-year]');
+        if (!monthSel || !dp.open) return;
+        var side = Number(monthSel.getAttribute('data-dp-month') || monthSel.getAttribute('data-dp-year'));
+        var head = monthSel.parentNode;
+        var month = Number(head.querySelector('[data-dp-month]').value);
+        var year = Number(head.querySelector('[data-dp-year]').value);
+        var next = new Date(year, month - side, 1);
+        var slide = next < dp.month ? 'back' : (next > dp.month ? 'forward' : '');
+        dp.month = next;
+        dpPaint(slide);
+    });
+
+    // While the first day is picked, the range follows the pointer until the second click.
+    document.addEventListener('mouseover', function (event) {
+        if (!dp.open || !dp.from || dp.to) return;
+        var day = event.target.closest('[data-dp-day]');
+        if (!day || day.getAttribute('data-dp-day') === dp.hover) return;
+        dp.hover = day.getAttribute('data-dp-day');
+        var grid = document.querySelectorAll('[data-dp-pop] .dp-day');
+        var from = dp.from, to = dp.hover;
+        if (to < from) { var swap = from; from = to; to = swap; }
+        grid.forEach(function (cell) {
+            var key = cell.getAttribute('data-dp-day');
+            cell.classList.toggle('is-between', key > from && key < to);
+            cell.classList.toggle('is-start', key === from);
+            cell.classList.toggle('is-end', key === to);
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && dp.open) { event.stopPropagation(); dpClose(); }
+    }, true);
+
+    // The report opens in a new tab with the same filters, and its PDF starts downloading.
+    function reportUrl() {
+        var url = new URL(crm.leadWrites + '/report', location.href);
+        var params = { period: ui.filters.from ? 'custom' : '', from: ui.filters.from, to: ui.filters.to, agent: ui.filters.agent, city: ui.filters.city, q: ui.q };
+        Object.keys(params).forEach(function (key) { if (params[key]) url.searchParams.set(key, params[key]); });
+        url.searchParams.set('download', '1');
+        return url.toString();
+    }
+
     function whenMatch(lead) {
         var mode = ui.filters.when;
         if (!mode) return true;
@@ -1041,8 +1353,8 @@
         return state.leads.filter(function (lead) {
             if (ui.filters.agent && lead.agentId !== ui.filters.agent) return false;
             if (ui.filters.city && lead.cityId !== ui.filters.city) return false;
-            if (ui.filters.stage && lead.stage !== ui.filters.stage) return false;
-            if (!whenMatch(lead)) return false;
+            if (ui.filters.stage && lead.stage !== ui.filters.stage && stageGroup(lead.stage) !== ui.filters.stage) return false;
+            if (!whenMatch(lead) || !periodMatch(lead)) return false;
             var city = cityById(lead.cityId);
             var agent = agentById(lead.agentId);
             return matchQuery([text(lead.name), lead.contact, lead.phone, text(city), agent ? agent.name : '']);
@@ -1087,19 +1399,30 @@
 
     function renderLeads() {
         var leads = filteredLeads();
-        var stages = ui.filters.stage ? [ui.filters.stage] : STAGES;
-        var columns = stages.map(function (stage) {
-            var rows = leads.filter(function (lead) { return lead.stage === stage; });
-            var cards = rows.map(function (lead) {
-                var city = text(cityById(lead.cityId));
-                var who = [lead.contact, city].filter(Boolean).join(' · ');
-                return '<button type="button" class="sales-card" draggable="true" data-lead="' + lead.id + '" data-act="open-lead" data-id="' + lead.id + '">' +
-                    (logoSrc(lead.name) ? '<img class="sales-photo" src="' + esc(logoSrc(lead.name)) + '" alt="">' : '') +
-                    '<span class="sales-card-info"><strong>' + esc(text(lead.name)) + '</strong>' +
-                    '<p>' + esc(who || '—') + '</p>' +
-                    '<span class="sales-card-bottom"><span>' + esc((agentById(lead.agentId) || {}).name || '—') + '</span><span>' + esc(lead.phone || '—') + '</span></span></span></button>';
-            }).join('');
-            return '<section class="sales-lane" data-stage="' + stage + '" style="--lane-color:' + (LANE_COLOR[stage] || '#f58220') + '"><div class="sales-lane-head"><span>' + esc(t(stage)) + '</span><small>' + rows.length + '</small></div>' + cards + '</section>';
+        var lanes = ui.filters.stage ? [stageGroup(ui.filters.stage)] : LANES;
+        var card = function (lead) {
+            var city = text(cityById(lead.cityId));
+            var who = [lead.contact, city].filter(Boolean).join(' · ');
+            return '<button type="button" class="sales-card" draggable="true" data-lead="' + lead.id + '" data-act="open-lead" data-id="' + lead.id + '">' +
+                (logoSrc(lead.name) ? '<img class="sales-photo" src="' + esc(logoSrc(lead.name)) + '" alt="">' : '') +
+                '<span class="sales-card-info"><strong>' + esc(text(lead.name)) + '</strong>' +
+                '<p>' + esc(who || '—') + '</p>' +
+                '<span class="sales-card-bottom"><span>' + esc((agentById(lead.agentId) || {}).name || '—') + '</span><span>' + esc(lead.phone || '—') + '</span></span></span></button>';
+        };
+        var columns = lanes.map(function (lane) {
+            var rows = leads.filter(function (lead) { return stageGroup(lead.stage) === lane; });
+            var body;
+            if (GROUPS[lane]) {
+                // A drop area per sub-status, so a card is dragged straight to the one it belongs in.
+                var outcomes = ui.filters.stage && ui.filters.stage !== lane ? [ui.filters.stage] : GROUPS[lane].subs;
+                body = outcomes.map(function (outcome) {
+                    var group = rows.filter(function (lead) { return lead.stage === outcome; });
+                    return '<div class="sales-sublane" data-stage="' + outcome + '" style="--lane-color:' + LANE_COLOR[outcome] + '"><div class="sales-sublane-head"><span>' + esc(t(outcome)) + '</span><small>' + group.length + '</small></div>' + group.map(card).join('') + '</div>';
+                }).join('');
+            } else {
+                body = rows.map(card).join('');
+            }
+            return '<section class="sales-lane' + (GROUPS[lane] ? ' sales-lane--after' : '') + '" data-stage="' + lane + '" style="--lane-color:' + (LANE_COLOR[lane] || '#f58220') + '"><div class="sales-lane-head"><span>' + esc(t(lane)) + '</span><small>' + rows.length + '</small></div>' + body + '</section>';
         }).join('');
         return '<div class="sales-head"><div><h1>' + esc(t('pipeline')) + '</h1><p>' + esc(t('pipelineLead')) + '</p></div>' +
             '<button type="button" class="sales-btn sales-btn--primary" data-act="new-lead">+ ' + esc(t('newLead')) + '</button></div>' +
@@ -1107,8 +1430,9 @@
             '<input data-sales-search value="' + esc(ui.q) + '" placeholder="' + esc(t('searchLead')) + '" aria-label="' + esc(t('searchLead')) + '"></label>' +
             '<select data-ds-select data-filter="agent" aria-label="' + esc(t('filterAgent')) + '"><option value="">' + esc(t('allAgents')) + '</option>' + selectAgents(ui.filters.agent) + '</select>' +
             '<select data-ds-select data-filter="city" aria-label="' + esc(t('filterCity')) + '"><option value="">' + esc(t('allCities')) + '</option>' + selectCities(ui.filters.city) + '</select>' +
-            '<select data-ds-select data-filter="stage" aria-label="' + esc(t('filterStatus')) + '"><option value="">' + esc(t('filterStatus')) + '</option>' + options(STAGES, ui.filters.stage) + '</select>' +
-            '<select data-ds-select data-filter="when" aria-label="' + esc(t('filterWhen')) + '"><option value="">' + esc(t('any')) + '</option><option value="today"' + (ui.filters.when === 'today' ? ' selected' : '') + '>' + esc(t('today')) + '</option><option value="week"' + (ui.filters.when === 'week' ? ' selected' : '') + '>' + esc(t('week')) + '</option><option value="overdue"' + (ui.filters.when === 'overdue' ? ' selected' : '') + '>' + esc(t('overdue')) + '</option></select></div>' +
+            periodPicker() +
+            (crm ? '<button type="button" class="sales-btn sales-report-btn" data-act="lead-report">' + esc(t('leadsReport')) + '</button>' : '') +
+            '</div>' +
             '<div class="sales-board">' + columns + '</div>';
     }
 
@@ -1118,7 +1442,7 @@
             '<select data-ds-select data-filter="agent" aria-label="' + esc(t('filterAgent')) + '"><option value="">' + esc(t('all')) + '</option>' + selectAgents(ui.filters.agent) + '</select>' +
             '<select data-ds-select data-filter="city" aria-label="' + esc(t('filterCity')) + '"><option value="">' + esc(t('all')) + '</option>' + selectCities(ui.filters.city) + '</select>' +
             (ui.page === 'leads'
-                ? '<select data-ds-select data-filter="stage" aria-label="' + esc(t('filterStatus')) + '"><option value="">' + esc(t('all')) + '</option>' + options(STAGES, ui.filters.stage) + '</select>' +
+                ? '<select data-ds-select data-filter="stage" aria-label="' + esc(t('filterStatus')) + '"><option value="">' + esc(t('all')) + '</option>' + stageOptions(FILTER_STAGES, ui.filters.stage) + '</select>' +
                   '<select data-ds-select data-filter="when" aria-label="' + esc(t('filterWhen')) + '"><option value="">' + esc(t('any')) + '</option><option value="today"' + (ui.filters.when === 'today' ? ' selected' : '') + '>' + esc(t('today')) + '</option><option value="week"' + (ui.filters.when === 'week' ? ' selected' : '') + '>' + esc(t('week')) + '</option><option value="overdue"' + (ui.filters.when === 'overdue' ? ' selected' : '') + '>' + esc(t('overdue')) + '</option></select>'
                 : '') +
             '</div>';
@@ -1373,7 +1697,7 @@
         }).join('') : '';
         var title = lead ? t('leadDetails') : t('newLead');
         var identity = lead ? text(lead.name) : t('newLead');
-        var sub = lead ? (t(lead.stage) + (text(cityById(lead.cityId)) ? ' · ' + text(cityById(lead.cityId)) : '')) : t('pipelineLead');
+        var sub = lead ? (stageLabel(lead.stage) + (text(cityById(lead.cityId)) ? ' · ' + text(cityById(lead.cityId)) : '')) : t('pipelineLead');
         return '<div class="sales-modal" data-dialog role="document"><div class="sales-modal-head"><div><h2 id="ag-portal-title">' + esc(title) + '</h2><p>' + esc(t('leadHint')) + '</p></div><button type="button" class="sales-modal-close" data-act="close" aria-label="' + esc(t('cancel')) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>' +
             '<div class="sales-modal-body"><div class="sales-identity"><div class="sales-identity-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div><div><strong>' + esc(identity) + '</strong><small>' + esc(sub) + '</small></div></div>' +
             '<form id="ag-lead-form" data-form="lead" class="sales-form">' +
@@ -1382,7 +1706,7 @@
             '<label>' + esc(t('phone')) + '<input name="phone" required value="' + esc(values.phone || '') + '"></label>' +
             '<label>' + esc(t('city')) + '<select data-ds-select name="cityId">' + selectCities(values.cityId) + '</select></label>' +
             '<label>' + esc(t('agent')) + '<select data-ds-select name="agentId">' + selectAgents(values.agentId) + '</select></label>' +
-            '<label>' + esc(t('status')) + '<select data-ds-select name="stage">' + options(STAGES, values.stage) + '</select></label></form>' +
+            '<label>' + esc(t('status')) + '<select data-ds-select name="stage">' + stageOptions(STAGES, values.stage) + '</select></label></form>' +
             (lead ? '<div class="sales-notes"><h3>' + esc(t('notes')) + '</h3>' + (notes ? notes.replace(/ag-note/g, 'sales-note') : '<p class="sales-empty-note">' + esc(t('emptyNotes')) + '</p>') +
                 '<form data-form="note" data-id="' + lead.id + '"><textarea name="text" placeholder="' + esc(t('notePh')) + '"></textarea><button class="sales-btn" type="submit">' + esc(t('addNote')) + '</button></form></div>' : '') +
             '</div><div class="sales-modal-foot">' +
@@ -1809,16 +2133,31 @@
         return '<div class="ag-kv"><span>' + esc(label) + '</span><b>' + esc(value || '—') + '</b></div>';
     }
 
+    // Opens the meeting form for a lead that just moved to "Meeting scheduled".
+    function askMeeting(leadId) {
+        if (!leadId) return;
+        ui.leadId = null;
+        ui.leadDraft = false;
+        ui.apptId = 'new';
+        ui.apptLead = leadId;
+        ui.apptMeeting = true;
+        ui.apptAt = shift(1, 10);
+        render();
+    }
+
     function renderAppt() {
         if (!ui.apptId) return '';
-        var row = ui.apptId === 'new' ? { agentId: ui.calAgent || ME, at: ui.apptAt || shift(0, 10), type: 'visit', status: 'scheduled', notes: '', leadId: ui.apptLead || '', restaurantId: '' } : calendarRepository.find(ui.apptId);
+        var forLead = ui.apptLead ? leadRepository.find(ui.apptLead) : null;
+        var row = ui.apptId === 'new' ? { agentId: (forLead && forLead.agentId) || ui.calAgent || ME, at: ui.apptAt || shift(0, 10), type: 'visit', status: 'scheduled', notes: '', leadId: forLead ? forLead.id : (ui.apptLead || ''), restaurantId: '' } : calendarRepository.find(ui.apptId);
         if (!row) { ui.apptId = null; return ''; }
         var choices = state.leads.map(function (lead) {
             return '<option value="lead:' + lead.id + '"' + (row.leadId === lead.id ? ' selected' : '') + '>' + esc(text(lead.name)) + '</option>';
         }).join('') + state.restaurants.map(function (restaurant) {
             return '<option value="restaurant:' + restaurant.id + '"' + (row.restaurantId === restaurant.id ? ' selected' : '') + '>' + esc(text(restaurant.name)) + '</option>';
         }).join('');
-        return '<form class="ag-dialog" data-dialog data-form="appt" role="document"><h2 id="ag-portal-title">' + esc(ui.apptId === 'new' ? t('newAppt') : apptTitle(row)) + '</h2>' +
+        var heading = ui.apptMeeting && forLead ? t('scheduleMeeting') + ' · ' + text(forLead.name) : (ui.apptId === 'new' ? t('newAppt') : apptTitle(row));
+        return '<form class="ag-dialog" data-dialog data-form="appt" role="document"><h2 id="ag-portal-title">' + esc(heading) + '</h2>' +
+            (ui.apptMeeting ? '<p class="ag-dialog__hint">' + esc(t('scheduleMeetingHint')) + '</p>' : '') +
             '<label class="ag-field">' + esc(t('restaurant')) + '<select data-ds-select name="target" required>' + choices + '</select></label>' +
             '<label class="ag-field">' + esc(t('agent')) + '<select data-ds-select name="agentId">' + selectAgents(row.agentId) + '</select></label>' +
             '<label class="ag-field">' + esc(t('date')) + '<input type="datetime-local" name="at" required value="' + esc(toInput(row.at)) + '"></label>' +
@@ -1932,7 +2271,7 @@
 
     function closeTop() {
         if (ui.confirm) { ui.confirm = null; render(); return; }
-        if (ui.apptId) { ui.apptId = null; ui.apptLead = null; render(); return; }
+        if (ui.apptId) { ui.apptId = null; ui.apptLead = null; ui.apptMeeting = false; render(); return; }
         if (ui.clientDraft) { ui.clientDraft = false; render(); return; }
         if (ui.restaurantId) { ui.restaurantId = null; ui.editing = false; render(); return; }
         ui.leadId = null;
@@ -1987,6 +2326,7 @@
         var act = actEl.dataset.act;
         var id = actEl.dataset.id;
         if (act === 'close' || act === 'close-back') { closeTop(); return; }
+        if (act === 'lead-report') { window.open(reportUrl(), '_blank', 'noopener'); return; }
         if (act === 'open-lead') { ui.leadId = id; ui.leadDraft = false; ui.bell = false; render(); return; }
         if (act === 'new-lead') { ui.leadId = null; ui.leadDraft = true; render(); return; }
         if (act === 'open-client') { ui.restaurantId = id; ui.tab = 'overview'; ui.editing = false; ui.bell = false; render(); return; }
@@ -2037,6 +2377,7 @@
         }
         if (act === 'open-appt') { ui.apptId = id; render(); return; }
         if (act === 'new-appt' || act === 'schedule-lead') {
+            ui.apptMeeting = false;
             ui.apptId = 'new';
             ui.apptLead = act === 'schedule-lead' ? id : '';
             ui.apptAt = shift(1, 10);
@@ -2103,9 +2444,11 @@
             if (kind === 'lead') {
                 if (!data.name || !data.phone) { toast(t('required')); return; }
                 var patch = { name: data.name, contact: data.contact, phone: data.phone, cityId: data.cityId, agentId: data.agentId, stage: data.stage };
+                var before = ui.leadDraft ? null : (leadRepository.find(ui.leadId) || {}).stage;
                 if (ui.leadDraft) { ui.leadId = leadRepository.create(patch); ui.leadDraft = false; }
                 else leadRepository.update(ui.leadId, patch);
                 toast(t('toastSaved'));
+                if (data.stage === 'meeting' && before !== 'meeting') { askMeeting(ui.leadId); return; }
             } else if (kind === 'note') {
                 leadRepository.note(form.dataset.id, data.text);
                 toast(t('toastSaved'));
@@ -2128,6 +2471,8 @@
                 if (ui.apptId === 'new') calendarRepository.create(payload);
                 else calendarRepository.update(ui.apptId, payload);
                 ui.apptId = null;
+                ui.apptLead = null;
+                ui.apptMeeting = false;
                 toast(t('toastSaved'));
             }
             render();
@@ -2163,7 +2508,12 @@
         col.classList.remove('is-over');
         var raw = event.dataTransfer.getData('text/plain');
         safe(function () {
-            if (raw.indexOf('lead:') === 0 && col.dataset.stage) leadRepository.move(raw.slice(5), col.dataset.stage);
+            if (raw.indexOf('lead:') === 0 && col.dataset.stage) {
+                var moved = leadRepository.find(raw.slice(5));
+                var was = moved ? moved.stage : null;
+                leadRepository.move(raw.slice(5), col.dataset.stage);
+                if (moved && col.dataset.stage === 'meeting' && was !== 'meeting') askMeeting(moved.id);
+            }
             if (raw.indexOf('appt:') === 0 && col.dataset.apptStatus) calendarRepository.update(raw.slice(5), { status: col.dataset.apptStatus });
             if (raw.indexOf('appt:') === 0 && col.dataset.day) {
                 var current = calendarRepository.find(raw.slice(5));

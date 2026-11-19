@@ -7,7 +7,10 @@ namespace App\Http\Controllers;
 use App\Enums\Door;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -23,6 +26,41 @@ class UserAccessController extends Controller
         return view('workspace.access.index', [
             'rows' => $users->map(fn (User $user): array => $this->row($user))->all(),
         ]);
+    }
+
+    /**
+     * A new account with the standard access for its role; the doors are then set with the switches.
+     * The password is typed by whoever manages users, never sent or shown anywhere.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validateWithBag('newUser', [
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:191', Rule::unique('users', 'email')],
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
+
+        $user = new User;
+        $user->forceFill([
+            'name' => trim($data['name']),
+            'email' => mb_strtolower(trim($data['email'])),
+            'password' => Hash::make($data['password']),
+            'is_admin' => false,
+            'projects' => [],
+        ])->save();
+
+        return redirect()->route('workspace.users', ['open' => $user->id])->with('ua_status', __('access.user_added', ['name' => $user->name]));
+    }
+
+    public function password(Request $request, User $user): RedirectResponse
+    {
+        $data = $request->validateWithBag('password'.$user->id, [
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
+
+        $user->forceFill(['password' => Hash::make($data['password'])])->save();
+
+        return redirect()->route('workspace.users', ['open' => $user->id])->with('ua_status', __('access.password_set', ['name' => $user->name]));
     }
 
     public function update(Request $request, User $user): JsonResponse
@@ -115,6 +153,7 @@ class UserAccessController extends Controller
                 default => null,
             },
             'url' => route('workspace.users.access', $user),
+            'passwordUrl' => route('workspace.users.password', $user),
             'accountUrl' => $user->managesUsers() ? null : route('workspace.users.account', $user),
             'turnedOff' => $off,
             'doors' => $doors,

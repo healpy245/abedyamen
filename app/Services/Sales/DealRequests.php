@@ -49,7 +49,9 @@ class DealRequests
         });
 
         Notification::send(
-            User::query()->where('is_admin', true)->whereKeyNot($agent->id)->get(),
+            User::query()->whereKeyNot($agent->id)->whereNull('disabled_at')->get()
+                ->filter(fn (User $user): bool => $user->canOpenSubDoor(\App\Enums\Door::Finance, 'deals'))
+                ->values(),
             new SalesDealRequested($quote->loadMissing('client'), $agent),
         );
 

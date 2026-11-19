@@ -59,3 +59,6 @@ body.ds.ag .rm-head .ag-logo { width: 52px; height: 52px; border: 0; border-radi
 body.ds.ag .rm-title__row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 body.ds.ag .rm-title__row h2 { margin: 0; overflow: hidden; color: var(--ds-text); font: 650 20px/1.25 var(--ds-font-display); letter-spacing: -0.02em; text-overflow: ellipsis; white-space: nowrap; }
 body.ds.ag .rm-meta { margin-top: 4px; }
+
+body.ds.ag .sales-sublane { border-color: var(--ds-border); background: color-mix(in srgb, var(--ds-surface) 60%, transparent); }
+body.ds.ag .sales-sublane-head small { background: var(--ds-border); color: var(--ds-text-2); }

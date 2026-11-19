@@ -6,6 +6,8 @@ from __future__ import annotations
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -16,11 +18,15 @@ LOCAL = Path(__file__).resolve().parents[1]
 REMOTE = "/home/tut8x1radmrp/webtimize"
 PUBLIC = "/home/tut8x1radmrp/public_html/kaman-workspace"
 SITE = "https://kaman-workspace.com"
-STAMP = "1.3.86.110"
+STAMP = "1.3.94.118"
 
 APP_FILES = [
     "config/kaman-workspace.php",
     "resources/views/partials/pos-downloads.blade.php",
+    "resources/views/partials/sidebar.blade.php",
+    "lang/en/app.php",
+    "lang/ar/app.php",
+    "lang/he/app.php",
 ]
 
 POS = Path(r"c:\Users\win\Documents\Flutter\Kaman Pos")
@@ -57,10 +63,18 @@ def promote_previous(sftp: paramiko.SFTPClient, folder: str, current: str, previ
     if size is None:
         print("missing remote", src, flush=True)
         return
-    local = scratch / current
     print(f"keep {src} ({size} bytes) as {previous}", flush=True)
-    sftp.get(src, str(local))
-    sftp.put(str(local), dst)
+    try:
+        sftp.remove(dst)
+    except FileNotFoundError:
+        pass
+    try:
+        sftp.posix_rename(src, dst)
+    except (IOError, OSError, paramiko.SSHException) as exc:
+        print(f"rename failed ({exc}); copying through this machine", flush=True)
+        local = scratch / current
+        sftp.get(src, str(local), prefetch=False)
+        sftp.put(str(local), dst)
     kept = remote_size(sftp, dst)
     print(f"previous {dst} {kept} bytes", flush=True)
 
@@ -72,6 +86,7 @@ def main() -> int:
 
     host, port, user, password = load_sftp()
     transport = paramiko.Transport((host, port))
+    transport.set_keepalive(30)
     transport.connect(username=user, password=password)
     sftp = paramiko.SFTPClient.from_transport(transport)
     if sftp is None:
@@ -115,15 +130,24 @@ def main() -> int:
     if clear.returncode != 0:
         return clear.returncode
 
-    page = urllib.request.urlopen(
-        urllib.request.Request(f"{SITE}/login", headers={"User-Agent": "Mozilla/5.0 KamanRelease"}),
-        timeout=60,
-    ).read().decode("utf-8", "replace")
+    page = ""
+    for attempt in range(6):
+        try:
+            page = urllib.request.urlopen(
+                urllib.request.Request(f"{SITE}/login", headers={"User-Agent": "Mozilla/5.0 KamanRelease"}),
+                timeout=60,
+            ).read().decode("utf-8", "replace")
+            break
+        except urllib.error.HTTPError as exc:
+            print("login", exc.code, "attempt", attempt + 1, flush=True)
+            if attempt == 5:
+                raise
+            time.sleep(5)
     for needle in (
         f"kaman-pos.apk?v={STAMP}",
         f"kaman-pos-setup.exe?v={STAMP}",
-        "kaman-pos-previous.apk?v=1.3.85.109",
-        "kaman-pos-previous-setup.exe?v=1.3.85.109",
+        "kaman-pos-previous.apk?v=1.3.93.117",
+        "kaman-pos-previous-setup.exe?v=1.3.93.117",
     ):
         print(("ok" if needle in page else "MISSING"), needle, flush=True)
         if needle not in page:
